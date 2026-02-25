@@ -5,6 +5,7 @@ public class Projectile : MonoBehaviour
     public float speed = 10f;
     public float lifeTime = 2f;
     private float timer;
+    public int damage = 1;
 
     void Update()
     {
@@ -16,9 +17,17 @@ public class Projectile : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.CompareTag("Enemy") || other.CompareTag("Boss"))
+        var enemy = other.GetComponent<Enemy>();
+        if (enemy != null)
         {
-            // TODO: 적에 데미지 전달
+            Debug.Log($"Projectile hit enemy: {enemy.gameObject.name}");
+            enemy.TakeDamage(damage);
+            Destroy(gameObject);
+            return;
+        }
+        if (other.CompareTag("Boss"))
+        {
+            // Boss handling later
             Destroy(gameObject);
         }
     }
