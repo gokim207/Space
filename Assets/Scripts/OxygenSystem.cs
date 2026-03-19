@@ -3,22 +3,26 @@ using UnityEngine.UI;
 
 public class OxygenSystem : MonoBehaviour
 {
-    public int startOxygen = 20;
-    public int currentOxygen { get; private set; }
-    public int MaxOxygen => maxOxygen;
+    public float startOxygen = 30f;
+    public float currentOxygen { get; private set; }
+    public float MaxOxygen => maxOxygen;
     public float oxygenDecreaseInterval = 1f;
     private float timer;
     public WaveManager waveManager;
     // UI
     public Image oxygenFill; // assign Image with Fill method
     public Text oxygenText; // optional numeric text
-    private int maxOxygen;
+    private float maxOxygen;
 
-    void Start()
+    void Awake()
     {
         currentOxygen = startOxygen;
         timer = 0f;
         maxOxygen = startOxygen;
+    }
+
+    void Start()
+    {
         RefreshUI();
     }
 
@@ -31,11 +35,12 @@ public class OxygenSystem : MonoBehaviour
         if (timer >= oxygenDecreaseInterval)
         {
             timer = 0f;
-            ChangeOxygen(-1);
+            float dec = Random.Range(0.5f, 2.0f);
+            ChangeOxygen(-dec);
         }
     }
 
-    public void ChangeOxygen(int amount)
+    public void ChangeOxygen(float amount)
     {
         currentOxygen += amount;
         if (currentOxygen > maxOxygen) currentOxygen = maxOxygen;
@@ -52,11 +57,11 @@ public class OxygenSystem : MonoBehaviour
     {
         if (oxygenFill != null && maxOxygen > 0)
         {
-            oxygenFill.fillAmount = (float)currentOxygen / (float)maxOxygen;
+            oxygenFill.fillAmount = currentOxygen / maxOxygen;
         }
         if (oxygenText != null)
         {
-            oxygenText.text = $"O2: {currentOxygen}/{maxOxygen}";
+            oxygenText.text = $"O2: {currentOxygen:0.0}/{maxOxygen:0.0}";
         }
     }
 }

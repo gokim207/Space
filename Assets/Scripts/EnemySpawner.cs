@@ -4,16 +4,13 @@ public class EnemySpawner : MonoBehaviour
 {
     public GameObject enemyPrefab;
     public Transform planetCenter;
-    public float spawnInterval = 10f;
+    public float spawnInterval = 2f;
     private float timer;
     // spawnOffset is distance beyond the planet surface where enemies will appear
     public float spawnOffset = 3f;
     private float planetSurfaceRadius = 0f;
     public WaveManager waveManager;
-    // spawn count increases over time (every spawnIncreaseInterval seconds, spawnCountPerTick++)
-    public int spawnCountPerTick = 1;
-    public float spawnIncreaseInterval = 5f;
-    private float spawnIncreaseTimer = 0f;
+    public float minDistanceFromPlayer = 1.5f;
     bool warnedWaveManagerMissing = false;
 
     void Start()
@@ -114,38 +111,59 @@ public class EnemySpawner : MonoBehaviour
         if (timer >= spawnInterval)
         {
             timer = 0f;
-            for (int i = 0; i < spawnCountPerTick; i++)
-            {
-                SpawnEnemy();
-            }
+            SpawnEnemy();
         }
+    }
 
-        // increase spawn count every spawnIncreaseInterval seconds
-        spawnIncreaseTimer += Time.deltaTime;
-        if (spawnIncreaseTimer >= spawnIncreaseInterval)
+    public void OnWaveStarted(int wave)
+    {
+        int count = Random.Range(5, 11);
+        for (int i = 0; i < count; i++)
         {
-            spawnIncreaseTimer = 0f;
-            spawnCountPerTick += 1;
+            SpawnEnemy();
         }
+    }
+
+    Transform GetPlayerTransform()
+    {
+        var playerT = GameObject.FindWithTag("Player")?.transform;
+        if (playerT == null)
+        {
+            var pc = FindObjectOfType<PlayerController>();
+            if (pc != null) playerT = pc.transform;
+        }
+        return playerT;
     }
 
     void SpawnEnemy()
     {
         if (enemyPrefab == null || planetCenter == null) return;
-    float ang = Random.Range(0f, 360f) * Mathf.Deg2Rad;
-    float dist = planetSurfaceRadius + spawnOffset;
-    Vector3 pos = planetCenter.position + new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), 0f) * dist;
+        var playerT = GetPlayerTransform();
+        float dist = planetSurfaceRadius + spawnOffset;
+        Vector3 pos = Vector3.zero;
+        bool found = false;
+        for (int i = 0; i < 10; i++)
+        {
+            float ang = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            pos = planetCenter.position + new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), 0f) * dist;
+            if (playerT == null || Vector3.Distance(pos, playerT.position) >= minDistanceFromPlayer)
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found && playerT != null)
+        {
+            // fallback: place opposite side of player
+            Vector3 dir = (planetCenter.position - playerT.position).normalized;
+            pos = planetCenter.position + dir * dist;
+        }
         var go = Instantiate(enemyPrefab, pos, Quaternion.identity);
         go.SetActive(true);
         var e = go.GetComponent<Enemy>();
         if (e != null)
         {
-            var playerT = GameObject.FindWithTag("Player")?.transform;
-            if (playerT == null)
-            {
-                var pc = FindObjectOfType<PlayerController>();
-                if (pc != null) playerT = pc.transform;
-            }
+            playerT = GetPlayerTransform();
             e.target = playerT;
             e.waveManager = waveManager;
             if (e.target == null)

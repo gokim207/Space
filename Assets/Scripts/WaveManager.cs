@@ -89,6 +89,13 @@ public class WaveManager : MonoBehaviour
             }
         }
         if (oxygenSystem == null) oxygenSystem = FindObjectOfType<OxygenSystem>();
+        if (oxygenSystem == null)
+        {
+            var go = new GameObject("OxygenSystem_Auto");
+            oxygenSystem = go.AddComponent<OxygenSystem>();
+            oxygenSystem.waveManager = this;
+            Debug.Log("WaveManager: OxygenSystem_Auto created and wired.");
+        }
         // Runtime: create a simple firePoint if none. Prefer attaching to Player so firing originates from player.
         if (firePoint == null)
         {
@@ -145,6 +152,7 @@ public class WaveManager : MonoBehaviour
         // TODO: 웨이브, 산소 등 초기화
         Debug.Log("게임 시작!");
         Debug.Log($"Wave {currentWave} 시작");
+        if (spawner != null) spawner.OnWaveStarted(currentWave);
     }
 
     Sprite CreateColorSprite(Color c)
@@ -162,6 +170,7 @@ public class WaveManager : MonoBehaviour
         CurrentState = GameState.Upgrade;
         // TODO: 업그레이드 씬 전환 등 처리
         Debug.Log("런 종료, 업그레이드로 전환");
+        if (spawner != null) spawner.enabled = false;
         var flow = FindObjectOfType<GameFlowManager>();
         if (flow != null)
             flow.ShowEnd();
@@ -171,6 +180,7 @@ public class WaveManager : MonoBehaviour
     {
         currentWave++;
         Debug.Log($"웨이브 진행: {currentWave}");
+        if (spawner != null) spawner.OnWaveStarted(currentWave);
         if (currentWave % 5 == 0)
         {
             // spawn boss
@@ -186,7 +196,7 @@ public class WaveManager : MonoBehaviour
         // Actual boss prefab logic can be added later
     }
 
-    public void OnEnemyKilled(int ore, int oxygen)
+    public void OnEnemyKilled(int ore, float oxygen)
     {
         oresCollectedThisRun += ore;
         if (oxygenSystem != null)
@@ -202,6 +212,10 @@ public class WaveManager : MonoBehaviour
     {
         if (endSequenceStarted) return;
         endSequenceStarted = true;
+        CurrentState = GameState.Upgrade; // stop auto-fire immediately
+        if (spawner != null) spawner.enabled = false;
+        var flow = FindObjectOfType<GameFlowManager>();
+        if (flow != null) flow.ShowEnd();
         StartCoroutine(EndRunSequenceCoroutine(player));
     }
 
@@ -231,8 +245,8 @@ public class WaveManager : MonoBehaviour
             if (sr != null) sr.enabled = false;
             player.enabled = false;
         }
-        // wait 3 seconds (real-time)
-        yield return new WaitForSecondsRealtime(3f);
+        // short pause so player sees impact, then finish
+        yield return new WaitForSecondsRealtime(0.5f);
         Debug.Log("End run sequence finished.");
         var flow = FindObjectOfType<GameFlowManager>();
         if (flow != null) flow.ShowEnd();

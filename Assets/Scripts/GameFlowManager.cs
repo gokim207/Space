@@ -15,7 +15,9 @@ public class GameFlowManager : MonoBehaviour
     private GameObject forgePanel;
     private GameObject skillPanel;
     private Text oxygenLabel;
+    private Text oreResultLabel;
     private OxygenSystem oxygenSystem;
+    private WaveManager waveManager;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void EnsureExists()
@@ -52,14 +54,15 @@ public class GameFlowManager : MonoBehaviour
 
         // Run HUD (placeholder)
         CreateLabel(runHud, "Wave : 1", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -30f), 24);
-        oxygenLabel = CreateLabel(runHud, "남은 산소 (0/0)", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(120f, -30f), 18);
+        oxygenLabel = CreateLabel(runHud, "남은 산소 (0 / 0)", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(200f, -30f), 18);
         oxygenLabel.alignment = TextAnchor.MiddleLeft;
         oxygenLabel.color = Color.white;
-        oxygenLabel.rectTransform.sizeDelta = new Vector2(260f, 40f);
+        oxygenLabel.rectTransform.sizeDelta = new Vector2(320f, 40f);
 
         // End panel
         CreateLabel(endPanel, "원정 종료", new Vector2(0.5f, 0.85f), new Vector2(0.5f, 0.85f), Vector2.zero, 28);
-        CreateLabel(endPanel, "획득한 광석 목록(임시)", new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, 18);
+        CreateLabel(endPanel, "획득한 광석", new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, 18);
+        oreResultLabel = CreateLabel(endPanel, "돌 : 0", new Vector2(0.5f, 0.62f), new Vector2(0.5f, 0.62f), Vector2.zero, 20);
         CreateButton(endPanel, "다시 하기", new Vector2(0.25f, 0.15f), new Vector2(0.25f, 0.15f), new Vector2(0f, 0f), () => RestartRun());
         CreateButton(endPanel, "기지로 이동", new Vector2(0.75f, 0.15f), new Vector2(0.75f, 0.15f), new Vector2(0f, 0f), () => GoToUpgradeScene());
 
@@ -68,12 +71,14 @@ public class GameFlowManager : MonoBehaviour
         CreateLabel(forgePanel, "재련 확률/결과 UI는 추후 연결", new Vector2(0.5f, 0.75f), new Vector2(0.5f, 0.75f), Vector2.zero, 18);
         CreateButton(forgePanel, "대장간", new Vector2(0.12f, 0.95f), new Vector2(0.12f, 0.95f), new Vector2(0f, 0f), () => ShowForge());
         CreateButton(forgePanel, "스킬 트리", new Vector2(0.36f, 0.95f), new Vector2(0.36f, 0.95f), new Vector2(0f, 0f), () => ShowSkillTree());
+        CreateButton(forgePanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
 
         // Skill panel
         CreateLabel(skillPanel, "스킬 트리", new Vector2(0.5f, 0.9f), new Vector2(0.5f, 0.9f), Vector2.zero, 24);
         CreateLabel(skillPanel, "노드 UI/연결은 추후 연결", new Vector2(0.5f, 0.75f), new Vector2(0.5f, 0.75f), Vector2.zero, 18);
         CreateButton(skillPanel, "대장간", new Vector2(0.12f, 0.95f), new Vector2(0.12f, 0.95f), new Vector2(0f, 0f), () => ShowForge());
         CreateButton(skillPanel, "스킬 트리", new Vector2(0.36f, 0.95f), new Vector2(0.36f, 0.95f), new Vector2(0f, 0f), () => ShowSkillTree());
+        CreateButton(skillPanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
     }
 
     GameObject CreatePanel(string name, Color bg)
@@ -121,7 +126,7 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMin = anchorMin;
         rt.anchorMax = anchorMax;
         rt.anchoredPosition = anchoredPos;
-        rt.sizeDelta = new Vector2(180f, 50f);
+        rt.sizeDelta = new Vector2(140f, 40f);
 
         var textGO = new GameObject("Text");
         textGO.transform.SetParent(go.transform, false);
@@ -182,9 +187,14 @@ public class GameFlowManager : MonoBehaviour
     {
         if (oxygenLabel == null) return;
         if (oxygenSystem == null) oxygenSystem = FindObjectOfType<OxygenSystem>();
+        if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
         if (oxygenSystem != null)
         {
-            oxygenLabel.text = $"남은 산소 ({oxygenSystem.currentOxygen}/{oxygenSystem.MaxOxygen})";
+            oxygenLabel.text = $"남은 산소 ({oxygenSystem.currentOxygen:0.0} / {oxygenSystem.MaxOxygen:0.0})";
+        }
+        if (oreResultLabel != null && waveManager != null && (CurrentPhase == GamePhase.End))
+        {
+            oreResultLabel.text = $"돌 : {waveManager.oresCollectedThisRun}";
         }
     }
 
@@ -221,5 +231,11 @@ public class GameFlowManager : MonoBehaviour
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene("UpgradeScene");
+    }
+
+    void GoToRunScene()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("RunScene");
     }
 }

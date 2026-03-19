@@ -5,7 +5,7 @@ public class Enemy : MonoBehaviour
     public int maxHP = 1;
     int hp;
     public int oreDrop = 1;
-    public int oxygenGain = 1;
+    public float oxygenGain = 1f;
     public float moveSpeed = 1f;
     public float contactRadius = 0.5f;
     public Transform target;
