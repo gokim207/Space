@@ -18,6 +18,14 @@ public class GameFlowManager : MonoBehaviour
     private Text oreResultLabel;
     private OxygenSystem oxygenSystem;
     private WaveManager waveManager;
+    private Text moneyLabel;
+    private Text forgeStoneLabel;
+    private Text forgeCountdownLabel;
+    private Text forgeGainLabel;
+    private float money = 0f;
+    private int stone = 0;
+    private bool forgeReady = true;
+    private float forgeCooldown = 0f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void EnsureExists()
@@ -67,11 +75,20 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(endPanel, "기지로 이동", new Vector2(0.75f, 0.15f), new Vector2(0.75f, 0.15f), new Vector2(0f, 0f), () => GoToUpgradeScene());
 
         // Forge panel
-        CreateLabel(forgePanel, "대장간", new Vector2(0.5f, 0.9f), new Vector2(0.5f, 0.9f), Vector2.zero, 24);
-        CreateLabel(forgePanel, "재련 확률/결과 UI는 추후 연결", new Vector2(0.5f, 0.75f), new Vector2(0.5f, 0.75f), Vector2.zero, 18);
+        // Forge UI (wireframe style)
         CreateButton(forgePanel, "대장간", new Vector2(0.12f, 0.95f), new Vector2(0.12f, 0.95f), new Vector2(0f, 0f), () => ShowForge());
         CreateButton(forgePanel, "스킬 트리", new Vector2(0.36f, 0.95f), new Vector2(0.36f, 0.95f), new Vector2(0f, 0f), () => ShowSkillTree());
         CreateButton(forgePanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
+        moneyLabel = CreateMoneyBox(forgePanel, new Vector2(0.8f, 0.92f), "0 $");
+        CreatePanelBox(forgePanel, new Vector2(0.78f, 0.54f), new Vector2(220f, 180f)); // right ore list panel
+        forgeStoneLabel = CreateOreList(forgePanel, new Vector2(0.78f, 0.54f));
+        CreatePanelBox(forgePanel, new Vector2(0.20f, 0.60f), new Vector2(200f, 180f)); // left odds panel
+        CreateOddsList(forgePanel, new Vector2(0.20f, 0.60f));
+        CreatePanelBox(forgePanel, new Vector2(0.48f, 0.55f), new Vector2(140f, 240f)); // center big box (character placeholder)
+        forgeCountdownLabel = CreateLabel(forgePanel, "5.0s", new Vector2(0.48f, 0.70f), new Vector2(0.48f, 0.70f), Vector2.zero, 18);
+        forgeGainLabel = CreateLabel(forgePanel, "+0$", new Vector2(0.60f, 0.70f), new Vector2(0.60f, 0.70f), Vector2.zero, 18, Color.green);
+        forgeGainLabel.gameObject.SetActive(false);
+        CreateButton(forgePanel, "재련하기", new Vector2(0.48f, 0.18f), new Vector2(0.48f, 0.18f), Vector2.zero, () => TryForge());
 
         // Skill panel
         CreateLabel(skillPanel, "스킬 트리", new Vector2(0.5f, 0.9f), new Vector2(0.5f, 0.9f), Vector2.zero, 24);
@@ -113,6 +130,13 @@ public class GameFlowManager : MonoBehaviour
         return t;
     }
 
+    Text CreateLabel(GameObject parent, string text, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, int size, Color color)
+    {
+        var t = CreateLabel(parent, text, anchorMin, anchorMax, anchoredPos, size);
+        t.color = color;
+        return t;
+    }
+
     void CreateButton(GameObject parent, string label, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, UnityEngine.Events.UnityAction onClick)
     {
         var go = new GameObject("Button_" + label);
@@ -120,7 +144,7 @@ public class GameFlowManager : MonoBehaviour
         var img = go.AddComponent<Image>();
         img.color = new Color(0.85f, 0.85f, 0.85f, 1f);
         var btn = go.AddComponent<Button>();
-        btn.onClick.AddListener(onClick);
+        if (onClick != null) btn.onClick.AddListener(onClick);
 
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = anchorMin;
@@ -141,6 +165,63 @@ public class GameFlowManager : MonoBehaviour
         trt.anchorMax = Vector2.one;
         trt.offsetMin = Vector2.zero;
         trt.offsetMax = Vector2.zero;
+    }
+
+    GameObject CreatePanelBox(GameObject parent, Vector2 anchor, Vector2 size)
+    {
+        var go = new GameObject("PanelBox");
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0.25f, 0.25f, 0.25f, 1f);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = size;
+        return go;
+    }
+
+    Text CreateMoneyBox(GameObject parent, Vector2 anchor, string text)
+    {
+        var box = new GameObject("MoneyBox");
+        box.transform.SetParent(parent.transform, false);
+        var img = box.AddComponent<Image>();
+        img.color = new Color(0.9f, 0.9f, 0.9f, 1f);
+        var rt = box.GetComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = new Vector2(200f, 50f);
+        return CreateLabel(box, text, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 20, Color.black);
+    }
+
+    void CreateOddsList(GameObject parent, Vector2 anchor)
+    {
+        var go = new GameObject("OddsList");
+        go.transform.SetParent(parent.transform, false);
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = new Vector2(210f, 210f);
+        var t = CreateLabel(go, "0.1x : 10%\n0.5x : 20%\n1x : 40%\n2x : 20%\n10x : 10%", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 15);
+        t.alignment = TextAnchor.MiddleLeft;
+        t.rectTransform.sizeDelta = new Vector2(200f, 200f);
+    }
+
+    Text CreateOreList(GameObject parent, Vector2 anchor)
+    {
+        var go = new GameObject("OreList");
+        go.transform.SetParent(parent.transform, false);
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = new Vector2(240f, 220f);
+        var t = CreateLabel(go, "돌 : 0($1)", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 16);
+        t.alignment = TextAnchor.MiddleLeft;
+        t.rectTransform.sizeDelta = new Vector2(220f, 200f);
+        return t;
     }
 
     public void ShowRun()
@@ -171,6 +252,7 @@ public class GameFlowManager : MonoBehaviour
         endPanel.SetActive(false);
         forgePanel.SetActive(true);
         skillPanel.SetActive(false);
+        SyncForgeData();
     }
 
     public void ShowSkillTree()
@@ -196,6 +278,13 @@ public class GameFlowManager : MonoBehaviour
         {
             oreResultLabel.text = $"돌 : {waveManager.oresCollectedThisRun}";
         }
+        if (CurrentPhase == GamePhase.Forge && forgeCountdownLabel != null)
+        {
+            if (forgeReady)
+                forgeCountdownLabel.text = "";
+            else
+                forgeCountdownLabel.text = $"{forgeCooldown:0.0}s";
+        }
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -203,6 +292,8 @@ public class GameFlowManager : MonoBehaviour
         EnsureEventSystem();
         if (scene.name == "UpgradeScene")
         {
+            // read persisted ore count if WaveManager isn't in this scene
+            stone = PlayerPrefs.GetInt("ore_stone", stone);
             ShowForge();
         }
         else
@@ -230,6 +321,7 @@ public class GameFlowManager : MonoBehaviour
     void GoToUpgradeScene()
     {
         Time.timeScale = 1f;
+        SyncForgeData(); // store current run ores before scene change
         SceneManager.LoadScene("UpgradeScene");
     }
 
@@ -237,5 +329,87 @@ public class GameFlowManager : MonoBehaviour
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene("RunScene");
+    }
+
+    void SyncForgeData()
+    {
+        if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
+        if (waveManager != null) stone = waveManager.oresCollectedThisRun;
+        PlayerPrefs.SetInt("ore_stone", stone);
+        PlayerPrefs.Save();
+
+        // also read back in case this is a fresh scene without WaveManager
+        stone = PlayerPrefs.GetInt("ore_stone", stone);
+        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}($1)";
+        if (moneyLabel != null) moneyLabel.text = $"{money:0} $";
+    }
+
+    void TryForge()
+    {
+        if (!forgeReady) return;
+        if (stone <= 0) return;
+
+        forgeReady = false;
+        forgeCooldown = 5.0f;
+
+        float multiplier = RollForgeMultiplier();
+        float baseValue = stone * 1f;
+        float gain = baseValue * multiplier;
+        money += gain;
+
+        if (forgeGainLabel != null)
+        {
+            forgeGainLabel.text = $"+{gain:0}$";
+            forgeGainLabel.gameObject.SetActive(true);
+            StartCoroutine(FloatingGain());
+        }
+
+        stone = 0;
+        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}($1)";
+        if (moneyLabel != null) moneyLabel.text = $"{money:0} $";
+
+        StartCoroutine(ForgeCooldown());
+    }
+
+    float RollForgeMultiplier()
+    {
+        float r = Random.Range(0f, 1f);
+        if (r < 0.10f) return 0.1f;
+        if (r < 0.30f) return 0.5f;
+        if (r < 0.70f) return 1f;
+        if (r < 0.90f) return 2f;
+        return 10f;
+    }
+
+    System.Collections.IEnumerator ForgeCooldown()
+    {
+        while (forgeCooldown > 0f)
+        {
+            forgeCooldown -= 0.1f;
+            if (forgeCooldown < 0f) forgeCooldown = 0f;
+            yield return new WaitForSecondsRealtime(0.1f);
+        }
+        forgeReady = true;
+    }
+
+    System.Collections.IEnumerator FloatingGain()
+    {
+        float t = 0f;
+        Vector3 start = forgeGainLabel.rectTransform.anchoredPosition;
+        Vector3 end = start + new Vector3(0f, 40f, 0f);
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime * 1.2f;
+            forgeGainLabel.rectTransform.anchoredPosition = Vector3.Lerp(start, end, t);
+            var c = forgeGainLabel.color;
+            c.a = Mathf.Lerp(1f, 0f, t);
+            forgeGainLabel.color = c;
+            yield return null;
+        }
+        var reset = forgeGainLabel.color;
+        reset.a = 1f;
+        forgeGainLabel.color = reset;
+        forgeGainLabel.rectTransform.anchoredPosition = start;
+        forgeGainLabel.gameObject.SetActive(false);
     }
 }
