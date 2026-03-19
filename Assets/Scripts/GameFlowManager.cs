@@ -23,7 +23,9 @@ public class GameFlowManager : MonoBehaviour
     private Text forgeCountdownLabel;
     private Text forgeGainLabel;
     private float money = 0f;
-    private int stone = 0;
+    private int stone = 0; // total owned
+    private int runStoneGained = 0;
+    private bool endProcessed = false;
     private bool forgeReady = true;
     private float forgeCooldown = 0f;
 
@@ -80,9 +82,9 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(forgePanel, "스킬 트리", new Vector2(0.36f, 0.95f), new Vector2(0.36f, 0.95f), new Vector2(0f, 0f), () => ShowSkillTree());
         CreateButton(forgePanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
         moneyLabel = CreateMoneyBox(forgePanel, new Vector2(0.8f, 0.92f), "0 $");
-        CreatePanelBox(forgePanel, new Vector2(0.78f, 0.54f), new Vector2(220f, 180f)); // right ore list panel
+        CreatePanelBox(forgePanel, new Vector2(0.78f, 0.54f), new Vector2(180f, 180f)); // right ore list panel
         forgeStoneLabel = CreateOreList(forgePanel, new Vector2(0.78f, 0.54f));
-        CreatePanelBox(forgePanel, new Vector2(0.20f, 0.60f), new Vector2(200f, 180f)); // left odds panel
+        CreatePanelBox(forgePanel, new Vector2(0.20f, 0.60f), new Vector2(180f, 180f)); // left odds panel
         CreateOddsList(forgePanel, new Vector2(0.20f, 0.60f));
         CreatePanelBox(forgePanel, new Vector2(0.48f, 0.55f), new Vector2(140f, 240f)); // center big box (character placeholder)
         forgeCountdownLabel = CreateLabel(forgePanel, "5.0s", new Vector2(0.48f, 0.70f), new Vector2(0.48f, 0.70f), Vector2.zero, 18);
@@ -203,10 +205,10 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMin = anchor;
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(210f, 210f);
+        rt.sizeDelta = new Vector2(180f, 180f);
         var t = CreateLabel(go, "0.1x : 10%\n0.5x : 20%\n1x : 40%\n2x : 20%\n10x : 10%", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 15);
-        t.alignment = TextAnchor.MiddleLeft;
-        t.rectTransform.sizeDelta = new Vector2(200f, 200f);
+        t.alignment = TextAnchor.MiddleCenter;
+        t.rectTransform.sizeDelta = new Vector2(170f, 170f);
     }
 
     Text CreateOreList(GameObject parent, Vector2 anchor)
@@ -217,10 +219,10 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMin = anchor;
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(240f, 220f);
+        rt.sizeDelta = new Vector2(180f, 180f);
         var t = CreateLabel(go, "돌 : 0($1)", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 16);
-        t.alignment = TextAnchor.MiddleLeft;
-        t.rectTransform.sizeDelta = new Vector2(220f, 200f);
+        t.alignment = TextAnchor.MiddleCenter;
+        t.rectTransform.sizeDelta = new Vector2(170f, 170f);
         return t;
     }
 
@@ -232,6 +234,7 @@ public class GameFlowManager : MonoBehaviour
         endPanel.SetActive(false);
         forgePanel.SetActive(false);
         skillPanel.SetActive(false);
+        endProcessed = false;
     }
 
     public void ShowEnd()
@@ -242,6 +245,7 @@ public class GameFlowManager : MonoBehaviour
         endPanel.SetActive(true);
         forgePanel.SetActive(false);
         skillPanel.SetActive(false);
+        SyncEndResults();
     }
 
     public void ShowForge()
@@ -276,7 +280,7 @@ public class GameFlowManager : MonoBehaviour
         }
         if (oreResultLabel != null && waveManager != null && (CurrentPhase == GamePhase.End))
         {
-            oreResultLabel.text = $"돌 : {waveManager.oresCollectedThisRun}";
+            oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
         }
         if (CurrentPhase == GamePhase.Forge && forgeCountdownLabel != null)
         {
@@ -293,7 +297,7 @@ public class GameFlowManager : MonoBehaviour
         if (scene.name == "UpgradeScene")
         {
             // read persisted ore count if WaveManager isn't in this scene
-            stone = PlayerPrefs.GetInt("ore_stone", stone);
+            stone = PlayerPrefs.GetInt("ore_stone_total", stone);
             ShowForge();
         }
         else
@@ -321,7 +325,8 @@ public class GameFlowManager : MonoBehaviour
     void GoToUpgradeScene()
     {
         Time.timeScale = 1f;
-        SyncForgeData(); // store current run ores before scene change
+        SyncEndResults();
+        SyncForgeData();
         SceneManager.LoadScene("UpgradeScene");
     }
 
@@ -333,15 +338,11 @@ public class GameFlowManager : MonoBehaviour
 
     void SyncForgeData()
     {
-        if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
-        if (waveManager != null) stone = waveManager.oresCollectedThisRun;
-        PlayerPrefs.SetInt("ore_stone", stone);
+        stone = PlayerPrefs.GetInt("ore_stone_total", stone);
+        PlayerPrefs.SetInt("ore_stone_total", stone);
         PlayerPrefs.Save();
-
-        // also read back in case this is a fresh scene without WaveManager
-        stone = PlayerPrefs.GetInt("ore_stone", stone);
         if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}($1)";
-        if (moneyLabel != null) moneyLabel.text = $"{money:0} $";
+        if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
     }
 
     void TryForge()
@@ -353,22 +354,38 @@ public class GameFlowManager : MonoBehaviour
         forgeCooldown = 5.0f;
 
         float multiplier = RollForgeMultiplier();
-        float baseValue = stone * 1f;
+        float baseValue = 1f;
         float gain = baseValue * multiplier;
         money += gain;
 
         if (forgeGainLabel != null)
         {
-            forgeGainLabel.text = $"+{gain:0}$";
+            forgeGainLabel.text = $"+{gain:0.0}$";
             forgeGainLabel.gameObject.SetActive(true);
             StartCoroutine(FloatingGain());
         }
 
-        stone = 0;
+        stone -= 1;
+        if (stone < 0) stone = 0;
         if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}($1)";
-        if (moneyLabel != null) moneyLabel.text = $"{money:0} $";
+        if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
+        PlayerPrefs.SetInt("ore_stone_total", stone);
+        PlayerPrefs.Save();
 
         StartCoroutine(ForgeCooldown());
+    }
+
+    void SyncEndResults()
+    {
+        if (endProcessed) return;
+        if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
+        runStoneGained = waveManager != null ? waveManager.oresCollectedThisRun : 0;
+        stone = PlayerPrefs.GetInt("ore_stone_total", 0);
+        stone += runStoneGained;
+        PlayerPrefs.SetInt("ore_stone_total", stone);
+        PlayerPrefs.Save();
+        endProcessed = true;
+        if (oreResultLabel != null) oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
     }
 
     float RollForgeMultiplier()
