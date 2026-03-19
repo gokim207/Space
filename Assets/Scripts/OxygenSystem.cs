@@ -5,6 +5,7 @@ public class OxygenSystem : MonoBehaviour
 {
     public int startOxygen = 20;
     public int currentOxygen { get; private set; }
+    public int MaxOxygen => maxOxygen;
     public float oxygenDecreaseInterval = 1f;
     private float timer;
     public WaveManager waveManager;

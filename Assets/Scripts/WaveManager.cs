@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class WaveManager : MonoBehaviour
@@ -20,6 +21,7 @@ public class WaveManager : MonoBehaviour
     public EnemySpawner spawner;
     public OxygenSystem oxygenSystem;
     public int oresCollectedThisRun = 0;
+    private bool endSequenceStarted = false;
     // UI
     public Text waveText;
     public Text waveTimerText;
@@ -160,6 +162,9 @@ public class WaveManager : MonoBehaviour
         CurrentState = GameState.Upgrade;
         // TODO: 업그레이드 씬 전환 등 처리
         Debug.Log("런 종료, 업그레이드로 전환");
+        var flow = FindObjectOfType<GameFlowManager>();
+        if (flow != null)
+            flow.ShowEnd();
     }
 
     void AdvanceWave()
@@ -190,6 +195,47 @@ public class WaveManager : MonoBehaviour
         }
         // Enemy killed: update ores and oxygen (log suppressed per request)
         RefreshOreUI();
+    }
+
+    // Called when player's HP reaches zero to trigger end-run sequence
+    public void TriggerEndRunSequence(PlayerController player)
+    {
+        if (endSequenceStarted) return;
+        endSequenceStarted = true;
+        StartCoroutine(EndRunSequenceCoroutine(player));
+    }
+
+    System.Collections.IEnumerator EndRunSequenceCoroutine(PlayerController player)
+    {
+        Debug.Log("End run sequence started: freezing game...");
+        // stop spawner
+        if (spawner != null) spawner.enabled = false;
+        // stop existing enemies (disable their Update movement by disabling script)
+        var enemies = FindObjectsOfType<Enemy>();
+        foreach (var e in enemies)
+        {
+            e.enabled = false;
+            var rb = e.GetComponent<Rigidbody2D>();
+            if (rb != null) rb.simulated = false;
+        }
+        // remove projectiles
+        var projs = FindObjectsOfType<Projectile>();
+        foreach (var p in projs)
+        {
+            Destroy(p.gameObject);
+        }
+        // hide player
+        if (player != null)
+        {
+            var sr = player.GetComponent<SpriteRenderer>();
+            if (sr != null) sr.enabled = false;
+            player.enabled = false;
+        }
+        // wait 3 seconds (real-time)
+        yield return new WaitForSecondsRealtime(3f);
+        Debug.Log("End run sequence finished.");
+        var flow = FindObjectOfType<GameFlowManager>();
+        if (flow != null) flow.ShowEnd();
     }
 
     void RefreshWaveUI()

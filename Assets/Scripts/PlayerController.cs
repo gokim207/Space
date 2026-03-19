@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
     public Camera mainCamera;
     public WaveManager waveManager;
     public float desiredPlayerY = 5f; // 런 시 플레이어 Y 위치 목표
+    public int hp = 1;
 
     private float angle = 90f; // 시작 각도(12시 방향)
     private bool warnedWaveManagerMissing = false;
@@ -197,7 +198,22 @@ public class PlayerController : MonoBehaviour
             return;
         if (collision.gameObject.CompareTag("Enemy") || collision.gameObject.CompareTag("Boss"))
         {
-            waveManager.EndRun(); // 즉사
+            // damage player by 1
+            TakeDamage(1);
+        }
+    }
+
+    public void TakeDamage(int dmg)
+    {
+        hp -= dmg;
+        Debug.Log($"Player took damage: -{dmg}, hp={hp}");
+        if (hp <= 0)
+        {
+            // trigger end run sequence via WaveManager
+            if (waveManager != null)
+                waveManager.TriggerEndRunSequence(this);
+            else
+                Debug.LogWarning("Player hp <=0 but WaveManager is null.");
         }
     }
 }

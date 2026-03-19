@@ -57,7 +57,7 @@ public class EnemySpawner : MonoBehaviour
             sr.color = Color.red;
             var col = temp.AddComponent<BoxCollider2D>();
             var e = temp.AddComponent<Enemy>();
-            e.maxHP = 1;
+            e.maxHP = 3; // give temporary enemies more HP so they don't die from a single hit
             e.moveSpeed = 1.2f;
             enemyPrefab = temp;
             temp.SetActive(false); // template
