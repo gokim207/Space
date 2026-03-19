@@ -19,6 +19,7 @@ public class GameFlowManager : MonoBehaviour
     private OxygenSystem oxygenSystem;
     private WaveManager waveManager;
     private Text moneyLabel;
+    private Text skillMoneyLabel;
     private Text forgeStoneLabel;
     private Text forgeCountdownLabel;
     private Text forgeGainLabel;
@@ -99,6 +100,7 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(skillPanel, "대장간", new Vector2(0.12f, 0.95f), new Vector2(0.12f, 0.95f), new Vector2(0f, 0f), () => ShowForge());
         CreateButton(skillPanel, "스킬 트리", new Vector2(0.36f, 0.95f), new Vector2(0.36f, 0.95f), new Vector2(0f, 0f), () => ShowSkillTree());
         CreateButton(skillPanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
+        skillMoneyLabel = CreateMoneyBox(skillPanel, new Vector2(0.8f, 0.92f), "0 $");
         var tree = new GameObject("SkillTreeManager");
         tree.transform.SetParent(skillPanel.transform, false);
         tree.AddComponent<SkillTreeManager>().Init(skillPanel.transform);
@@ -285,6 +287,10 @@ public class GameFlowManager : MonoBehaviour
         if (oreResultLabel != null && waveManager != null && (CurrentPhase == GamePhase.End))
         {
             oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
+        }
+        if (CurrentPhase == GamePhase.SkillTree && skillMoneyLabel != null)
+        {
+            skillMoneyLabel.text = $"{money:0.0} $";
         }
         if (CurrentPhase == GamePhase.Forge && forgeCountdownLabel != null)
         {

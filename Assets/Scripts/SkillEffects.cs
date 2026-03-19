@@ -17,7 +17,7 @@ public static class SkillEffects
 
     public static void SetFireRateLevel(int level)
     {
-        float mult = 1f - (0.05f * Mathf.Max(0, level));
+        float mult = 1f - (0.03f * Mathf.Max(0, level));
         FireIntervalMultiplier = Mathf.Clamp(mult, 0.2f, 1f);
     }
 
@@ -33,18 +33,18 @@ public static class SkillEffects
 
     public static void SetOxygenDecayLevel(int level)
     {
-        float mult = 1f - (0.05f * Mathf.Max(0, level));
+        float mult = 1f - (0.03f * Mathf.Max(0, level));
         OxygenDecayMultiplier = Mathf.Clamp(mult, 0.1f, 1f);
     }
 
     public static void SetForgeCooldownLevel(int level)
     {
-        ForgeCooldownReduction = Mathf.Max(0, level) * 0.2f;
+        ForgeCooldownReduction = Mathf.Max(0, level) * 0.1f;
     }
 
     public static void SetValueLevel(int level)
     {
         int l = Mathf.Max(0, level);
-        ValueMultiplier = Mathf.Pow(2f, l); // 2x per level
+        ValueMultiplier = Mathf.Pow(1.5f, l); // 1.5x per level
     }
 }

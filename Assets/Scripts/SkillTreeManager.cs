@@ -28,7 +28,17 @@ public class SkillTreeManager : MonoBehaviour
     private Node hoverNode;
     private bool dragging = false;
     private Vector2 lastMousePos;
-    public float dragSpeed = 1.0f;
+    public float dragSpeed = 0.6f;
+    private bool dragMoved = false;
+    private const float dragThreshold = 6f;
+    private readonly List<LinkLine> links = new List<LinkLine>();
+
+    class LinkLine
+    {
+        public string a;
+        public string b;
+        public Image img;
+    }
 
     public void Init(Transform parent)
     {
@@ -43,13 +53,13 @@ public class SkillTreeManager : MonoBehaviour
     {
         nodes.Clear();
 
-        AddNode("atk", "공격력 증가1", "무기의 공격력을 증가시킵니다.\n(+1 고정)", 5, new[] { 1, 10, 100, 1000, 10000 }, new Vector2(0f, 0f));
-        AddNode("value", "가치 증가1", "모든 광물 가치 증가.\n(레벨마다 2배)", 3, new[] { 1000, 50000, 100000 }, new Vector2(0f, 140f));
-        AddNode("forge", "재련 쿨감 1", "대장간 재련 쿨타임 감소.\n(-0.2s)", 3, new[] { 100, 1000, 10000 }, new Vector2(-160f, 0f));
-        AddNode("firerate", "발사 속도 증가1", "무기 공격 속도 증가.\n(-5%)", 5, new[] { 5, 15, 35, 50, 100 }, new Vector2(0f, -140f));
+        AddNode("atk", "공격력 증가1", "무기의 공격력을 증가시킵니다.\n(+1 고정)", 5, new[] { 1, 5, 25, 125, 625 }, new Vector2(0f, 0f));
+        AddNode("value", "가치 증가1", "모든 광물 가치 증가.\n(레벨마다 1.5배)", 3, new[] { 1000, 50000, 100000 }, new Vector2(0f, 140f));
+        AddNode("forge", "재련 쿨감 1", "대장간 재련 쿨타임 감소.\n(-0.1s)", 3, new[] { 100, 1000, 10000 }, new Vector2(-160f, 0f));
+        AddNode("firerate", "발사 속도 증가1", "무기 공격 속도 증가.\n(-3%)", 5, new[] { 5, 15, 35, 50, 100 }, new Vector2(0f, -140f));
         AddNode("oxygenkill", "적 처치 산소 획득1", "소행성 처치 시 산소 획득.\n(+3)", 3, new[] { 10, 300, 1000 }, new Vector2(160f, 0f));
         AddNode("oxygenmax", "최대 산소 증가1", "최대 산소 증가.\n(+10)", 5, new[] { 100, 200, 300, 400, 500 }, new Vector2(160f, -140f));
-        AddNode("oxygendecay", "산소 감소 1", "매초 산소 감소량 완화.\n(-5%)", 3, new[] { 50, 100, 500 }, new Vector2(320f, 0f));
+        AddNode("oxygendecay", "산소 감소 1", "매초 산소 감소량 완화.\n(-3%)", 3, new[] { 50, 100, 500 }, new Vector2(320f, 0f));
 
         Link("atk", "value");
         Link("atk", "forge");
@@ -123,6 +133,7 @@ public class SkillTreeManager : MonoBehaviour
             n.image = img;
         }
 
+        DrawLinks();
         BuildTooltip(parent);
     }
 
@@ -132,6 +143,9 @@ public class SkillTreeManager : MonoBehaviour
         tooltip.transform.SetParent(parent, false);
         var img = tooltip.AddComponent<Image>();
         img.color = new Color(0.9f, 0.9f, 0.9f, 1f);
+        var cg = tooltip.AddComponent<CanvasGroup>();
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
         var rt = tooltip.GetComponent<RectTransform>();
         rt.anchorMin = new Vector2(0.5f, 0.5f);
         rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -220,6 +234,7 @@ public class SkillTreeManager : MonoBehaviour
                 n.image.gameObject.SetActive(true);
             }
         }
+        RefreshLinks();
     }
 
     void ShowTooltip(Node n)
@@ -230,6 +245,7 @@ public class SkillTreeManager : MonoBehaviour
         var rt = tooltip.GetComponent<RectTransform>();
         rt.anchoredPosition = pos + new Vector2(0f, 90f);
         tooltip.SetActive(true);
+        tooltip.transform.SetAsLastSibling();
     }
 
     void HideTooltip()
@@ -247,6 +263,7 @@ public class SkillTreeManager : MonoBehaviour
 
     void TryBuy(Node n)
     {
+        if (dragMoved) return;
         if (!n.unlocked) return;
         if (n.level >= n.maxLevel) return;
         int cost = NextCost(n);
@@ -264,20 +281,24 @@ public class SkillTreeManager : MonoBehaviour
     {
         if (Mouse.current == null || container == null) return;
 
-        if (Mouse.current.leftButton.wasPressedThisFrame && hoverNode == null)
+        if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             dragging = true;
             lastMousePos = Mouse.current.position.ReadValue();
+            dragMoved = false;
         }
         if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
             dragging = false;
+            dragMoved = false;
         }
         if (dragging)
         {
             Vector2 current = Mouse.current.position.ReadValue();
             Vector2 delta = current - lastMousePos;
-            container.anchoredPosition += delta * dragSpeed * Time.unscaledDeltaTime;
+            if (delta.sqrMagnitude >= dragThreshold * dragThreshold)
+                dragMoved = true;
+            container.anchoredPosition += delta * dragSpeed * Time.unscaledDeltaTime * 60f;
             lastMousePos = current;
 
             if (hoverNode != null)
@@ -286,6 +307,49 @@ public class SkillTreeManager : MonoBehaviour
                 var rt = tooltip.GetComponent<RectTransform>();
                 rt.anchoredPosition = pos + new Vector2(0f, 90f);
             }
+        }
+    }
+
+    void DrawLinks()
+    {
+        var drawn = new HashSet<string>();
+        foreach (var n in nodes.Values)
+        {
+            foreach (var linkId in n.links)
+            {
+                string key = n.id.CompareTo(linkId) < 0 ? n.id + "-" + linkId : linkId + "-" + n.id;
+                if (drawn.Contains(key)) continue;
+                drawn.Add(key);
+                var other = nodes[linkId];
+                CreateLine(n.id, other.id, n.pos, other.pos);
+            }
+        }
+    }
+
+    void CreateLine(string aId, string bId, Vector2 a, Vector2 b)
+    {
+        var go = new GameObject("Link");
+        go.transform.SetParent(container, false);
+        var img = go.AddComponent<Image>();
+        img.color = Color.black;
+        var rt = go.GetComponent<RectTransform>();
+        Vector2 mid = (a + b) * 0.5f;
+        Vector2 dir = b - a;
+        float len = dir.magnitude;
+        rt.sizeDelta = new Vector2(len, 6f);
+        rt.anchoredPosition = mid;
+        float ang = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+        rt.rotation = Quaternion.Euler(0f, 0f, ang);
+        go.transform.SetAsFirstSibling();
+        links.Add(new LinkLine { a = aId, b = bId, img = img });
+    }
+
+    void RefreshLinks()
+    {
+        foreach (var l in links)
+        {
+            bool show = nodes[l.a].unlocked && nodes[l.b].unlocked;
+            l.img.gameObject.SetActive(show);
         }
     }
 }
