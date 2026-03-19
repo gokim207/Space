@@ -40,10 +40,13 @@ public class GameFlowManager : MonoBehaviour
 
     void Awake()
     {
+        Instance = this;
         BuildUI();
         SceneManager.sceneLoaded += OnSceneLoaded;
         ShowRun();
     }
+
+    public static GameFlowManager Instance { get; private set; }
 
     void BuildUI()
     {
@@ -93,11 +96,12 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(forgePanel, "재련하기", new Vector2(0.48f, 0.18f), new Vector2(0.48f, 0.18f), Vector2.zero, () => TryForge());
 
         // Skill panel
-        CreateLabel(skillPanel, "스킬 트리", new Vector2(0.5f, 0.9f), new Vector2(0.5f, 0.9f), Vector2.zero, 24);
-        CreateLabel(skillPanel, "노드 UI/연결은 추후 연결", new Vector2(0.5f, 0.75f), new Vector2(0.5f, 0.75f), Vector2.zero, 18);
         CreateButton(skillPanel, "대장간", new Vector2(0.12f, 0.95f), new Vector2(0.12f, 0.95f), new Vector2(0f, 0f), () => ShowForge());
         CreateButton(skillPanel, "스킬 트리", new Vector2(0.36f, 0.95f), new Vector2(0.36f, 0.95f), new Vector2(0f, 0f), () => ShowSkillTree());
         CreateButton(skillPanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
+        var tree = new GameObject("SkillTreeManager");
+        tree.transform.SetParent(skillPanel.transform, false);
+        tree.AddComponent<SkillTreeManager>().Init(skillPanel.transform);
     }
 
     GameObject CreatePanel(string name, Color bg)
@@ -297,7 +301,7 @@ public class GameFlowManager : MonoBehaviour
         if (scene.name == "UpgradeScene")
         {
             // read persisted ore count if WaveManager isn't in this scene
-            stone = PlayerPrefs.GetInt("ore_stone_total", stone);
+            // no persistence during testing
             ShowForge();
         }
         else
@@ -338,10 +342,9 @@ public class GameFlowManager : MonoBehaviour
 
     void SyncForgeData()
     {
-        stone = PlayerPrefs.GetInt("ore_stone_total", stone);
-        PlayerPrefs.SetInt("ore_stone_total", stone);
-        PlayerPrefs.Save();
-        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}($1)";
+        // no persistence during testing
+        float unitValue = 1f * SkillEffects.ValueMultiplier;
+        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${unitValue:0.0})";
         if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
     }
 
@@ -351,10 +354,10 @@ public class GameFlowManager : MonoBehaviour
         if (stone <= 0) return;
 
         forgeReady = false;
-        forgeCooldown = 5.0f;
+        forgeCooldown = Mathf.Max(0.5f, 5.0f - SkillEffects.ForgeCooldownReduction);
 
         float multiplier = RollForgeMultiplier();
-        float baseValue = 1f;
+        float baseValue = 1f * SkillEffects.ValueMultiplier;
         float gain = baseValue * multiplier;
         money += gain;
 
@@ -367,12 +370,33 @@ public class GameFlowManager : MonoBehaviour
 
         stone -= 1;
         if (stone < 0) stone = 0;
-        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}($1)";
+        float unitValue = 1f * SkillEffects.ValueMultiplier;
+        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${unitValue:0.0})";
         if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
-        PlayerPrefs.SetInt("ore_stone_total", stone);
-        PlayerPrefs.Save();
+        // no persistence during testing
 
         StartCoroutine(ForgeCooldown());
+    }
+
+    public float GetMoney()
+    {
+        return money;
+    }
+
+    public bool SpendMoney(float amount)
+    {
+        if (money + 0.0001f < amount) return false;
+        money -= amount;
+        if (money < 0f) money = 0f;
+        if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
+        return true;
+    }
+
+    public void AddMoney(float amount)
+    {
+        if (amount <= 0f) return;
+        money += amount;
+        if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
     }
 
     void SyncEndResults()
@@ -380,10 +404,7 @@ public class GameFlowManager : MonoBehaviour
         if (endProcessed) return;
         if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
         runStoneGained = waveManager != null ? waveManager.oresCollectedThisRun : 0;
-        stone = PlayerPrefs.GetInt("ore_stone_total", 0);
         stone += runStoneGained;
-        PlayerPrefs.SetInt("ore_stone_total", stone);
-        PlayerPrefs.Save();
         endProcessed = true;
         if (oreResultLabel != null) oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
     }

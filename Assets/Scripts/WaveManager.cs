@@ -10,6 +10,7 @@ public class WaveManager : MonoBehaviour
     public GameObject projectilePrefab;
     public Transform firePoint;
     public float fireInterval = 1f;
+    private float baseFireInterval = 1f;
     private float fireTimer;
     public float fireRange = 30f; // targeting range
     public bool requireTargetInView = true;
@@ -36,8 +37,9 @@ public class WaveManager : MonoBehaviour
     {
         if (CurrentState != GameState.Run)
             return;
+        float effectiveFireInterval = baseFireInterval * SkillEffects.FireIntervalMultiplier;
         fireTimer += Time.deltaTime;
-        if (fireTimer >= fireInterval)
+        if (fireTimer >= effectiveFireInterval)
         {
             fireTimer = 0f;
             AutoFire();
@@ -63,6 +65,7 @@ public class WaveManager : MonoBehaviour
     {
         CurrentState = GameState.Run;
         fireTimer = 0f;
+        baseFireInterval = fireInterval;
         currentWave = 1;
         waveTimer = 0f;
         oresCollectedThisRun = 0;
@@ -201,7 +204,9 @@ public class WaveManager : MonoBehaviour
         oresCollectedThisRun += ore;
         if (oxygenSystem != null)
         {
-            oxygenSystem.ChangeOxygen(oxygen);
+            float totalOxygen = oxygen + SkillEffects.OxygenOnKillBonus;
+            if (totalOxygen > 0f)
+                oxygenSystem.ChangeOxygen(totalOxygen);
         }
         // Enemy killed: update ores and oxygen (log suppressed per request)
         RefreshOreUI();
@@ -292,6 +297,11 @@ public class WaveManager : MonoBehaviour
             pgo.transform.rotation = firePoint.rotation;
             // Force visible settings
             pgo.transform.position = new Vector3(pgo.transform.position.x, pgo.transform.position.y, 0f);
+            var proj = pgo.GetComponent<Projectile>();
+            if (proj != null)
+            {
+                proj.damage = Mathf.Max(1, proj.damage + SkillEffects.DamageBonus);
+            }
             pgo.transform.localScale = Vector3.one;
             var psr = pgo.GetComponent<SpriteRenderer>();
             if (psr != null)

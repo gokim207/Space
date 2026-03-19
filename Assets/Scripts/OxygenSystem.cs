@@ -16,9 +16,9 @@ public class OxygenSystem : MonoBehaviour
 
     void Awake()
     {
-        currentOxygen = startOxygen;
+        currentOxygen = startOxygen + SkillEffects.MaxOxygenBonus;
         timer = 0f;
-        maxOxygen = startOxygen;
+        maxOxygen = startOxygen + SkillEffects.MaxOxygenBonus;
     }
 
     void Start()
@@ -35,7 +35,7 @@ public class OxygenSystem : MonoBehaviour
         if (timer >= oxygenDecreaseInterval)
         {
             timer = 0f;
-            float dec = Random.Range(0.5f, 2.0f);
+            float dec = Random.Range(0.5f, 2.0f) * SkillEffects.OxygenDecayMultiplier;
             ChangeOxygen(-dec);
         }
     }
