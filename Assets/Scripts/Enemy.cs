@@ -2,15 +2,18 @@ using UnityEngine;
 
 public class Enemy : MonoBehaviour
 {
+    public enum OreType { Stone, Copper }
     public int maxHP = 1;
     int hp;
     public int oreDrop = 1;
     public float oxygenGain = 0f; // base oxygen gain; skills add extra
+    public OreType oreType = OreType.Stone;
     public float moveSpeed = 1f;
     public float contactRadius = 0.5f;
     public Transform target;
     public WaveManager waveManager;
     bool hasDamaged = false;
+    private Color baseColor = Color.white;
 
     void Start()
     {
@@ -24,6 +27,8 @@ public class Enemy : MonoBehaviour
         {
             Debug.LogWarning("Tag 'Enemy' is not defined in Project Settings -> Tags and Layers. Skipping tag assignment.");
         }
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null) baseColor = sr.color;
     }
 
     void Awake()
@@ -86,10 +91,17 @@ public class Enemy : MonoBehaviour
 
     System.Collections.IEnumerator FlashHit(SpriteRenderer sr)
     {
-        Color orig = sr.color;
+        Color orig = baseColor;
         sr.color = Color.red;
         yield return new WaitForSeconds(0.08f);
         sr.color = orig;
+    }
+
+    public void SetBaseColor(Color c)
+    {
+        baseColor = c;
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null) sr.color = c;
     }
 
     void Die()
@@ -98,7 +110,7 @@ public class Enemy : MonoBehaviour
         // Notify wave manager
         if (waveManager != null)
         {
-            waveManager.OnEnemyKilled(oreDrop, oxygenGain);
+            waveManager.OnEnemyKilled(oreDrop, oxygenGain, oreType);
         }
         Destroy(gameObject);
     }

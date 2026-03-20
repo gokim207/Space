@@ -178,9 +178,16 @@ public class EnemySpawner : MonoBehaviour
                 e.moveSpeed = 1f;
                 Debug.Log("Spawned enemy moveSpeed was 0, reset to 1f for testing.");
             }
-            // Apply wave scaling
+            // Copper ore enemies (unlocked, wave>=3, 20%)
             int wave = waveManager != null ? waveManager.currentWave : 1;
+            bool copper = false;
+            if (SkillEffects.CopperUnlocked && wave >= 3)
+                copper = Random.value < 0.20f;
+            e.oreType = copper ? Enemy.OreType.Copper : Enemy.OreType.Stone;
+
+            // Apply wave scaling (copper has 2x HP)
             int scaledHp = Mathf.Max(1, baseHP + (wave - 1) * hpPerWave);
+            if (copper) scaledHp *= 2;
             float scaledSpeed = Mathf.Max(0.1f, baseMoveSpeed + (wave - 1) * speedPerWave);
             e.ApplyStats(scaledHp, scaledSpeed);
             // Make spawned enemy visible and ensure it renders on top of planet
@@ -188,6 +195,8 @@ public class EnemySpawner : MonoBehaviour
             if (sr != null)
             {
                 sr.enabled = true;
+                var c = copper ? new Color(0.72f, 0.45f, 0.2f) : new Color(0.15f, 0.15f, 0.15f);
+                e.SetBaseColor(c);
                 // Force visible: put on high order in layer and ignore sprite masks
                 try
                 {

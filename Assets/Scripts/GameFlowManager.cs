@@ -18,17 +18,25 @@ public class GameFlowManager : MonoBehaviour
     private Text waveLabel;
     private Text timeLabel;
     private Text oreResultLabel;
+    private Text endReasonLabel;
     private OxygenSystem oxygenSystem;
     private WaveManager waveManager;
     private Text moneyLabel;
     private Text skillMoneyLabel;
     private Text forgeStoneLabel;
+    private Text forgeCopperLabel;
+    private GameObject forgeStoneButton;
+    private GameObject forgeCopperButton;
     private Text forgeCountdownLabel;
     private Text forgeGainLabel;
     private float money = 0f;
     private int stone = 0; // total owned
+    private int copper = 0;
     private int runStoneGained = 0;
+    private int runCopperGained = 0;
     private bool endProcessed = false;
+    private enum OreSelect { Stone, Copper }
+    private OreSelect selectedOre = OreSelect.Stone;
     private bool forgeReady = true;
     private float forgeCooldown = 0f;
 
@@ -80,9 +88,10 @@ public class GameFlowManager : MonoBehaviour
         timeLabel.rectTransform.sizeDelta = new Vector2(260f, 40f);
 
         // End panel
-        CreateLabel(endPanel, "원정 종료", new Vector2(0.5f, 0.85f), new Vector2(0.5f, 0.85f), Vector2.zero, 28);
-        CreateLabel(endPanel, "획득한 광석", new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, 18);
-        oreResultLabel = CreateLabel(endPanel, "돌 : 0", new Vector2(0.5f, 0.62f), new Vector2(0.5f, 0.62f), Vector2.zero, 20);
+        CreateLabel(endPanel, "탐험 결과", new Vector2(0.5f, 0.85f), new Vector2(0.5f, 0.85f), Vector2.zero, 28);
+        endReasonLabel = CreateLabel(endPanel, "사유 : -", new Vector2(0.5f, 0.75f), new Vector2(0.5f, 0.75f), Vector2.zero, 18);
+        CreateLabel(endPanel, "획득한 광석", new Vector2(0.5f, 0.70f), new Vector2(0.5f, 0.70f), Vector2.zero, 18);
+        oreResultLabel = CreateLabel(endPanel, "돌 : 0", new Vector2(0.5f, 0.58f), new Vector2(0.5f, 0.58f), Vector2.zero, 20);
         CreateButton(endPanel, "다시 하기", new Vector2(0.25f, 0.15f), new Vector2(0.25f, 0.15f), new Vector2(0f, 0f), () => RestartRun());
         CreateButton(endPanel, "기지로 이동", new Vector2(0.75f, 0.15f), new Vector2(0.75f, 0.15f), new Vector2(0f, 0f), () => GoToUpgradeScene());
 
@@ -93,7 +102,7 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(forgePanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
         moneyLabel = CreateMoneyBox(forgePanel, new Vector2(0.8f, 0.92f), "0 $");
         CreatePanelBox(forgePanel, new Vector2(0.78f, 0.54f), new Vector2(180f, 180f)); // right ore list panel
-        forgeStoneLabel = CreateOreList(forgePanel, new Vector2(0.78f, 0.54f));
+        CreateOreList(forgePanel, new Vector2(0.78f, 0.54f), out forgeStoneLabel, out forgeCopperLabel, out forgeStoneButton, out forgeCopperButton);
         CreatePanelBox(forgePanel, new Vector2(0.20f, 0.60f), new Vector2(180f, 180f)); // left odds panel
         CreateOddsList(forgePanel, new Vector2(0.20f, 0.60f));
         CreatePanelBox(forgePanel, new Vector2(0.48f, 0.55f), new Vector2(140f, 240f)); // center big box (character placeholder)
@@ -217,13 +226,13 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMin = anchor;
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(180f, 180f);
+        rt.sizeDelta = new Vector2(200f, 180f);
         var t = CreateLabel(go, "0.1x : 10%\n0.5x : 20%\n1x : 40%\n2x : 20%\n10x : 10%", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 15);
         t.alignment = TextAnchor.MiddleCenter;
         t.rectTransform.sizeDelta = new Vector2(170f, 170f);
     }
 
-    Text CreateOreList(GameObject parent, Vector2 anchor)
+    void CreateOreList(GameObject parent, Vector2 anchor, out Text stoneLabel, out Text copperLabel, out GameObject stoneBtn, out GameObject copperBtn)
     {
         var go = new GameObject("OreList");
         go.transform.SetParent(parent.transform, false);
@@ -232,10 +241,51 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
         rt.sizeDelta = new Vector2(180f, 180f);
-        var t = CreateLabel(go, "돌 : 0($1)", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 16);
-        t.alignment = TextAnchor.MiddleCenter;
-        t.rectTransform.sizeDelta = new Vector2(170f, 170f);
-        return t;
+
+        // Stone row
+        var stoneRow = new GameObject("StoneRow");
+        stoneRow.transform.SetParent(go.transform, false);
+        var srt = stoneRow.AddComponent<RectTransform>();
+        srt.anchorMin = new Vector2(0f, 0.65f);
+        srt.anchorMax = new Vector2(0f, 0.65f);
+        srt.anchoredPosition = new Vector2(160f, 0f);
+        srt.sizeDelta = new Vector2(180f, 24f);
+
+        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => selectedOre = OreSelect.Stone, new Vector2(-30f, 0f));
+        stoneLabel = CreateLabel(stoneRow, "돌 : 0($1.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(26f, 0f), 16);
+        stoneLabel.alignment = TextAnchor.MiddleLeft;
+        stoneLabel.rectTransform.sizeDelta = new Vector2(150f, 24f);
+
+        // Copper row
+        var copperRow = new GameObject("CopperRow");
+        copperRow.transform.SetParent(go.transform, false);
+        var crt = copperRow.AddComponent<RectTransform>();
+        crt.anchorMin = new Vector2(0f, 0.30f);
+        crt.anchorMax = new Vector2(0f, 0.30f);
+        crt.anchoredPosition = new Vector2(160f, 0f);
+        crt.sizeDelta = new Vector2(180f, 24f);
+
+        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => selectedOre = OreSelect.Copper, new Vector2(-30f, 0f));
+        copperLabel = CreateLabel(copperRow, "구리 : 0($10.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(26f, 0f), 16);
+        copperLabel.alignment = TextAnchor.MiddleLeft;
+        copperLabel.rectTransform.sizeDelta = new Vector2(150f, 24f);
+    }
+
+    GameObject CreateColorButton(GameObject parent, Vector2 anchor, Color color, UnityEngine.Events.UnityAction onClick, Vector2 offset)
+    {
+        var go = new GameObject("OreButton");
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = color;
+        var btn = go.AddComponent<Button>();
+        if (onClick != null) btn.onClick.AddListener(onClick);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.anchoredPosition = offset;
+        rt.sizeDelta = new Vector2(18f, 18f);
+        rt.pivot = new Vector2(0f, 0.5f);
+        return go;
     }
 
     public void ShowRun()
@@ -300,7 +350,10 @@ public class GameFlowManager : MonoBehaviour
         }
         if (oreResultLabel != null && waveManager != null && (CurrentPhase == GamePhase.End))
         {
-            oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
+            if (SkillEffects.CopperUnlocked)
+                oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})\n구리 : +{runCopperGained} (총 {copper})";
+            else
+                oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
         }
         if (CurrentPhase == GamePhase.SkillTree && skillMoneyLabel != null)
         {
@@ -363,21 +416,29 @@ public class GameFlowManager : MonoBehaviour
     void SyncForgeData()
     {
         // no persistence during testing
-        float unitValue = 1f * SkillEffects.ValueMultiplier;
-        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${unitValue:0.0})";
+        float stoneValue = 1f * SkillEffects.ValueMultiplier;
+        float copperValue = 10f * SkillEffects.ValueMultiplier;
+        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${stoneValue:0.0})";
+        if (forgeCopperLabel != null)
+        {
+            forgeCopperLabel.text = $"구리 : {copper}(${copperValue:0.0})";
+            forgeCopperLabel.gameObject.SetActive(SkillEffects.CopperUnlocked);
+        }
+        if (forgeCopperButton != null) forgeCopperButton.SetActive(SkillEffects.CopperUnlocked);
         if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
     }
 
     void TryForge()
     {
         if (!forgeReady) return;
-        if (stone <= 0) return;
+        if (selectedOre == OreSelect.Stone && stone <= 0) return;
+        if (selectedOre == OreSelect.Copper && copper <= 0) return;
 
         forgeReady = false;
         forgeCooldown = Mathf.Max(0.5f, 5.0f - SkillEffects.ForgeCooldownReduction);
 
         float multiplier = RollForgeMultiplier();
-        float baseValue = 1f * SkillEffects.ValueMultiplier;
+        float baseValue = (selectedOre == OreSelect.Stone ? 1f : 10f) * SkillEffects.ValueMultiplier;
         float gain = baseValue * multiplier;
         money += gain;
 
@@ -388,10 +449,25 @@ public class GameFlowManager : MonoBehaviour
             StartCoroutine(FloatingGain());
         }
 
-        stone -= 1;
-        if (stone < 0) stone = 0;
-        float unitValue = 1f * SkillEffects.ValueMultiplier;
-        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${unitValue:0.0})";
+        if (selectedOre == OreSelect.Stone)
+        {
+            stone -= 1;
+            if (stone < 0) stone = 0;
+        }
+        else
+        {
+            copper -= 1;
+            if (copper < 0) copper = 0;
+        }
+        float stoneValue = 1f * SkillEffects.ValueMultiplier;
+        float copperValue = 10f * SkillEffects.ValueMultiplier;
+        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${stoneValue:0.0})";
+        if (forgeCopperLabel != null)
+        {
+            forgeCopperLabel.text = $"구리 : {copper}(${copperValue:0.0})";
+            forgeCopperLabel.gameObject.SetActive(SkillEffects.CopperUnlocked);
+        }
+        if (forgeCopperButton != null) forgeCopperButton.SetActive(SkillEffects.CopperUnlocked);
         if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
         // no persistence during testing
 
@@ -423,10 +499,24 @@ public class GameFlowManager : MonoBehaviour
     {
         if (endProcessed) return;
         if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
-        runStoneGained = waveManager != null ? waveManager.oresCollectedThisRun : 0;
+        runStoneGained = waveManager != null ? waveManager.oresCollectedStone : 0;
+        runCopperGained = waveManager != null ? waveManager.oresCollectedCopper : 0;
         stone += runStoneGained;
+        copper += runCopperGained;
         endProcessed = true;
-        if (oreResultLabel != null) oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
+        if (oreResultLabel != null)
+        {
+            if (SkillEffects.CopperUnlocked)
+                oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})\n구리 : +{runCopperGained} (총 {copper})";
+            else
+                oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
+        }
+    }
+
+    public void SetEndReason(string reason)
+    {
+        if (endReasonLabel != null)
+            endReasonLabel.text = $"사유 : {reason}";
     }
 
     float RollForgeMultiplier()

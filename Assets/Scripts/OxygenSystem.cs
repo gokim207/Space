@@ -47,6 +47,8 @@ public class OxygenSystem : MonoBehaviour
         if (currentOxygen <= 0)
         {
             currentOxygen = 0;
+            var flow = GameFlowManager.Instance;
+            if (flow != null) flow.SetEndReason("산소 부족");
             waveManager.EndRun();
         }
         RefreshUI();

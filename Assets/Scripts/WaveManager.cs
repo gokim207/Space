@@ -22,6 +22,8 @@ public class WaveManager : MonoBehaviour
     public EnemySpawner spawner;
     public OxygenSystem oxygenSystem;
     public int oresCollectedThisRun = 0;
+    public int oresCollectedStone = 0;
+    public int oresCollectedCopper = 0;
     private bool endSequenceStarted = false;
     // UI
     public Text waveText;
@@ -74,6 +76,8 @@ public class WaveManager : MonoBehaviour
         currentWave = 1;
         waveTimer = 0f;
         oresCollectedThisRun = 0;
+        oresCollectedStone = 0;
+        oresCollectedCopper = 0;
         if (spawner != null) spawner.waveManager = this;
         else
         {
@@ -204,9 +208,13 @@ public class WaveManager : MonoBehaviour
         // Actual boss prefab logic can be added later
     }
 
-    public void OnEnemyKilled(int ore, float oxygen)
+    public void OnEnemyKilled(int ore, float oxygen, Enemy.OreType oreType)
     {
         oresCollectedThisRun += ore;
+        if (oreType == Enemy.OreType.Copper)
+            oresCollectedCopper += ore;
+        else
+            oresCollectedStone += ore;
         if (oxygenSystem != null)
         {
             float totalOxygen = oxygen + SkillEffects.OxygenOnKillBonus;
@@ -225,7 +233,11 @@ public class WaveManager : MonoBehaviour
         CurrentState = GameState.Upgrade; // stop auto-fire immediately
         if (spawner != null) spawner.enabled = false;
         var flow = FindObjectOfType<GameFlowManager>();
-        if (flow != null) flow.ShowEnd();
+        if (flow != null)
+        {
+            flow.SetEndReason("소행성 충돌");
+            flow.ShowEnd();
+        }
         StartCoroutine(EndRunSequenceCoroutine(player));
     }
 

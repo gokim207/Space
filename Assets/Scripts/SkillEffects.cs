@@ -9,6 +9,7 @@ public static class SkillEffects
     public static float OxygenDecayMultiplier { get; private set; } = 1f;
     public static float ForgeCooldownReduction { get; private set; } = 0f;
     public static float ValueMultiplier { get; private set; } = 1f;
+    public static bool CopperUnlocked { get; private set; } = false;
 
     public static void SetDamageLevel(int level)
     {
@@ -46,5 +47,10 @@ public static class SkillEffects
     {
         int l = Mathf.Max(0, level);
         ValueMultiplier = Mathf.Pow(1.5f, l); // 1.5x per level
+    }
+
+    public static void SetCopperLevel(int level)
+    {
+        CopperUnlocked = level > 0;
     }
 }
