@@ -31,6 +31,13 @@ public class Enemy : MonoBehaviour
         hp = maxHP;
     }
 
+    public void ApplyStats(int newMaxHp, float newMoveSpeed)
+    {
+        maxHP = newMaxHp;
+        hp = maxHP;
+        moveSpeed = newMoveSpeed;
+    }
+
     void Update()
     {
         if (target != null)

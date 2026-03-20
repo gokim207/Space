@@ -28,7 +28,7 @@ public class SkillTreeManager : MonoBehaviour
     private Node hoverNode;
     private bool dragging = false;
     private Vector2 lastMousePos;
-    public float dragSpeed = 0.6f;
+    public float dragSpeed = 0.5f;
     private bool dragMoved = false;
     private const float dragThreshold = 6f;
     private readonly List<LinkLine> links = new List<LinkLine>();
@@ -140,7 +140,7 @@ public class SkillTreeManager : MonoBehaviour
     void BuildTooltip(Transform parent)
     {
         tooltip = new GameObject("SkillTooltip");
-        tooltip.transform.SetParent(parent, false);
+        tooltip.transform.SetParent(container, false);
         var img = tooltip.AddComponent<Image>();
         img.color = new Color(0.9f, 0.9f, 0.9f, 1f);
         var cg = tooltip.AddComponent<CanvasGroup>();
@@ -229,7 +229,7 @@ public class SkillTreeManager : MonoBehaviour
             }
             else
             {
-                n.image.color = new Color(0.85f, 0.85f, 0.85f, 1f);
+                n.image.color = new Color(1f, 0.35f, 0.35f, 1f);
                 n.button.interactable = true;
                 n.image.gameObject.SetActive(true);
             }
@@ -287,10 +287,11 @@ public class SkillTreeManager : MonoBehaviour
             lastMousePos = Mouse.current.position.ReadValue();
             dragMoved = false;
         }
-        if (Mouse.current.leftButton.wasReleasedThisFrame)
+        if (!Mouse.current.leftButton.isPressed)
         {
             dragging = false;
             dragMoved = false;
+            return;
         }
         if (dragging)
         {
@@ -298,7 +299,7 @@ public class SkillTreeManager : MonoBehaviour
             Vector2 delta = current - lastMousePos;
             if (delta.sqrMagnitude >= dragThreshold * dragThreshold)
                 dragMoved = true;
-            container.anchoredPosition += delta * dragSpeed * Time.unscaledDeltaTime * 60f;
+            container.anchoredPosition += delta * dragSpeed;
             lastMousePos = current;
 
             if (hoverNode != null)

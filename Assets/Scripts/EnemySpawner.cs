@@ -11,6 +11,10 @@ public class EnemySpawner : MonoBehaviour
     private float planetSurfaceRadius = 0f;
     public WaveManager waveManager;
     public float minDistanceFromPlayer = 1.5f;
+    public int baseHP = 2;
+    public int hpPerWave = 1;
+    public float baseMoveSpeed = 1.0f;
+    public float speedPerWave = 0.05f;
     bool warnedWaveManagerMissing = false;
 
     void Start()
@@ -54,8 +58,8 @@ public class EnemySpawner : MonoBehaviour
             sr.color = Color.red;
             var col = temp.AddComponent<BoxCollider2D>();
             var e = temp.AddComponent<Enemy>();
-            e.maxHP = 3; // give temporary enemies more HP so they don't die from a single hit
-            e.moveSpeed = 1.2f;
+            e.maxHP = baseHP;
+            e.moveSpeed = baseMoveSpeed;
             enemyPrefab = temp;
             temp.SetActive(false); // template
             Debug.Log("임시 Enemy prefab을 생성했습니다 (EnemyPrefab_Temp)");
@@ -174,6 +178,11 @@ public class EnemySpawner : MonoBehaviour
                 e.moveSpeed = 1f;
                 Debug.Log("Spawned enemy moveSpeed was 0, reset to 1f for testing.");
             }
+            // Apply wave scaling
+            int wave = waveManager != null ? waveManager.currentWave : 1;
+            int scaledHp = Mathf.Max(1, baseHP + (wave - 1) * hpPerWave);
+            float scaledSpeed = Mathf.Max(0.1f, baseMoveSpeed + (wave - 1) * speedPerWave);
+            e.ApplyStats(scaledHp, scaledSpeed);
             // Make spawned enemy visible and ensure it renders on top of planet
             var sr = e.GetComponent<SpriteRenderer>();
             if (sr != null)

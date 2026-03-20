@@ -15,6 +15,8 @@ public class GameFlowManager : MonoBehaviour
     private GameObject forgePanel;
     private GameObject skillPanel;
     private Text oxygenLabel;
+    private Text waveLabel;
+    private Text timeLabel;
     private Text oreResultLabel;
     private OxygenSystem oxygenSystem;
     private WaveManager waveManager;
@@ -67,11 +69,15 @@ public class GameFlowManager : MonoBehaviour
         skillPanel = CreatePanel("SkillPanel", new Color(0f, 0f, 0f, 0.35f));
 
         // Run HUD (placeholder)
-        CreateLabel(runHud, "Wave : 1", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -30f), 24);
+        waveLabel = CreateLabel(runHud, "Wave : 1", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -30f), 24);
         oxygenLabel = CreateLabel(runHud, "남은 산소 (0 / 0)", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(200f, -30f), 18);
         oxygenLabel.alignment = TextAnchor.MiddleLeft;
         oxygenLabel.color = Color.white;
         oxygenLabel.rectTransform.sizeDelta = new Vector2(320f, 40f);
+        timeLabel = CreateLabel(runHud, "남은 시간 : 40s", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-200f, -30f), 18);
+        timeLabel.alignment = TextAnchor.MiddleRight;
+        timeLabel.color = Color.white;
+        timeLabel.rectTransform.sizeDelta = new Vector2(260f, 40f);
 
         // End panel
         CreateLabel(endPanel, "원정 종료", new Vector2(0.5f, 0.85f), new Vector2(0.5f, 0.85f), Vector2.zero, 28);
@@ -283,6 +289,14 @@ public class GameFlowManager : MonoBehaviour
         if (oxygenSystem != null)
         {
             oxygenLabel.text = $"남은 산소 ({oxygenSystem.currentOxygen:0.0} / {oxygenSystem.MaxOxygen:0.0})";
+        }
+        if (waveLabel != null && waveManager != null && CurrentPhase == GamePhase.Run)
+        {
+            waveLabel.text = $"Wave : {waveManager.currentWave}";
+        }
+        if (timeLabel != null && waveManager != null && CurrentPhase == GamePhase.Run)
+        {
+            timeLabel.text = $"남은 시간 : {waveManager.RemainingWaveSeconds}s";
         }
         if (oreResultLabel != null && waveManager != null && (CurrentPhase == GamePhase.End))
         {

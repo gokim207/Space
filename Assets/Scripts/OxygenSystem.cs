@@ -35,7 +35,7 @@ public class OxygenSystem : MonoBehaviour
         if (timer >= oxygenDecreaseInterval)
         {
             timer = 0f;
-            float dec = Random.Range(0.5f, 2.0f) * SkillEffects.OxygenDecayMultiplier;
+            float dec = Random.Range(0.8f, 1.5f) * SkillEffects.OxygenDecayMultiplier;
             ChangeOxygen(-dec);
         }
     }

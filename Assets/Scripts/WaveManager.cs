@@ -9,7 +9,7 @@ public class WaveManager : MonoBehaviour
 
     public GameObject projectilePrefab;
     public Transform firePoint;
-    public float fireInterval = 1f;
+    public float fireInterval = 1.5f;
     private float baseFireInterval = 1f;
     private float fireTimer;
     public float fireRange = 30f; // targeting range
@@ -27,6 +27,11 @@ public class WaveManager : MonoBehaviour
     public Text waveText;
     public Text waveTimerText;
     public Text oreText;
+
+    public int RemainingWaveSeconds
+    {
+        get { return Mathf.Max(0, Mathf.CeilToInt(waveDuration - waveTimer)); }
+    }
 
     void Start()
     {
@@ -259,6 +264,7 @@ public class WaveManager : MonoBehaviour
 
     void RefreshWaveUI()
     {
+        if (waveText != null) waveText.text = $"Wave : {currentWave}";
         if (waveTimerText != null) waveTimerText.text = $"{Mathf.CeilToInt(waveDuration - waveTimer)}s";
     }
 
