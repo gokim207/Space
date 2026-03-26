@@ -180,9 +180,13 @@ public class SkillTreeManager : MonoBehaviour
 
     void ApplyLevelsFromPrefs()
     {
+        int slot = GameFlowManager.CurrentSlot;
         foreach (var n in nodes.Values)
         {
-            n.level = 0;
+            if (slot >= 1)
+                n.level = PlayerPrefs.GetInt($"slot_{slot}_skill_{n.id}", 0);
+            else
+                n.level = 0;
         }
         ApplySkillEffects();
     }
@@ -278,6 +282,44 @@ public class SkillTreeManager : MonoBehaviour
         RefreshUnlocks();
         RefreshVisuals();
         ShowTooltip(n);
+    }
+
+    public static void SaveSkills(int slot)
+    {
+        if (slot < 1) return;
+        var mgr = FindObjectOfType<SkillTreeManager>();
+        if (mgr == null) return;
+        foreach (var n in mgr.nodes.Values)
+        {
+            PlayerPrefs.SetInt($"slot_{slot}_skill_{n.id}", n.level);
+        }
+    }
+
+    public static void LoadSkills(int slot)
+    {
+        if (slot < 1) return;
+        var mgr = FindObjectOfType<SkillTreeManager>();
+        if (mgr == null) return;
+        foreach (var n in mgr.nodes.Values)
+        {
+            n.level = PlayerPrefs.GetInt($"slot_{slot}_skill_{n.id}", 0);
+        }
+        mgr.ApplySkillEffects();
+        mgr.RefreshUnlocks();
+        mgr.RefreshVisuals();
+    }
+
+    public static void ResetAllSkills()
+    {
+        var mgr = FindObjectOfType<SkillTreeManager>();
+        if (mgr == null) return;
+        foreach (var n in mgr.nodes.Values)
+        {
+            n.level = 0;
+        }
+        mgr.ApplySkillEffects();
+        mgr.RefreshUnlocks();
+        mgr.RefreshVisuals();
     }
 
     void Update()

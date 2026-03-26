@@ -113,7 +113,6 @@ public class PlayerController : MonoBehaviour
             if (Mathf.Abs(move) > 0.01f)
             {
                 inputLogged = true;
-                Debug.Log($"Input detected (New InputSystem - Keyboard): move={move}");
             }
         }
         if (!inputLogged && Gamepad.current != null)
@@ -123,7 +122,6 @@ public class PlayerController : MonoBehaviour
             {
                 move = stick.x;
                 inputLogged = true;
-                Debug.Log($"Input detected (New InputSystem - Gamepad): move={move}");
             }
         }
 
@@ -135,7 +133,6 @@ public class PlayerController : MonoBehaviour
                 move = Input.GetAxisRaw("Horizontal"); // may throw if legacy input disabled
                 if (Mathf.Abs(move) > 0.01f)
                 {
-                    Debug.Log($"Input detected (Legacy Input): move={move}");
                 }
             }
             catch (System.Exception)

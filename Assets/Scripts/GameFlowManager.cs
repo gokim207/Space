@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 public class GameFlowManager : MonoBehaviour
 {
-    public enum GamePhase { Run, End, Forge, SkillTree }
+    public enum GamePhase { Run, End, Forge, SkillTree, Title, SlotSelect }
     public GamePhase CurrentPhase { get; private set; } = GamePhase.Run;
 
     private Canvas canvas;
@@ -14,6 +14,8 @@ public class GameFlowManager : MonoBehaviour
     private GameObject endPanel;
     private GameObject forgePanel;
     private GameObject skillPanel;
+    private GameObject titlePanel;
+    private GameObject slotPanel;
     private Text oxygenLabel;
     private Text waveLabel;
     private Text timeLabel;
@@ -37,6 +39,9 @@ public class GameFlowManager : MonoBehaviour
     private bool endProcessed = false;
     private enum OreSelect { Stone, Copper }
     private OreSelect selectedOre = OreSelect.Stone;
+    private enum SlotMode { Save, Load }
+    private SlotMode slotMode = SlotMode.Save;
+    public static int CurrentSlot { get; private set; } = -1;
     private bool forgeReady = true;
     private float forgeCooldown = 0f;
 
@@ -54,7 +59,10 @@ public class GameFlowManager : MonoBehaviour
         Instance = this;
         BuildUI();
         SceneManager.sceneLoaded += OnSceneLoaded;
-        ShowRun();
+        if (SceneManager.GetActiveScene().name == "TitleScene")
+            ShowTitle();
+        else
+            ShowRun();
     }
 
     public static GameFlowManager Instance { get; private set; }
@@ -75,6 +83,8 @@ public class GameFlowManager : MonoBehaviour
         endPanel = CreatePanel("EndPanel", new Color(0f, 0f, 0f, 0.35f));
         forgePanel = CreatePanel("ForgePanel", new Color(0f, 0f, 0f, 0.35f));
         skillPanel = CreatePanel("SkillPanel", new Color(0f, 0f, 0f, 0.35f));
+        titlePanel = CreatePanel("TitlePanel", new Color(0f, 0f, 0f, 0.35f));
+        slotPanel = CreatePanel("SlotPanel", new Color(0f, 0f, 0f, 0.35f));
 
         // Run HUD (placeholder)
         waveLabel = CreateLabel(runHud, "Wave : 1", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -30f), 24);
@@ -119,6 +129,18 @@ public class GameFlowManager : MonoBehaviour
         var tree = new GameObject("SkillTreeManager");
         tree.transform.SetParent(skillPanel.transform, false);
         tree.AddComponent<SkillTreeManager>().Init(skillPanel.transform);
+
+        // Title panel (bottom-right buttons)
+        CreateLabel(titlePanel, "타이틀", new Vector2(0.5f, 0.85f), new Vector2(0.5f, 0.85f), Vector2.zero, 28);
+        CreateButton(titlePanel, "시작하기", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-150f, 140f), () => ShowSlotSelect(SlotMode.Save));
+        CreateButton(titlePanel, "불러오기", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-150f, 90f), () => ShowSlotSelect(SlotMode.Load));
+        CreateButton(titlePanel, "나가기", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-150f, 40f), () => QuitGame());
+
+        // Slot panel
+        CreateLabel(slotPanel, "슬롯 선택", new Vector2(0.5f, 0.7f), new Vector2(0.5f, 0.7f), Vector2.zero, 22);
+        CreateButton(slotPanel, "슬롯 1", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 40f), () => SelectSlot(1));
+        CreateButton(slotPanel, "슬롯 2", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), () => SelectSlot(2));
+        CreateButton(slotPanel, "슬롯 3", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), () => SelectSlot(3));
     }
 
     GameObject CreatePanel(string name, Color bg)
@@ -246,13 +268,13 @@ public class GameFlowManager : MonoBehaviour
         var stoneRow = new GameObject("StoneRow");
         stoneRow.transform.SetParent(go.transform, false);
         var srt = stoneRow.AddComponent<RectTransform>();
-        srt.anchorMin = new Vector2(0f, 0.65f);
-        srt.anchorMax = new Vector2(0f, 0.65f);
-        srt.anchoredPosition = new Vector2(160f, 0f);
-        srt.sizeDelta = new Vector2(180f, 24f);
+        srt.anchorMin = new Vector2(0.5f, 0.65f);
+        srt.anchorMax = new Vector2(0.5f, 0.65f);
+        srt.anchoredPosition = new Vector2(30f, 0f);
+        srt.sizeDelta = new Vector2(160f, 24f);
 
-        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => selectedOre = OreSelect.Stone, new Vector2(-30f, 0f));
-        stoneLabel = CreateLabel(stoneRow, "돌 : 0($1.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(26f, 0f), 16);
+        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => selectedOre = OreSelect.Stone, new Vector2(0f, 0f));
+        stoneLabel = CreateLabel(stoneRow, "돌 : 0($1.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(22f, 0f), 16);
         stoneLabel.alignment = TextAnchor.MiddleLeft;
         stoneLabel.rectTransform.sizeDelta = new Vector2(150f, 24f);
 
@@ -260,13 +282,13 @@ public class GameFlowManager : MonoBehaviour
         var copperRow = new GameObject("CopperRow");
         copperRow.transform.SetParent(go.transform, false);
         var crt = copperRow.AddComponent<RectTransform>();
-        crt.anchorMin = new Vector2(0f, 0.30f);
-        crt.anchorMax = new Vector2(0f, 0.30f);
-        crt.anchoredPosition = new Vector2(160f, 0f);
-        crt.sizeDelta = new Vector2(180f, 24f);
+        crt.anchorMin = new Vector2(0.5f, 0.30f);
+        crt.anchorMax = new Vector2(0.5f, 0.30f);
+        crt.anchoredPosition = new Vector2(30f, 0f);
+        crt.sizeDelta = new Vector2(160f, 24f);
 
-        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => selectedOre = OreSelect.Copper, new Vector2(-30f, 0f));
-        copperLabel = CreateLabel(copperRow, "구리 : 0($10.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(26f, 0f), 16);
+        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => selectedOre = OreSelect.Copper, new Vector2(0f, 0f));
+        copperLabel = CreateLabel(copperRow, "구리 : 0($10.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(22f, 0f), 16);
         copperLabel.alignment = TextAnchor.MiddleLeft;
         copperLabel.rectTransform.sizeDelta = new Vector2(150f, 24f);
     }
@@ -296,6 +318,8 @@ public class GameFlowManager : MonoBehaviour
         endPanel.SetActive(false);
         forgePanel.SetActive(false);
         skillPanel.SetActive(false);
+        titlePanel.SetActive(false);
+        slotPanel.SetActive(false);
         endProcessed = false;
     }
 
@@ -307,6 +331,8 @@ public class GameFlowManager : MonoBehaviour
         endPanel.SetActive(true);
         forgePanel.SetActive(false);
         skillPanel.SetActive(false);
+        titlePanel.SetActive(false);
+        slotPanel.SetActive(false);
         SyncEndResults();
     }
 
@@ -318,6 +344,8 @@ public class GameFlowManager : MonoBehaviour
         endPanel.SetActive(false);
         forgePanel.SetActive(true);
         skillPanel.SetActive(false);
+        titlePanel.SetActive(false);
+        slotPanel.SetActive(false);
         SyncForgeData();
     }
 
@@ -329,6 +357,28 @@ public class GameFlowManager : MonoBehaviour
         endPanel.SetActive(false);
         forgePanel.SetActive(false);
         skillPanel.SetActive(true);
+        titlePanel.SetActive(false);
+        slotPanel.SetActive(false);
+    }
+
+    public void ShowTitle()
+    {
+        CurrentPhase = GamePhase.Title;
+        Time.timeScale = 0f;
+        runHud.SetActive(false);
+        endPanel.SetActive(false);
+        forgePanel.SetActive(false);
+        skillPanel.SetActive(false);
+        titlePanel.SetActive(true);
+        slotPanel.SetActive(false);
+    }
+
+    void ShowSlotSelect(SlotMode mode)
+    {
+        slotMode = mode;
+        CurrentPhase = GamePhase.SlotSelect;
+        titlePanel.SetActive(false);
+        slotPanel.SetActive(true);
     }
 
     void Update()
@@ -374,8 +424,12 @@ public class GameFlowManager : MonoBehaviour
         if (scene.name == "UpgradeScene")
         {
             // read persisted ore count if WaveManager isn't in this scene
-            // no persistence during testing
+            if (CurrentSlot >= 1) LoadSlot(CurrentSlot);
             ShowForge();
+        }
+        else if (scene.name == "TitleScene")
+        {
+            ShowTitle();
         }
         else
         {
@@ -415,7 +469,6 @@ public class GameFlowManager : MonoBehaviour
 
     void SyncForgeData()
     {
-        // no persistence during testing
         float stoneValue = 1f * SkillEffects.ValueMultiplier;
         float copperValue = 10f * SkillEffects.ValueMultiplier;
         if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${stoneValue:0.0})";
@@ -511,6 +564,65 @@ public class GameFlowManager : MonoBehaviour
             else
                 oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
         }
+        if (CurrentSlot >= 1) SaveSlot(CurrentSlot);
+    }
+
+    void SelectSlot(int slot)
+    {
+        CurrentSlot = slot;
+        if (slotMode == SlotMode.Save)
+        {
+            ResetProgress();
+            SaveSlot(slot);
+            SceneManager.LoadScene("UpgradeScene");
+        }
+        else
+        {
+            LoadSlot(slot);
+            SceneManager.LoadScene("UpgradeScene");
+        }
+    }
+
+    void ResetProgress()
+    {
+        money = 0f;
+        stone = 0;
+        copper = 0;
+        SkillEffects.SetDamageLevel(0);
+        SkillEffects.SetFireRateLevel(0);
+        SkillEffects.SetOxygenOnKillLevel(0);
+        SkillEffects.SetMaxOxygenLevel(0);
+        SkillEffects.SetOxygenDecayLevel(0);
+        SkillEffects.SetForgeCooldownLevel(0);
+        SkillEffects.SetValueLevel(0);
+        SkillEffects.SetCopperLevel(0);
+        SkillTreeManager.ResetAllSkills();
+    }
+
+    void SaveSlot(int slot)
+    {
+        PlayerPrefs.SetFloat($"slot_{slot}_money", money);
+        PlayerPrefs.SetInt($"slot_{slot}_stone", stone);
+        PlayerPrefs.SetInt($"slot_{slot}_copper", copper);
+        SkillTreeManager.SaveSkills(slot);
+        PlayerPrefs.Save();
+    }
+
+    void LoadSlot(int slot)
+    {
+        money = PlayerPrefs.GetFloat($"slot_{slot}_money", 0f);
+        stone = PlayerPrefs.GetInt($"slot_{slot}_stone", 0);
+        copper = PlayerPrefs.GetInt($"slot_{slot}_copper", 0);
+        SkillTreeManager.LoadSkills(slot);
+    }
+
+    void QuitGame()
+    {
+#if UNITY_EDITOR
+        Debug.Log("Quit");
+#else
+        Application.Quit();
+#endif
     }
 
     public void SetEndReason(string reason)
