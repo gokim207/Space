@@ -8,6 +8,7 @@ public static class SkillEffects
     public static float MaxOxygenBonus { get; private set; } = 0f;
     public static float OxygenDecayMultiplier { get; private set; } = 1f;
     public static float ForgeCooldownReduction { get; private set; } = 0f;
+    public static int ForgeStabilityLevel { get; private set; } = 0;
     public static float ValueMultiplier { get; private set; } = 1f;
     public static bool CopperUnlocked { get; private set; } = false;
 
@@ -41,6 +42,11 @@ public static class SkillEffects
     public static void SetForgeCooldownLevel(int level)
     {
         ForgeCooldownReduction = Mathf.Max(0, level) * 0.1f;
+    }
+
+    public static void SetForgeStabilityLevel(int level)
+    {
+        ForgeStabilityLevel = Mathf.Clamp(level, 0, 3);
     }
 
     public static void SetValueLevel(int level)

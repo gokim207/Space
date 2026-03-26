@@ -43,6 +43,7 @@ public class GameFlowManager : MonoBehaviour
     private SlotMode slotMode = SlotMode.Save;
     public static int CurrentSlot { get; private set; } = -1;
     private Text slotStatusLabel;
+    private Coroutine slotStatusCo;
     private Button[] slotButtons = new Button[3];
     private Text[] slotTexts = new Text[3];
     private float playtimeSeconds = 0f;
@@ -116,7 +117,7 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(forgePanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
         moneyLabel = CreateMoneyBox(forgePanel, new Vector2(0.8f, 0.92f), "0 $");
         CreatePanelBox(forgePanel, new Vector2(0.78f, 0.54f), new Vector2(180f, 180f)); // right ore list panel
-        CreateOreList(forgePanel, new Vector2(0.78f, 0.54f), out forgeStoneLabel, out forgeCopperLabel, out forgeStoneButton, out forgeCopperButton);
+        CreateOreList(forgePanel, new Vector2(0.92f, 0.49f), out forgeStoneLabel, out forgeCopperLabel, out forgeStoneButton, out forgeCopperButton);
         CreatePanelBox(forgePanel, new Vector2(0.20f, 0.60f), new Vector2(180f, 180f)); // left odds panel
         CreateOddsList(forgePanel, new Vector2(0.20f, 0.60f));
         CreatePanelBox(forgePanel, new Vector2(0.48f, 0.55f), new Vector2(140f, 240f)); // center big box (character placeholder)
@@ -142,15 +143,19 @@ public class GameFlowManager : MonoBehaviour
 
         // Slot panel
         CreateLabel(slotPanel, "슬롯 선택", new Vector2(0.5f, 0.8f), new Vector2(0.5f, 0.8f), Vector2.zero, 22);
-        slotStatusLabel = CreateLabel(slotPanel, "", new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, 16);
+        slotStatusLabel = CreateLabel(slotPanel, "", new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, 20);
+        CreateButton(slotPanel, "뒤로", new Vector2(0.1f, 0.9f), new Vector2(0.1f, 0.9f), new Vector2(0f, 0f), () => ShowTitle());
         for (int i = 0; i < 3; i++)
         {
             int idx = i;
-            var btnGo = CreateButton(slotPanel, "", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 80f - (i * 80f)), () => SelectSlot(idx + 1));
+            var btnGo = CreateButton(slotPanel, "", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 130f - (i * 120f)), () => SelectSlot(idx + 1));
+            var btnRt = btnGo.GetComponent<RectTransform>();
+            btnRt.sizeDelta = new Vector2(320f, 80f);
             var b = btnGo.GetComponent<Button>();
             slotButtons[i] = b;
-            var info = CreateLabel(btnGo, "파일\n돈: 0$\n플레이타임: 00:00", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 14, Color.black);
+            var info = CreateLabel(btnGo, "파일\n돈: 0$\n플레이타임: 00:00", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 20, Color.black);
             info.alignment = TextAnchor.MiddleCenter;
+            info.rectTransform.sizeDelta = new Vector2(300f, 120f);
             slotTexts[i] = info;
         }
     }
@@ -262,7 +267,7 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
         rt.sizeDelta = new Vector2(200f, 180f);
-        var t = CreateLabel(go, "0.1x : 10%\n0.5x : 20%\n1x : 40%\n2x : 20%\n10x : 10%", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 15);
+        var t = CreateLabel(go, "0.5x : 20%\n1x : 45%\n2x : 20%\n5x : 10%\n10x : 5%", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 15);
         t.alignment = TextAnchor.MiddleCenter;
         t.rectTransform.sizeDelta = new Vector2(170f, 170f);
     }
@@ -275,35 +280,40 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMin = anchor;
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(180f, 180f);
+        rt.sizeDelta = new Vector2(240f, 220f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+
+        float rowGap = 36f;
 
         // Stone row
         var stoneRow = new GameObject("StoneRow");
         stoneRow.transform.SetParent(go.transform, false);
         var srt = stoneRow.AddComponent<RectTransform>();
-        srt.anchorMin = new Vector2(0.5f, 0.65f);
-        srt.anchorMax = new Vector2(0.5f, 0.65f);
-        srt.anchoredPosition = new Vector2(30f, 0f);
-        srt.sizeDelta = new Vector2(160f, 24f);
+        srt.anchorMin = new Vector2(0f, 1f);
+        srt.anchorMax = new Vector2(0f, 1f);
+        srt.pivot = new Vector2(0f, 1f);
+        srt.anchoredPosition = new Vector2(20f, -20f);
+        srt.sizeDelta = new Vector2(200f, 28f);
 
-        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => selectedOre = OreSelect.Stone, new Vector2(0f, 0f));
-        stoneLabel = CreateLabel(stoneRow, "돌 : 0($1.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(22f, 0f), 16);
+        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => selectedOre = OreSelect.Stone, new Vector2(-90f, 0f));
+        stoneLabel = CreateLabel(stoneRow, "돌 : 0($1.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 0f), 14);
         stoneLabel.alignment = TextAnchor.MiddleLeft;
-        stoneLabel.rectTransform.sizeDelta = new Vector2(150f, 24f);
+        stoneLabel.rectTransform.sizeDelta = new Vector2(170f, 28f);
 
         // Copper row
         var copperRow = new GameObject("CopperRow");
         copperRow.transform.SetParent(go.transform, false);
         var crt = copperRow.AddComponent<RectTransform>();
-        crt.anchorMin = new Vector2(0.5f, 0.30f);
-        crt.anchorMax = new Vector2(0.5f, 0.30f);
-        crt.anchoredPosition = new Vector2(30f, 0f);
-        crt.sizeDelta = new Vector2(160f, 24f);
+        crt.anchorMin = new Vector2(0f, 1f);
+        crt.anchorMax = new Vector2(0f, 1f);
+        crt.pivot = new Vector2(0f, 1f);
+        crt.anchoredPosition = new Vector2(20f, -20f - rowGap);
+        crt.sizeDelta = new Vector2(200f, 28f);
 
-        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => selectedOre = OreSelect.Copper, new Vector2(0f, 0f));
-        copperLabel = CreateLabel(copperRow, "구리 : 0($10.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(22f, 0f), 16);
+        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => selectedOre = OreSelect.Copper, new Vector2(-90f, 0f));
+        copperLabel = CreateLabel(copperRow, "구리 : 0($10.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 0f), 14);
         copperLabel.alignment = TextAnchor.MiddleLeft;
-        copperLabel.rectTransform.sizeDelta = new Vector2(150f, 24f);
+        copperLabel.rectTransform.sizeDelta = new Vector2(170f, 28f);
     }
 
     GameObject CreateColorButton(GameObject parent, Vector2 anchor, Color color, UnityEngine.Events.UnityAction onClick, Vector2 offset)
@@ -314,6 +324,7 @@ public class GameFlowManager : MonoBehaviour
         img.color = color;
         var btn = go.AddComponent<Button>();
         if (onClick != null) btn.onClick.AddListener(onClick);
+        btn.onClick.AddListener(() => StartCoroutine(FlashImage(img, color)));
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = anchor;
         rt.anchorMax = anchor;
@@ -321,6 +332,20 @@ public class GameFlowManager : MonoBehaviour
         rt.sizeDelta = new Vector2(18f, 18f);
         rt.pivot = new Vector2(0f, 0.5f);
         return go;
+    }
+
+    System.Collections.IEnumerator FlashImage(Image img, Color baseColor)
+    {
+        if (img == null) yield break;
+        Color bright = new Color(
+            Mathf.Clamp01(baseColor.r + 0.25f),
+            Mathf.Clamp01(baseColor.g + 0.25f),
+            Mathf.Clamp01(baseColor.b + 0.25f),
+            baseColor.a
+        );
+        img.color = bright;
+        yield return new WaitForSecondsRealtime(0.08f);
+        img.color = baseColor;
     }
 
     public void ShowRun()
@@ -600,7 +625,10 @@ public class GameFlowManager : MonoBehaviour
         {
             if (!HasSlot(slot))
             {
-                if (slotStatusLabel != null) slotStatusLabel.text = "빈 슬롯입니다.";
+                RectTransform rt = null;
+                if (slotButtons[slot - 1] != null)
+                    rt = slotButtons[slot - 1].GetComponent<RectTransform>();
+                ShowSlotStatus("빈 슬롯입니다.", rt);
                 return;
             }
             LoadSlot(slot);
@@ -695,10 +723,20 @@ public class GameFlowManager : MonoBehaviour
     float RollForgeMultiplier()
     {
         float r = Random.Range(0f, 1f);
-        if (r < 0.10f) return 0.1f;
-        if (r < 0.30f) return 0.5f;
-        if (r < 0.70f) return 1f;
-        if (r < 0.90f) return 2f;
+        float adj = 0.05f * SkillEffects.ForgeStabilityLevel;
+        float p05 = Mathf.Max(0.05f, 0.20f - adj);
+        float p1 = 0.45f;
+        float p2 = Mathf.Min(0.35f, 0.20f + adj);
+        float p5 = 0.10f;
+        float p10 = 0.05f;
+        float c1 = p05;
+        float c2 = c1 + p1;
+        float c3 = c2 + p2;
+        float c4 = c3 + p5;
+        if (r < c1) return 0.5f;
+        if (r < c2) return 1f;
+        if (r < c3) return 2f;
+        if (r < c4) return 5f;
         return 10f;
     }
 
@@ -732,5 +770,39 @@ public class GameFlowManager : MonoBehaviour
         forgeGainLabel.color = reset;
         forgeGainLabel.rectTransform.anchoredPosition = start;
         forgeGainLabel.gameObject.SetActive(false);
+    }
+
+    void ShowSlotStatus(string message, RectTransform source)
+    {
+        if (slotStatusLabel == null) return;
+        slotStatusLabel.text = message;
+        slotStatusLabel.gameObject.SetActive(true);
+        if (source != null)
+            slotStatusLabel.rectTransform.anchoredPosition = source.anchoredPosition + new Vector2(0f, -10f);
+        if (slotStatusCo != null) StopCoroutine(slotStatusCo);
+        slotStatusCo = StartCoroutine(SlotStatusFloat());
+    }
+
+    System.Collections.IEnumerator SlotStatusFloat()
+    {
+        float t = 0f;
+        Vector3 start = slotStatusLabel.rectTransform.anchoredPosition;
+        Vector3 end = start + new Vector3(0f, 30f, 0f);
+        var c = slotStatusLabel.color;
+        c.a = 1f;
+        slotStatusLabel.color = c;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime * 1.0f;
+            slotStatusLabel.rectTransform.anchoredPosition = Vector3.Lerp(start, end, t);
+            c.a = Mathf.Lerp(1f, 0f, t);
+            slotStatusLabel.color = c;
+            yield return null;
+        }
+        slotStatusLabel.rectTransform.anchoredPosition = start;
+        c.a = 1f;
+        slotStatusLabel.color = c;
+        slotStatusLabel.text = "";
+        slotStatusLabel.gameObject.SetActive(false);
     }
 }
