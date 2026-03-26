@@ -282,6 +282,13 @@ public class SkillTreeManager : MonoBehaviour
         RefreshUnlocks();
         RefreshVisuals();
         ShowTooltip(n);
+
+        int slot = GameFlowManager.CurrentSlot;
+        if (slot >= 1)
+        {
+            PlayerPrefs.SetInt($"slot_{slot}_skill_{n.id}", n.level);
+            PlayerPrefs.Save();
+        }
     }
 
     public static void SaveSkills(int slot)

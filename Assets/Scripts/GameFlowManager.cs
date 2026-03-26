@@ -42,6 +42,10 @@ public class GameFlowManager : MonoBehaviour
     private enum SlotMode { Save, Load }
     private SlotMode slotMode = SlotMode.Save;
     public static int CurrentSlot { get; private set; } = -1;
+    private Text slotStatusLabel;
+    private Button[] slotButtons = new Button[3];
+    private Text[] slotTexts = new Text[3];
+    private float playtimeSeconds = 0f;
     private bool forgeReady = true;
     private float forgeCooldown = 0f;
 
@@ -137,10 +141,18 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(titlePanel, "나가기", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-150f, 40f), () => QuitGame());
 
         // Slot panel
-        CreateLabel(slotPanel, "슬롯 선택", new Vector2(0.5f, 0.7f), new Vector2(0.5f, 0.7f), Vector2.zero, 22);
-        CreateButton(slotPanel, "슬롯 1", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 40f), () => SelectSlot(1));
-        CreateButton(slotPanel, "슬롯 2", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), () => SelectSlot(2));
-        CreateButton(slotPanel, "슬롯 3", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), () => SelectSlot(3));
+        CreateLabel(slotPanel, "슬롯 선택", new Vector2(0.5f, 0.8f), new Vector2(0.5f, 0.8f), Vector2.zero, 22);
+        slotStatusLabel = CreateLabel(slotPanel, "", new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, 16);
+        for (int i = 0; i < 3; i++)
+        {
+            int idx = i;
+            var btnGo = CreateButton(slotPanel, "", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 80f - (i * 80f)), () => SelectSlot(idx + 1));
+            var b = btnGo.GetComponent<Button>();
+            slotButtons[i] = b;
+            var info = CreateLabel(btnGo, "파일\n돈: 0$\n플레이타임: 00:00", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 14, Color.black);
+            info.alignment = TextAnchor.MiddleCenter;
+            slotTexts[i] = info;
+        }
     }
 
     GameObject CreatePanel(string name, Color bg)
@@ -182,7 +194,7 @@ public class GameFlowManager : MonoBehaviour
         return t;
     }
 
-    void CreateButton(GameObject parent, string label, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, UnityEngine.Events.UnityAction onClick)
+    GameObject CreateButton(GameObject parent, string label, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, UnityEngine.Events.UnityAction onClick)
     {
         var go = new GameObject("Button_" + label);
         go.transform.SetParent(parent.transform, false);
@@ -210,6 +222,7 @@ public class GameFlowManager : MonoBehaviour
         trt.anchorMax = Vector2.one;
         trt.offsetMin = Vector2.zero;
         trt.offsetMax = Vector2.zero;
+        return go;
     }
 
     GameObject CreatePanelBox(GameObject parent, Vector2 anchor, Vector2 size)
@@ -379,6 +392,7 @@ public class GameFlowManager : MonoBehaviour
         CurrentPhase = GamePhase.SlotSelect;
         titlePanel.SetActive(false);
         slotPanel.SetActive(true);
+        RefreshSlotUI();
     }
 
     void Update()
@@ -415,6 +429,12 @@ public class GameFlowManager : MonoBehaviour
                 forgeCountdownLabel.text = "";
             else
                 forgeCountdownLabel.text = $"{forgeCooldown:0.0}s";
+        }
+
+        // playtime tracking (unscaled)
+        if (CurrentPhase == GamePhase.Run || CurrentPhase == GamePhase.Forge || CurrentPhase == GamePhase.SkillTree)
+        {
+            playtimeSeconds += Time.unscaledDeltaTime;
         }
     }
 
@@ -578,6 +598,11 @@ public class GameFlowManager : MonoBehaviour
         }
         else
         {
+            if (!HasSlot(slot))
+            {
+                if (slotStatusLabel != null) slotStatusLabel.text = "빈 슬롯입니다.";
+                return;
+            }
             LoadSlot(slot);
             SceneManager.LoadScene("UpgradeScene");
         }
@@ -588,6 +613,7 @@ public class GameFlowManager : MonoBehaviour
         money = 0f;
         stone = 0;
         copper = 0;
+        playtimeSeconds = 0f;
         SkillEffects.SetDamageLevel(0);
         SkillEffects.SetFireRateLevel(0);
         SkillEffects.SetOxygenOnKillLevel(0);
@@ -604,6 +630,8 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.SetFloat($"slot_{slot}_money", money);
         PlayerPrefs.SetInt($"slot_{slot}_stone", stone);
         PlayerPrefs.SetInt($"slot_{slot}_copper", copper);
+        PlayerPrefs.SetFloat($"slot_{slot}_time", playtimeSeconds);
+        PlayerPrefs.SetInt($"slot_{slot}_exists", 1);
         SkillTreeManager.SaveSkills(slot);
         PlayerPrefs.Save();
     }
@@ -613,6 +641,7 @@ public class GameFlowManager : MonoBehaviour
         money = PlayerPrefs.GetFloat($"slot_{slot}_money", 0f);
         stone = PlayerPrefs.GetInt($"slot_{slot}_stone", 0);
         copper = PlayerPrefs.GetInt($"slot_{slot}_copper", 0);
+        playtimeSeconds = PlayerPrefs.GetFloat($"slot_{slot}_time", 0f);
         SkillTreeManager.LoadSkills(slot);
     }
 
@@ -623,6 +652,38 @@ public class GameFlowManager : MonoBehaviour
 #else
         Application.Quit();
 #endif
+    }
+
+    bool HasSlot(int slot)
+    {
+        return PlayerPrefs.GetInt($"slot_{slot}_exists", 0) == 1;
+    }
+
+    void RefreshSlotUI()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            int slot = i + 1;
+            bool exists = HasSlot(slot);
+            float m = PlayerPrefs.GetFloat($"slot_{slot}_money", 0f);
+            float t = PlayerPrefs.GetFloat($"slot_{slot}_time", 0f);
+            string time = FormatTime(t);
+            if (slotTexts[i] != null)
+            {
+                slotTexts[i].text = exists
+                    ? $"파일 {slot}\n돈: {m:0.0}$\n플레이타임: {time}"
+                    : $"파일 {slot}\n(빈 슬롯)";
+            }
+        }
+        if (slotStatusLabel != null) slotStatusLabel.text = "";
+    }
+
+    string FormatTime(float seconds)
+    {
+        int s = Mathf.FloorToInt(seconds);
+        int m = s / 60;
+        int r = s % 60;
+        return $"{m:00}:{r:00}";
     }
 
     public void SetEndReason(string reason)
