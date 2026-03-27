@@ -41,7 +41,7 @@ public static class SkillEffects
 
     public static void SetForgeCooldownLevel(int level)
     {
-        ForgeCooldownReduction = Mathf.Max(0, level) * 0.1f;
+        ForgeCooldownReduction = Mathf.Max(0, level) * 0.2f;
     }
 
     public static void SetForgeStabilityLevel(int level)

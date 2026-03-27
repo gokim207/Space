@@ -31,6 +31,7 @@ public class GameFlowManager : MonoBehaviour
     private GameObject forgeCopperButton;
     private Text forgeCountdownLabel;
     private Text forgeGainLabel;
+    private Text oddsLabel;
     private float money = 0f;
     private int stone = 0; // total owned
     private int copper = 0;
@@ -64,6 +65,7 @@ public class GameFlowManager : MonoBehaviour
         Instance = this;
         BuildUI();
         SceneManager.sceneLoaded += OnSceneLoaded;
+        EnsureTestSlotMoney();
         if (SceneManager.GetActiveScene().name == "TitleScene")
             ShowTitle();
         else
@@ -267,9 +269,10 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
         rt.sizeDelta = new Vector2(200f, 180f);
-        var t = CreateLabel(go, "0.5x : 20%\n1x : 45%\n2x : 20%\n5x : 10%\n10x : 5%", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 15);
-        t.alignment = TextAnchor.MiddleCenter;
-        t.rectTransform.sizeDelta = new Vector2(170f, 170f);
+        oddsLabel = CreateLabel(go, "", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 15);
+        oddsLabel.alignment = TextAnchor.MiddleCenter;
+        oddsLabel.rectTransform.sizeDelta = new Vector2(170f, 170f);
+        UpdateOddsLabel();
     }
 
     void CreateOreList(GameObject parent, Vector2 anchor, out Text stoneLabel, out Text copperLabel, out GameObject stoneBtn, out GameObject copperBtn)
@@ -296,9 +299,11 @@ public class GameFlowManager : MonoBehaviour
         srt.sizeDelta = new Vector2(200f, 28f);
 
         stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => selectedOre = OreSelect.Stone, new Vector2(-90f, 0f));
+        AddRowButton(stoneRow, () => selectedOre = OreSelect.Stone);
         stoneLabel = CreateLabel(stoneRow, "돌 : 0($1.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 0f), 14);
         stoneLabel.alignment = TextAnchor.MiddleLeft;
         stoneLabel.rectTransform.sizeDelta = new Vector2(170f, 28f);
+        stoneLabel.raycastTarget = false;
 
         // Copper row
         var copperRow = new GameObject("CopperRow");
@@ -311,9 +316,11 @@ public class GameFlowManager : MonoBehaviour
         crt.sizeDelta = new Vector2(200f, 28f);
 
         copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => selectedOre = OreSelect.Copper, new Vector2(-90f, 0f));
+        AddRowButton(copperRow, () => selectedOre = OreSelect.Copper);
         copperLabel = CreateLabel(copperRow, "구리 : 0($10.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 0f), 14);
         copperLabel.alignment = TextAnchor.MiddleLeft;
         copperLabel.rectTransform.sizeDelta = new Vector2(170f, 28f);
+        copperLabel.raycastTarget = false;
     }
 
     GameObject CreateColorButton(GameObject parent, Vector2 anchor, Color color, UnityEngine.Events.UnityAction onClick, Vector2 offset)
@@ -332,6 +339,22 @@ public class GameFlowManager : MonoBehaviour
         rt.sizeDelta = new Vector2(18f, 18f);
         rt.pivot = new Vector2(0f, 0.5f);
         return go;
+    }
+
+    void AddRowButton(GameObject row, UnityEngine.Events.UnityAction onClick)
+    {
+        var go = new GameObject("RowButton");
+        go.transform.SetParent(row.transform, false);
+        go.transform.SetAsLastSibling();
+        var img = go.AddComponent<Image>();
+        img.color = new Color(1f, 1f, 1f, 0.01f);
+        var btn = go.AddComponent<Button>();
+        if (onClick != null) btn.onClick.AddListener(onClick);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
     }
 
     System.Collections.IEnumerator FlashImage(Image img, Color baseColor)
@@ -455,6 +478,10 @@ public class GameFlowManager : MonoBehaviour
             else
                 forgeCountdownLabel.text = $"{forgeCooldown:0.0}s";
         }
+        if (CurrentPhase == GamePhase.Forge)
+        {
+            UpdateOddsLabel();
+        }
 
         // playtime tracking (unscaled)
         if (CurrentPhase == GamePhase.Run || CurrentPhase == GamePhase.Forge || CurrentPhase == GamePhase.SkillTree)
@@ -491,6 +518,17 @@ public class GameFlowManager : MonoBehaviour
         DontDestroyOnLoad(es);
     }
 
+    void EnsureTestSlotMoney()
+    {
+        if (PlayerPrefs.GetInt("slot_1_exists", 0) != 1) return;
+        if (PlayerPrefs.GetInt("slot_1_boosted2", 0) == 1) return;
+        float m = PlayerPrefs.GetFloat("slot_1_money", 0f);
+        m += 10000f;
+        PlayerPrefs.SetFloat("slot_1_money", m);
+        PlayerPrefs.SetInt("slot_1_boosted2", 1);
+        PlayerPrefs.Save();
+    }
+
     void RestartRun()
     {
         Time.timeScale = 1f;
@@ -509,6 +547,7 @@ public class GameFlowManager : MonoBehaviour
     void GoToRunScene()
     {
         Time.timeScale = 1f;
+        if (CurrentSlot >= 1) SaveSlot(CurrentSlot);
         SceneManager.LoadScene("RunScene");
     }
 
@@ -524,6 +563,7 @@ public class GameFlowManager : MonoBehaviour
         }
         if (forgeCopperButton != null) forgeCopperButton.SetActive(SkillEffects.CopperUnlocked);
         if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
+        UpdateOddsLabel();
     }
 
     void TryForge()
@@ -617,6 +657,11 @@ public class GameFlowManager : MonoBehaviour
         CurrentSlot = slot;
         if (slotMode == SlotMode.Save)
         {
+            if (HasSlot(slot))
+            {
+                ShowSlotStatus("이미 저장된 슬롯입니다.\n불러오기를 사용하세요.", slotButtons[slot - 1]?.GetComponent<RectTransform>());
+                return;
+            }
             ResetProgress();
             SaveSlot(slot);
             SceneManager.LoadScene("UpgradeScene");
@@ -676,7 +721,7 @@ public class GameFlowManager : MonoBehaviour
     void QuitGame()
     {
 #if UNITY_EDITOR
-        Debug.Log("Quit");
+        UnityEditor.EditorApplication.isPlaying = false;
 #else
         Application.Quit();
 #endif
@@ -770,6 +815,18 @@ public class GameFlowManager : MonoBehaviour
         forgeGainLabel.color = reset;
         forgeGainLabel.rectTransform.anchoredPosition = start;
         forgeGainLabel.gameObject.SetActive(false);
+    }
+
+    void UpdateOddsLabel()
+    {
+        if (oddsLabel == null) return;
+        float adj = 0.05f * SkillEffects.ForgeStabilityLevel;
+        float p05 = Mathf.Max(0.05f, 0.20f - adj);
+        float p1 = 0.45f;
+        float p2 = Mathf.Min(0.35f, 0.20f + adj);
+        float p5 = 0.10f;
+        float p10 = 0.05f;
+        oddsLabel.text = $"0.5x : {p05 * 100f:0}%\n1x : {p1 * 100f:0}%\n2x : {p2 * 100f:0}%\n5x : {p5 * 100f:0}%\n10x : {p10 * 100f:0}%";
     }
 
     void ShowSlotStatus(string message, RectTransform source)
