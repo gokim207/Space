@@ -29,6 +29,8 @@ public class GameFlowManager : MonoBehaviour
     private Text forgeCopperLabel;
     private GameObject forgeStoneButton;
     private GameObject forgeCopperButton;
+    private Image forgeStoneIconImage;
+    private Image forgeCopperIconImage;
     private Text forgeCountdownLabel;
     private Text forgeGainLabel;
     private Text oddsLabel;
@@ -45,6 +47,12 @@ public class GameFlowManager : MonoBehaviour
     public static int CurrentSlot { get; private set; } = -1;
     private Text slotStatusLabel;
     private Coroutine slotStatusCo;
+    private GameObject confirmPanel;
+    private int pendingDeleteSlot = -1;
+    private readonly string[] skillIds = new[]
+    {
+        "atk","value","copper","forge","anvil","firerate","oxygenkill","oxygenmax","oxygendecay"
+    };
     private Button[] slotButtons = new Button[3];
     private Text[] slotTexts = new Text[3];
     private float playtimeSeconds = 0f;
@@ -159,7 +167,18 @@ public class GameFlowManager : MonoBehaviour
             info.alignment = TextAnchor.MiddleCenter;
             info.rectTransform.sizeDelta = new Vector2(300f, 120f);
             slotTexts[i] = info;
+
+            var delBtn = CreateButton(btnGo, "삭제", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), () => AskDelete(idx + 1));
+            var delRt = delBtn.GetComponent<RectTransform>();
+            delRt.sizeDelta = new Vector2(60f, 30f);
         }
+
+        // Confirm popup
+        confirmPanel = CreatePanel("ConfirmPanel", new Color(0f, 0f, 0f, 0.55f));
+        confirmPanel.SetActive(false);
+        CreateLabel(confirmPanel, "정말 삭제할까요?", new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), Vector2.zero, 22);
+        CreateButton(confirmPanel, "삭제", new Vector2(0.45f, 0.45f), new Vector2(0.45f, 0.45f), new Vector2(-60f, -20f), () => ConfirmDelete(true));
+        CreateButton(confirmPanel, "취소", new Vector2(0.55f, 0.45f), new Vector2(0.55f, 0.45f), new Vector2(60f, -20f), () => ConfirmDelete(false));
     }
 
     GameObject CreatePanel(string name, Color bg)
@@ -298,8 +317,9 @@ public class GameFlowManager : MonoBehaviour
         srt.anchoredPosition = new Vector2(20f, -20f);
         srt.sizeDelta = new Vector2(200f, 28f);
 
-        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => selectedOre = OreSelect.Stone, new Vector2(-90f, 0f));
-        AddRowButton(stoneRow, () => selectedOre = OreSelect.Stone);
+        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => SetSelectedOre(OreSelect.Stone), new Vector2(-90f, 0f));
+        forgeStoneIconImage = stoneBtn.GetComponent<Image>();
+        AddListButton(go.GetComponent<RectTransform>(), srt, () => SetSelectedOre(OreSelect.Stone));
         stoneLabel = CreateLabel(stoneRow, "돌 : 0($1.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 0f), 14);
         stoneLabel.alignment = TextAnchor.MiddleLeft;
         stoneLabel.rectTransform.sizeDelta = new Vector2(170f, 28f);
@@ -315,8 +335,9 @@ public class GameFlowManager : MonoBehaviour
         crt.anchoredPosition = new Vector2(20f, -20f - rowGap);
         crt.sizeDelta = new Vector2(200f, 28f);
 
-        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => selectedOre = OreSelect.Copper, new Vector2(-90f, 0f));
-        AddRowButton(copperRow, () => selectedOre = OreSelect.Copper);
+        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => SetSelectedOre(OreSelect.Copper), new Vector2(-90f, 0f));
+        forgeCopperIconImage = copperBtn.GetComponent<Image>();
+        AddListButton(go.GetComponent<RectTransform>(), crt, () => SetSelectedOre(OreSelect.Copper));
         copperLabel = CreateLabel(copperRow, "구리 : 0($10.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 0f), 14);
         copperLabel.alignment = TextAnchor.MiddleLeft;
         copperLabel.rectTransform.sizeDelta = new Vector2(170f, 28f);
@@ -346,6 +367,7 @@ public class GameFlowManager : MonoBehaviour
         var go = new GameObject("RowButton");
         go.transform.SetParent(row.transform, false);
         go.transform.SetAsLastSibling();
+        go.transform.SetAsLastSibling();
         var img = go.AddComponent<Image>();
         img.color = new Color(1f, 1f, 1f, 0.01f);
         var btn = go.AddComponent<Button>();
@@ -353,8 +375,29 @@ public class GameFlowManager : MonoBehaviour
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero;
+        rt.offsetMin = new Vector2(-140f, 0f);
         rt.offsetMax = Vector2.zero;
+    }
+
+    void AddListButton(RectTransform list, RectTransform row, UnityEngine.Events.UnityAction onClick)
+    {
+        if (list == null || row == null) return;
+        var go = new GameObject("RowClickArea");
+        go.transform.SetParent(list, false);
+        go.transform.SetAsLastSibling();
+        var canvas = go.AddComponent<Canvas>();
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 100;
+        var img = go.AddComponent<Image>();
+        img.color = new Color(1f, 1f, 1f, 0.01f);
+        var btn = go.AddComponent<Button>();
+        if (onClick != null) btn.onClick.AddListener(onClick);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = row.anchorMin;
+        rt.anchorMax = row.anchorMax;
+        rt.pivot = row.pivot;
+        rt.anchoredPosition = row.anchoredPosition + new Vector2(-80f, 0f);
+        rt.sizeDelta = row.sizeDelta + new Vector2(160f, 0f);
     }
 
     System.Collections.IEnumerator FlashImage(Image img, Color baseColor)
@@ -371,6 +414,15 @@ public class GameFlowManager : MonoBehaviour
         img.color = baseColor;
     }
 
+    void SetSelectedOre(OreSelect ore)
+    {
+        selectedOre = ore;
+        if (ore == OreSelect.Stone && forgeStoneIconImage != null)
+            StartCoroutine(FlashImage(forgeStoneIconImage, forgeStoneIconImage.color));
+        if (ore == OreSelect.Copper && forgeCopperIconImage != null)
+            StartCoroutine(FlashImage(forgeCopperIconImage, forgeCopperIconImage.color));
+    }
+
     public void ShowRun()
     {
         CurrentPhase = GamePhase.Run;
@@ -381,6 +433,7 @@ public class GameFlowManager : MonoBehaviour
         skillPanel.SetActive(false);
         titlePanel.SetActive(false);
         slotPanel.SetActive(false);
+        if (confirmPanel != null) confirmPanel.SetActive(false);
         endProcessed = false;
     }
 
@@ -394,6 +447,7 @@ public class GameFlowManager : MonoBehaviour
         skillPanel.SetActive(false);
         titlePanel.SetActive(false);
         slotPanel.SetActive(false);
+        if (confirmPanel != null) confirmPanel.SetActive(false);
         SyncEndResults();
     }
 
@@ -407,6 +461,7 @@ public class GameFlowManager : MonoBehaviour
         skillPanel.SetActive(false);
         titlePanel.SetActive(false);
         slotPanel.SetActive(false);
+        if (confirmPanel != null) confirmPanel.SetActive(false);
         SyncForgeData();
     }
 
@@ -420,6 +475,7 @@ public class GameFlowManager : MonoBehaviour
         skillPanel.SetActive(true);
         titlePanel.SetActive(false);
         slotPanel.SetActive(false);
+        if (confirmPanel != null) confirmPanel.SetActive(false);
     }
 
     public void ShowTitle()
@@ -432,6 +488,7 @@ public class GameFlowManager : MonoBehaviour
         skillPanel.SetActive(false);
         titlePanel.SetActive(true);
         slotPanel.SetActive(false);
+        if (confirmPanel != null) confirmPanel.SetActive(false);
     }
 
     void ShowSlotSelect(SlotMode mode)
@@ -440,6 +497,7 @@ public class GameFlowManager : MonoBehaviour
         CurrentPhase = GamePhase.SlotSelect;
         titlePanel.SetActive(false);
         slotPanel.SetActive(true);
+        if (confirmPanel != null) confirmPanel.SetActive(false);
         RefreshSlotUI();
     }
 
@@ -716,6 +774,47 @@ public class GameFlowManager : MonoBehaviour
         copper = PlayerPrefs.GetInt($"slot_{slot}_copper", 0);
         playtimeSeconds = PlayerPrefs.GetFloat($"slot_{slot}_time", 0f);
         SkillTreeManager.LoadSkills(slot);
+    }
+
+    void DeleteSlot(int slot)
+    {
+        if (!HasSlot(slot))
+        {
+            ShowSlotStatus("빈 슬롯입니다.", slotButtons[slot - 1]?.GetComponent<RectTransform>());
+            return;
+        }
+        PlayerPrefs.DeleteKey($"slot_{slot}_money");
+        PlayerPrefs.DeleteKey($"slot_{slot}_stone");
+        PlayerPrefs.DeleteKey($"slot_{slot}_copper");
+        PlayerPrefs.DeleteKey($"slot_{slot}_time");
+        PlayerPrefs.DeleteKey($"slot_{slot}_exists");
+        PlayerPrefs.DeleteKey($"slot_{slot}_skill_forge");
+        for (int i = 0; i < skillIds.Length; i++)
+        {
+            PlayerPrefs.DeleteKey($"slot_{slot}_skill_{skillIds[i]}");
+        }
+        PlayerPrefs.Save();
+        RefreshSlotUI();
+        ShowSlotStatus("삭제 완료", slotButtons[slot - 1]?.GetComponent<RectTransform>());
+    }
+
+    void AskDelete(int slot)
+    {
+        pendingDeleteSlot = slot;
+        if (confirmPanel != null) confirmPanel.SetActive(true);
+    }
+
+    void ConfirmDelete(bool ok)
+    {
+        if (confirmPanel != null) confirmPanel.SetActive(false);
+        if (!ok)
+        {
+            pendingDeleteSlot = -1;
+            return;
+        }
+        if (pendingDeleteSlot >= 1)
+            DeleteSlot(pendingDeleteSlot);
+        pendingDeleteSlot = -1;
     }
 
     void QuitGame()

@@ -54,13 +54,13 @@ public class SkillTreeManager : MonoBehaviour
         nodes.Clear();
 
         AddNode("atk", "공격력 증가1", "무기의 공격력을 증가시킵니다.\n(+1 고정)", 5, new[] { 1, 5, 25, 125, 625 }, new Vector2(0f, 0f));
-        AddNode("value", "가치 증가1", "모든 광물 가치 증가.\n(레벨마다 1.5배)", 3, new[] { 100, 500, 1000 }, new Vector2(0f, 140f));
+        AddNode("value", "가치 증가1", "모든 광물 가치 증가.\n(레벨마다 1.5배)", 3, new[] { 50, 500, 1000 }, new Vector2(0f, 140f));
         AddNode("copper", "구리 광석", "3웨이브 이후부터 나옵니다.", 1, new[] { 100 }, new Vector2(0f, 280f));
         AddNode("forge", "재련 쿨감 1", "대장간 재련 쿨타임 감소.\n(-0.2s)", 5, new[] { 10, 50, 125, 250, 500 }, new Vector2(-160f, 0f));
         AddNode("anvil", "모루 안정화", "재련 배율 안정화.\n(0.5x -5% / 2x +5%)", 3, new[] { 50, 100, 150 }, new Vector2(-320f, 0f));
         AddNode("firerate", "발사 속도 증가1", "무기 공격 속도 증가.\n(-3%)", 5, new[] { 5, 15, 35, 50, 100 }, new Vector2(0f, -140f));
-        AddNode("oxygenkill", "적 처치 산소 획득1", "소행성 처치 시 산소 획득.\n(+3)", 3, new[] { 10, 300, 1000 }, new Vector2(160f, 0f));
-        AddNode("oxygenmax", "최대 산소 증가1", "최대 산소 증가.\n(+10)", 5, new[] { 100, 200, 300, 400, 500 }, new Vector2(160f, -140f));
+        AddNode("oxygenkill", "적 처치 산소 획득1", "소행성 처치 시 산소 획득.\n(+3)", 3, new[] { 10, 100, 500 }, new Vector2(160f, 0f));
+        AddNode("oxygenmax", "최대 산소 증가1", "최대 산소 증가.\n(+10)", 5, new[] { 50, 100, 250, 400, 500 }, new Vector2(160f, -140f));
         AddNode("oxygendecay", "산소 감소 1", "매초 산소 감소량 완화.\n(-3%)", 3, new[] { 50, 100, 500 }, new Vector2(320f, 0f));
 
         Link("atk", "value");
