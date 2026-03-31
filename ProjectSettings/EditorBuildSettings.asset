@@ -14,6 +14,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/UpgradeScene.unity
     guid: ee18c618983af41f1aac289bce723824
+  - enabled: 1
+    path: Assets/TitleScene.unity
+    guid: ed112d4d620824a64b84f742cbc82309
   m_configObjects:
     com.unity.adaptivePerformance.basic.provider_settings: {fileID: 11400000, guid: f669de32c69a942dc9ae7f2e3adb24ef, type: 2}
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: 0a7d378eb99464320b0143c1145c676a, type: 2}

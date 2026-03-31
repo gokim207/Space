@@ -283,7 +283,8 @@ public class GameFlowManager : MonoBehaviour
     {
         var go = new GameObject("OddsList");
         go.transform.SetParent(parent.transform, false);
-        var rt = go.AddComponent<RectTransform>();
+        var rt = go.GetComponent<RectTransform>();
+        if (rt == null) rt = go.AddComponent<RectTransform>();
         rt.anchorMin = anchor;
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
@@ -298,7 +299,9 @@ public class GameFlowManager : MonoBehaviour
     {
         var go = new GameObject("OreList");
         go.transform.SetParent(parent.transform, false);
-        var rt = go.AddComponent<RectTransform>();
+        go.transform.SetAsLastSibling();
+        var rt = go.GetComponent<RectTransform>();
+        if (rt == null) rt = go.AddComponent<RectTransform>();
         rt.anchorMin = anchor;
         rt.anchorMax = anchor;
         rt.anchoredPosition = Vector2.zero;
@@ -317,9 +320,9 @@ public class GameFlowManager : MonoBehaviour
         srt.anchoredPosition = new Vector2(20f, -20f);
         srt.sizeDelta = new Vector2(200f, 28f);
 
-        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => SetSelectedOre(OreSelect.Stone), new Vector2(-90f, 0f));
+        stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => { Debug.Log("Stone icon clicked"); SetSelectedOre(OreSelect.Stone); }, new Vector2(-90f, 0f));
         forgeStoneIconImage = stoneBtn.GetComponent<Image>();
-        AddListButton(go.GetComponent<RectTransform>(), srt, () => SetSelectedOre(OreSelect.Stone));
+        // click the icon only
         stoneLabel = CreateLabel(stoneRow, "돌 : 0($1.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 0f), 14);
         stoneLabel.alignment = TextAnchor.MiddleLeft;
         stoneLabel.rectTransform.sizeDelta = new Vector2(170f, 28f);
@@ -335,9 +338,9 @@ public class GameFlowManager : MonoBehaviour
         crt.anchoredPosition = new Vector2(20f, -20f - rowGap);
         crt.sizeDelta = new Vector2(200f, 28f);
 
-        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => SetSelectedOre(OreSelect.Copper), new Vector2(-90f, 0f));
+        copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => { Debug.Log("Copper icon clicked"); SetSelectedOre(OreSelect.Copper); }, new Vector2(-90f, 0f));
         forgeCopperIconImage = copperBtn.GetComponent<Image>();
-        AddListButton(go.GetComponent<RectTransform>(), crt, () => SetSelectedOre(OreSelect.Copper));
+        // click the icon only
         copperLabel = CreateLabel(copperRow, "구리 : 0($10.0)", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 0f), 14);
         copperLabel.alignment = TextAnchor.MiddleLeft;
         copperLabel.rectTransform.sizeDelta = new Vector2(170f, 28f);
@@ -357,48 +360,12 @@ public class GameFlowManager : MonoBehaviour
         rt.anchorMin = anchor;
         rt.anchorMax = anchor;
         rt.anchoredPosition = offset;
-        rt.sizeDelta = new Vector2(18f, 18f);
+        rt.sizeDelta = new Vector2(24f, 24f);
         rt.pivot = new Vector2(0f, 0.5f);
         return go;
     }
 
-    void AddRowButton(GameObject row, UnityEngine.Events.UnityAction onClick)
-    {
-        var go = new GameObject("RowButton");
-        go.transform.SetParent(row.transform, false);
-        go.transform.SetAsLastSibling();
-        go.transform.SetAsLastSibling();
-        var img = go.AddComponent<Image>();
-        img.color = new Color(1f, 1f, 1f, 0.01f);
-        var btn = go.AddComponent<Button>();
-        if (onClick != null) btn.onClick.AddListener(onClick);
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(-140f, 0f);
-        rt.offsetMax = Vector2.zero;
-    }
-
-    void AddListButton(RectTransform list, RectTransform row, UnityEngine.Events.UnityAction onClick)
-    {
-        if (list == null || row == null) return;
-        var go = new GameObject("RowClickArea");
-        go.transform.SetParent(list, false);
-        go.transform.SetAsLastSibling();
-        var canvas = go.AddComponent<Canvas>();
-        canvas.overrideSorting = true;
-        canvas.sortingOrder = 100;
-        var img = go.AddComponent<Image>();
-        img.color = new Color(1f, 1f, 1f, 0.01f);
-        var btn = go.AddComponent<Button>();
-        if (onClick != null) btn.onClick.AddListener(onClick);
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = row.anchorMin;
-        rt.anchorMax = row.anchorMax;
-        rt.pivot = row.pivot;
-        rt.anchoredPosition = row.anchoredPosition + new Vector2(-80f, 0f);
-        rt.sizeDelta = row.sizeDelta + new Vector2(160f, 0f);
-    }
+    // (row buttons removed: use icon buttons only)
 
     System.Collections.IEnumerator FlashImage(Image img, Color baseColor)
     {
@@ -788,10 +755,16 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.DeleteKey($"slot_{slot}_copper");
         PlayerPrefs.DeleteKey($"slot_{slot}_time");
         PlayerPrefs.DeleteKey($"slot_{slot}_exists");
-        PlayerPrefs.DeleteKey($"slot_{slot}_skill_forge");
-        for (int i = 0; i < skillIds.Length; i++)
+        var ids = SkillTreeManager.GetSkillIdsFromCsv();
+        if (ids.Count == 0)
         {
-            PlayerPrefs.DeleteKey($"slot_{slot}_skill_{skillIds[i]}");
+            for (int i = 0; i < skillIds.Length; i++)
+                PlayerPrefs.DeleteKey($"slot_{slot}_skill_{skillIds[i]}");
+        }
+        else
+        {
+            for (int i = 0; i < ids.Count; i++)
+                PlayerPrefs.DeleteKey($"slot_{slot}_skill_{ids[i]}");
         }
         PlayerPrefs.Save();
         RefreshSlotUI();

@@ -9,8 +9,11 @@ public class SkillTreeManager : MonoBehaviour
     class Node
     {
         public string id;
+        public string effectKey;
         public string title;
         public string desc;
+        public List<string> values = new List<string>();
+        public List<string> reqs = new List<string>();
         public int maxLevel;
         public int[] costs;
         public Vector2 pos;
@@ -52,25 +55,7 @@ public class SkillTreeManager : MonoBehaviour
     void BuildNodes()
     {
         nodes.Clear();
-
-        AddNode("atk", "공격력 증가1", "무기의 공격력을 증가시킵니다.\n(+1 고정)", 5, new[] { 1, 5, 25, 125, 625 }, new Vector2(0f, 0f));
-        AddNode("value", "가치 증가1", "모든 광물 가치 증가.\n(레벨마다 1.5배)", 3, new[] { 50, 500, 1000 }, new Vector2(0f, 140f));
-        AddNode("copper", "구리 광석", "3웨이브 이후부터 나옵니다.", 1, new[] { 100 }, new Vector2(0f, 280f));
-        AddNode("forge", "재련 쿨감 1", "대장간 재련 쿨타임 감소.\n(-0.2s)", 5, new[] { 10, 50, 125, 250, 500 }, new Vector2(-160f, 0f));
-        AddNode("anvil", "모루 안정화", "재련 배율 안정화.\n(0.5x -5% / 2x +5%)", 3, new[] { 50, 100, 150 }, new Vector2(-320f, 0f));
-        AddNode("firerate", "발사 속도 증가1", "무기 공격 속도 증가.\n(-3%)", 5, new[] { 5, 15, 35, 50, 100 }, new Vector2(0f, -140f));
-        AddNode("oxygenkill", "적 처치 산소 획득1", "소행성 처치 시 산소 획득.\n(+3)", 3, new[] { 10, 100, 500 }, new Vector2(160f, 0f));
-        AddNode("oxygenmax", "최대 산소 증가1", "최대 산소 증가.\n(+10)", 5, new[] { 50, 100, 250, 400, 500 }, new Vector2(160f, -140f));
-        AddNode("oxygendecay", "산소 감소 1", "매초 산소 감소량 완화.\n(-3%)", 3, new[] { 50, 100, 500 }, new Vector2(320f, 0f));
-
-        Link("atk", "value");
-        Link("value", "copper");
-        Link("atk", "forge");
-        Link("forge", "anvil");
-        Link("atk", "firerate");
-        Link("atk", "oxygenkill");
-        Link("oxygenkill", "oxygenmax");
-        Link("oxygenkill", "oxygendecay");
+        LoadNodesFromCsv();
     }
 
     void AddNode(string id, string title, string desc, int maxLevel, int[] costs, Vector2 pos)
@@ -78,6 +63,7 @@ public class SkillTreeManager : MonoBehaviour
         nodes[id] = new Node
         {
             id = id,
+            effectKey = BuildEffectKey(id),
             title = title,
             desc = desc,
             maxLevel = maxLevel,
@@ -86,6 +72,62 @@ public class SkillTreeManager : MonoBehaviour
             level = 0,
             unlocked = false
         };
+    }
+
+    bool LoadNodesFromCsv()
+    {
+        var csv = Resources.Load<TextAsset>("data/skillTree");
+        if (csv == null) return false;
+
+        var lines = csv.text.Split('\n');
+        var pendingLinks = new List<(string from, string to)>();
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
+            if (i == 0 && line.ToLower().StartsWith("id,")) continue;
+
+            var cols = ParseCsvLine(line);
+            if (cols.Count < 9) continue;
+
+            string id = cols[0].Trim();
+            string title = cols[1].Trim();
+            string desc = cols[2].Replace("\\n", "\n").Trim();
+            int maxLevel = SafeInt(cols[3], 1);
+            int[] costs = ParseIntList(cols[4]);
+            string valuesRaw = cols[5].Trim();
+            string reqs = cols[6].Trim();
+            float posX = SafeFloat(cols[7], 0f);
+            float posY = SafeFloat(cols[8], 0f);
+
+            AddNode(id, title, desc, maxLevel, costs, new Vector2(posX, posY));
+            if (nodes.TryGetValue(id, out var node))
+            {
+                node.values = ParseStringList(valuesRaw);
+                node.reqs = ParseStringList(reqs);
+            }
+
+            if (!string.IsNullOrWhiteSpace(reqs) && !reqs.Equals("none"))
+            {
+                foreach (var link in reqs.Split('|'))
+                {
+                    var t = link.Trim();
+                    if (t.Length > 0) pendingLinks.Add((id, t));
+                }
+            }
+        }
+
+        var done = new HashSet<string>();
+        foreach (var p in pendingLinks)
+        {
+            if (!nodes.ContainsKey(p.from) || !nodes.ContainsKey(p.to)) continue;
+            string key = string.CompareOrdinal(p.from, p.to) < 0 ? p.from + "-" + p.to : p.to + "-" + p.from;
+            if (done.Contains(key)) continue;
+            done.Add(key);
+            Link(p.from, p.to);
+        }
+
+        return nodes.Count > 0;
     }
 
     void Link(string a, string b)
@@ -195,29 +237,38 @@ public class SkillTreeManager : MonoBehaviour
 
     void ApplySkillEffects()
     {
-        SkillEffects.SetDamageLevel(nodes["atk"].level);
-        SkillEffects.SetValueLevel(nodes["value"].level);
-        SkillEffects.SetCopperLevel(nodes["copper"].level);
-        SkillEffects.SetFireRateLevel(nodes["firerate"].level);
-        SkillEffects.SetForgeCooldownLevel(nodes["forge"].level);
-        SkillEffects.SetForgeStabilityLevel(nodes["anvil"].level);
-        SkillEffects.SetOxygenOnKillLevel(nodes["oxygenkill"].level);
-        SkillEffects.SetMaxOxygenLevel(nodes["oxygenmax"].level);
-        SkillEffects.SetOxygenDecayLevel(nodes["oxygendecay"].level);
+        int L(string key) => GetLevelByEffectKey(key);
+        SkillEffects.SetDamageLevel(L("atk"));
+        SkillEffects.SetValueLevel(L("value"));
+        SkillEffects.SetCopperLevel(L("copper"));
+        SkillEffects.SetFireRateLevel(L("firerate"));
+        SkillEffects.SetForgeCooldownLevel(L("forge"));
+        SkillEffects.SetForgeStabilityLevel(L("anvil"));
+        SkillEffects.SetOxygenOnKillLevel(L("oxygenkill"));
+        SkillEffects.SetMaxOxygenLevel(L("oxygenmax"));
+        SkillEffects.SetOxygenDecayLevel(L("oxygendecay"));
     }
 
     void RefreshUnlocks()
     {
         foreach (var n in nodes.Values) n.unlocked = false;
-        nodes["atk"].unlocked = true;
         foreach (var n in nodes.Values)
         {
-            if (n.level > 0)
+            if (n.reqs.Count == 0)
             {
                 n.unlocked = true;
-                foreach (var link in n.links)
-                    nodes[link].unlocked = true;
+                continue;
             }
+            bool ok = true;
+            foreach (var r in n.reqs)
+            {
+                if (!nodes.ContainsKey(r) || nodes[r].level <= 0)
+                {
+                    ok = false;
+                    break;
+                }
+            }
+            n.unlocked = ok;
         }
     }
 
@@ -250,12 +301,133 @@ public class SkillTreeManager : MonoBehaviour
     void ShowTooltip(Node n)
     {
         hoverNode = n;
-        tooltipText.text = $"{n.title}\n{n.desc}\n레벨 {n.level}/{n.maxLevel}\n비용: {NextCost(n)}$";
+        string valueText = NextValue(n);
+        string extra = string.IsNullOrEmpty(valueText) ? "" : $"\n효과: {valueText}";
+        tooltipText.text = $"{n.title}\n{n.desc}{extra}\n레벨 {n.level}/{n.maxLevel}\n비용: {NextCost(n)}$";
         var pos = n.image.rectTransform.anchoredPosition;
         var rt = tooltip.GetComponent<RectTransform>();
         rt.anchoredPosition = pos + new Vector2(0f, 90f);
         tooltip.SetActive(true);
         tooltip.transform.SetAsLastSibling();
+    }
+
+    int GetLevelByEffectKey(string key)
+    {
+        int level = 0;
+        foreach (var n in nodes.Values)
+        {
+            if (n.effectKey == key)
+                level = Mathf.Max(level, n.level);
+        }
+        return level;
+    }
+
+    string NextValue(Node n)
+    {
+        if (n.values == null || n.values.Count == 0) return "";
+        int idx = Mathf.Clamp(n.level, 0, n.values.Count - 1);
+        return n.values[idx];
+    }
+
+    static string BuildEffectKey(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return id;
+        int i = id.Length - 1;
+        while (i >= 0 && char.IsDigit(id[i])) i--;
+        return id.Substring(0, i + 1);
+    }
+
+    static List<string> ParseStringList(string s)
+    {
+        var list = new List<string>();
+        if (string.IsNullOrWhiteSpace(s) || s.Equals("none")) return list;
+        foreach (var p in s.Split('|'))
+        {
+            var t = p.Trim();
+            if (t.Length > 0) list.Add(t);
+        }
+        return list;
+    }
+
+    static List<string> ParseCsvLine(string line)
+    {
+        var result = new List<string>();
+        if (line == null) return result;
+        bool inQuotes = false;
+        var cur = new System.Text.StringBuilder();
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            if (c == '"')
+            {
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    cur.Append('"');
+                    i++;
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                result.Add(cur.ToString());
+                cur.Length = 0;
+            }
+            else
+            {
+                cur.Append(c);
+            }
+        }
+        result.Add(cur.ToString());
+        return result;
+    }
+
+    static int[] ParseIntList(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return new int[] { 0 };
+        var parts = s.Split('|');
+        var list = new List<int>();
+        foreach (var p in parts)
+        {
+            if (int.TryParse(p.Trim(), out var v)) list.Add(v);
+        }
+        if (list.Count == 0) list.Add(0);
+        return list.ToArray();
+    }
+
+    static int SafeInt(string s, int def)
+    {
+        if (int.TryParse(s.Trim(), out var v)) return v;
+        return def;
+    }
+
+    static float SafeFloat(string s, float def)
+    {
+        if (float.TryParse(s.Trim(), out var v)) return v;
+        return def;
+    }
+
+    public static List<string> GetSkillIdsFromCsv()
+    {
+        var csv = Resources.Load<TextAsset>("data/skillTree");
+        var ids = new List<string>();
+        if (csv == null) return ids;
+        var lines = csv.text.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
+            if (i == 0 && line.ToLower().StartsWith("id,")) continue;
+            var cols = ParseCsvLine(line);
+            if (cols.Count > 0)
+            {
+                var id = cols[0].Trim();
+                if (id.Length > 0) ids.Add(id);
+            }
+        }
+        return ids;
     }
 
     void HideTooltip()
