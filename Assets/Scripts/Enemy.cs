@@ -2,12 +2,11 @@ using UnityEngine;
 
 public class Enemy : MonoBehaviour
 {
-    public enum OreType { Stone, Copper }
     public int maxHP = 1;
     int hp;
     public int oreDrop = 1;
     public float oxygenGain = 0f; // base oxygen gain; skills add extra
-    public OreType oreType = OreType.Stone;
+    public string oreId = "stone";
     public float moveSpeed = 1f;
     public float contactRadius = 0.5f;
     public Transform target;
@@ -110,7 +109,7 @@ public class Enemy : MonoBehaviour
         // Notify wave manager
         if (waveManager != null)
         {
-            waveManager.OnEnemyKilled(oreDrop, oxygenGain, oreType);
+            waveManager.OnEnemyKilled(oreDrop, oxygenGain, oreId);
         }
         Destroy(gameObject);
     }

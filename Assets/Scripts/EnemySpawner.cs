@@ -122,6 +122,11 @@ public class EnemySpawner : MonoBehaviour
     public void OnWaveStarted(int wave)
     {
         int count = Random.Range(5, 11);
+        var waveDef = GameData.GetWave(wave);
+        if (waveDef != null && waveDef.spawnCountMin > 0 && waveDef.spawnCountMax >= waveDef.spawnCountMin)
+        {
+            count = Random.Range(waveDef.spawnCountMin, waveDef.spawnCountMax + 1);
+        }
         for (int i = 0; i < count; i++)
         {
             SpawnEnemy();
@@ -178,25 +183,27 @@ public class EnemySpawner : MonoBehaviour
                 e.moveSpeed = 1f;
                 Debug.Log("Spawned enemy moveSpeed was 0, reset to 1f for testing.");
             }
-            // Copper ore enemies (unlocked, wave>=3, 20%)
             int wave = waveManager != null ? waveManager.currentWave : 1;
-            bool copper = false;
-            if (SkillEffects.CopperUnlocked && wave >= 3)
-                copper = Random.value < 0.20f;
-            e.oreType = copper ? Enemy.OreType.Copper : Enemy.OreType.Stone;
-
-            // Apply wave scaling (copper has 2x HP)
+            var def = PickEnemyDef(wave);
             int scaledHp = Mathf.Max(1, baseHP + (wave - 1) * hpPerWave);
-            if (copper) scaledHp *= 2;
             float scaledSpeed = Mathf.Max(0.1f, baseMoveSpeed + (wave - 1) * speedPerWave);
+            Color enemyColor = new Color(0.15f, 0.15f, 0.15f);
+            string oreId = "stone";
+            if (def != null)
+            {
+                scaledHp = Mathf.Max(1, def.baseHP + (wave - 1) * def.hpPerWave);
+                scaledSpeed = Mathf.Max(0.1f, def.baseSpeed + (wave - 1) * def.speedPerWave);
+                enemyColor = def.color;
+                if (!string.IsNullOrEmpty(def.dropOreId)) oreId = def.dropOreId;
+            }
+            e.oreId = oreId;
             e.ApplyStats(scaledHp, scaledSpeed);
             // Make spawned enemy visible and ensure it renders on top of planet
             var sr = e.GetComponent<SpriteRenderer>();
             if (sr != null)
             {
                 sr.enabled = true;
-                var c = copper ? new Color(0.72f, 0.45f, 0.2f) : new Color(0.15f, 0.15f, 0.15f);
-                e.SetBaseColor(c);
+                e.SetBaseColor(enemyColor);
                 // Force visible: put on high order in layer and ignore sprite masks
                 try
                 {
@@ -215,5 +222,26 @@ public class EnemySpawner : MonoBehaviour
             else
                 go.transform.localScale = Vector3.one;
         }
+    }
+
+    GameData.EnemyDef PickEnemyDef(int wave)
+    {
+        int totalWeight = 0;
+        var list = new System.Collections.Generic.List<GameData.EnemyDef>();
+        foreach (var def in GameData.GetAvailableEnemies(wave))
+        {
+            if (def.spawnWeight <= 0) continue;
+            totalWeight += def.spawnWeight;
+            list.Add(def);
+        }
+        if (list.Count == 0 || totalWeight <= 0) return null;
+        int r = Random.Range(0, totalWeight);
+        int acc = 0;
+        foreach (var def in list)
+        {
+            acc += def.spawnWeight;
+            if (r < acc) return def;
+        }
+        return list[0];
     }
 }

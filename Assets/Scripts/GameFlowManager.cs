@@ -487,7 +487,7 @@ public class GameFlowManager : MonoBehaviour
         }
         if (oreResultLabel != null && waveManager != null && (CurrentPhase == GamePhase.End))
         {
-            if (SkillEffects.CopperUnlocked)
+            if (IsMineralUnlocked("copper"))
                 oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})\n구리 : +{runCopperGained} (총 {copper})";
             else
                 oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
@@ -578,15 +578,15 @@ public class GameFlowManager : MonoBehaviour
 
     void SyncForgeData()
     {
-        float stoneValue = 1f * SkillEffects.ValueMultiplier;
-        float copperValue = 10f * SkillEffects.ValueMultiplier;
+        float stoneValue = GetMineralValue("stone", 1f) * SkillEffects.ValueMultiplier;
+        float copperValue = GetMineralValue("copper", 10f) * SkillEffects.ValueMultiplier;
         if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${stoneValue:0.0})";
         if (forgeCopperLabel != null)
         {
             forgeCopperLabel.text = $"구리 : {copper}(${copperValue:0.0})";
-            forgeCopperLabel.gameObject.SetActive(SkillEffects.CopperUnlocked);
+            forgeCopperLabel.gameObject.SetActive(IsMineralUnlocked("copper"));
         }
-        if (forgeCopperButton != null) forgeCopperButton.SetActive(SkillEffects.CopperUnlocked);
+        if (forgeCopperButton != null) forgeCopperButton.SetActive(IsMineralUnlocked("copper"));
         if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
         UpdateOddsLabel();
     }
@@ -601,7 +601,8 @@ public class GameFlowManager : MonoBehaviour
         forgeCooldown = Mathf.Max(0.5f, 5.0f - SkillEffects.ForgeCooldownReduction);
 
         float multiplier = RollForgeMultiplier();
-        float baseValue = (selectedOre == OreSelect.Stone ? 1f : 10f) * SkillEffects.ValueMultiplier;
+        string oreId = selectedOre == OreSelect.Stone ? "stone" : "copper";
+        float baseValue = GetMineralValue(oreId, selectedOre == OreSelect.Stone ? 1f : 10f) * SkillEffects.ValueMultiplier;
         float gain = baseValue * multiplier;
         money += gain;
 
@@ -622,15 +623,15 @@ public class GameFlowManager : MonoBehaviour
             copper -= 1;
             if (copper < 0) copper = 0;
         }
-        float stoneValue = 1f * SkillEffects.ValueMultiplier;
-        float copperValue = 10f * SkillEffects.ValueMultiplier;
+        float stoneValue = GetMineralValue("stone", 1f) * SkillEffects.ValueMultiplier;
+        float copperValue = GetMineralValue("copper", 10f) * SkillEffects.ValueMultiplier;
         if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${stoneValue:0.0})";
         if (forgeCopperLabel != null)
         {
             forgeCopperLabel.text = $"구리 : {copper}(${copperValue:0.0})";
-            forgeCopperLabel.gameObject.SetActive(SkillEffects.CopperUnlocked);
+            forgeCopperLabel.gameObject.SetActive(IsMineralUnlocked("copper"));
         }
-        if (forgeCopperButton != null) forgeCopperButton.SetActive(SkillEffects.CopperUnlocked);
+        if (forgeCopperButton != null) forgeCopperButton.SetActive(IsMineralUnlocked("copper"));
         if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
         // no persistence during testing
 
@@ -669,7 +670,7 @@ public class GameFlowManager : MonoBehaviour
         endProcessed = true;
         if (oreResultLabel != null)
         {
-            if (SkillEffects.CopperUnlocked)
+            if (IsMineralUnlocked("copper"))
                 oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})\n구리 : +{runCopperGained} (총 {copper})";
             else
                 oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
@@ -839,22 +840,38 @@ public class GameFlowManager : MonoBehaviour
 
     float RollForgeMultiplier()
     {
-        float r = Random.Range(0f, 1f);
-        float adj = 0.05f * SkillEffects.ForgeStabilityLevel;
-        float p05 = Mathf.Max(0.05f, 0.20f - adj);
-        float p1 = 0.45f;
-        float p2 = Mathf.Min(0.35f, 0.20f + adj);
-        float p5 = 0.10f;
-        float p10 = 0.05f;
-        float c1 = p05;
-        float c2 = c1 + p1;
-        float c3 = c2 + p2;
-        float c4 = c3 + p5;
-        if (r < c1) return 0.5f;
-        if (r < c2) return 1f;
-        if (r < c3) return 2f;
-        if (r < c4) return 5f;
-        return 10f;
+        var entries = GameData.GetForgeEntries();
+        if (entries == null || entries.Count == 0)
+        {
+            float r = Random.Range(0f, 1f);
+            float adj = 0.05f * SkillEffects.ForgeStabilityLevel;
+            float p05 = Mathf.Max(0.05f, 0.20f - adj);
+            float p1 = 0.45f;
+            float p2 = Mathf.Min(0.35f, 0.20f + adj);
+            float p5 = 0.10f;
+            float p10 = 0.05f;
+            float c1 = p05;
+            float c2 = c1 + p1;
+            float c3 = c2 + p2;
+            float c4 = c3 + p5;
+            if (r < c1) return 0.5f;
+            if (r < c2) return 1f;
+            if (r < c3) return 2f;
+            if (r < c4) return 5f;
+            return 10f;
+        }
+
+        int total = 0;
+        foreach (var e in entries) total += GetAdjustedForgeWeight(e);
+        if (total <= 0) return 1f;
+        int pick = Random.Range(0, total);
+        int acc = 0;
+        foreach (var e in entries)
+        {
+            acc += GetAdjustedForgeWeight(e);
+            if (pick < acc) return e.multiplier;
+        }
+        return entries[0].multiplier;
     }
 
     System.Collections.IEnumerator ForgeCooldown()
@@ -892,13 +909,53 @@ public class GameFlowManager : MonoBehaviour
     void UpdateOddsLabel()
     {
         if (oddsLabel == null) return;
-        float adj = 0.05f * SkillEffects.ForgeStabilityLevel;
-        float p05 = Mathf.Max(0.05f, 0.20f - adj);
-        float p1 = 0.45f;
-        float p2 = Mathf.Min(0.35f, 0.20f + adj);
-        float p5 = 0.10f;
-        float p10 = 0.05f;
-        oddsLabel.text = $"0.5x : {p05 * 100f:0}%\n1x : {p1 * 100f:0}%\n2x : {p2 * 100f:0}%\n5x : {p5 * 100f:0}%\n10x : {p10 * 100f:0}%";
+        var entries = GameData.GetForgeEntries();
+        if (entries == null || entries.Count == 0)
+        {
+            float adj = 0.05f * SkillEffects.ForgeStabilityLevel;
+            float p05 = Mathf.Max(0.05f, 0.20f - adj);
+            float p1 = 0.45f;
+            float p2 = Mathf.Min(0.35f, 0.20f + adj);
+            float p5 = 0.10f;
+            float p10 = 0.05f;
+            oddsLabel.text = $"0.5x : {p05 * 100f:0}%\n1x : {p1 * 100f:0}%\n2x : {p2 * 100f:0}%\n5x : {p5 * 100f:0}%\n10x : {p10 * 100f:0}%";
+            return;
+        }
+        int total = 0;
+        foreach (var e in entries) total += GetAdjustedForgeWeight(e);
+        if (total <= 0) return;
+        var lines = new System.Text.StringBuilder();
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var e = entries[i];
+            float pct = (float)GetAdjustedForgeWeight(e) / total * 100f;
+            string mult = e.multiplier.ToString("0.##");
+            lines.Append($"{mult}x : {pct:0}%");
+            if (i < entries.Count - 1) lines.Append("\n");
+        }
+        oddsLabel.text = lines.ToString();
+    }
+
+    float GetMineralValue(string id, float fallback)
+    {
+        return GameData.GetMineralValue(id, fallback);
+    }
+
+    bool IsMineralUnlocked(string id)
+    {
+        var m = GameData.GetMineral(id);
+        if (m == null) return false;
+        return GameData.IsSkillUnlocked(m.reqSkill);
+    }
+
+    int GetAdjustedForgeWeight(GameData.ForgeEntry entry)
+    {
+        if (entry == null) return 0;
+        int w = entry.baseWeight;
+        int delta = SkillEffects.ForgeStabilityLevel * 5;
+        if (entry.id == "x0_5") w = Mathf.Max(5, w - delta);
+        if (entry.id == "x2") w = Mathf.Min(35, w + delta);
+        return Mathf.Max(0, w);
     }
 
     void ShowSlotStatus(string message, RectTransform source)

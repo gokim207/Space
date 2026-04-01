@@ -1,0 +1,3 @@
+id,baseHP,hpPerWave,baseSpeed,speedPerWave,spawnWeight,dropOreId,minWave,reqSkill,colorRGB,desc
+enemy_stone,2,1,1,0.05,100,stone,1,none,0.15|0.15|0.15,기본 소행성
+enemy_copper,4,2,1,0.1,25,copper,3,copper,0.72|0.45|0.20,구리 함유 소행성

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -24,6 +25,7 @@ public class WaveManager : MonoBehaviour
     public int oresCollectedThisRun = 0;
     public int oresCollectedStone = 0;
     public int oresCollectedCopper = 0;
+    public Dictionary<string, int> oresCollectedById = new Dictionary<string, int>();
     private bool endSequenceStarted = false;
     // UI
     public Text waveText;
@@ -75,9 +77,11 @@ public class WaveManager : MonoBehaviour
         baseFireInterval = fireInterval;
         currentWave = 1;
         waveTimer = 0f;
+        ApplyWaveConfig(currentWave);
         oresCollectedThisRun = 0;
         oresCollectedStone = 0;
         oresCollectedCopper = 0;
+        oresCollectedById.Clear();
         if (spawner != null) spawner.waveManager = this;
         else
         {
@@ -191,9 +195,11 @@ public class WaveManager : MonoBehaviour
     void AdvanceWave()
     {
         currentWave++;
+        ApplyWaveConfig(currentWave);
         Debug.Log($"웨이브 진행: {currentWave}");
         if (spawner != null) spawner.OnWaveStarted(currentWave);
-        if (currentWave % 5 == 0)
+        var waveDef = GameData.GetWave(currentWave);
+        if (waveDef != null && waveDef.isBossWave)
         {
             // spawn boss
             SpawnBoss();
@@ -208,12 +214,17 @@ public class WaveManager : MonoBehaviour
         // Actual boss prefab logic can be added later
     }
 
-    public void OnEnemyKilled(int ore, float oxygen, Enemy.OreType oreType)
+    public void OnEnemyKilled(int ore, float oxygen, string oreId)
     {
         oresCollectedThisRun += ore;
-        if (oreType == Enemy.OreType.Copper)
+        if (!string.IsNullOrEmpty(oreId))
+        {
+            if (!oresCollectedById.ContainsKey(oreId)) oresCollectedById[oreId] = 0;
+            oresCollectedById[oreId] += ore;
+        }
+        if (oreId == "copper")
             oresCollectedCopper += ore;
-        else
+        else if (oreId == "stone")
             oresCollectedStone += ore;
         if (oxygenSystem != null)
         {
@@ -278,6 +289,13 @@ public class WaveManager : MonoBehaviour
     {
         if (waveText != null) waveText.text = $"Wave : {currentWave}";
         if (waveTimerText != null) waveTimerText.text = $"{Mathf.CeilToInt(waveDuration - waveTimer)}s";
+    }
+
+    void ApplyWaveConfig(int wave)
+    {
+        var cfg = GameData.GetWave(wave);
+        if (cfg != null && cfg.duration > 0f)
+            waveDuration = cfg.duration;
     }
 
     void RefreshOreUI()
