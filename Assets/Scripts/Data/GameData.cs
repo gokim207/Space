@@ -138,7 +138,8 @@ public static class GameData
     public static bool IsSkillUnlocked(string reqSkillId)
     {
         if (string.IsNullOrEmpty(reqSkillId)) return true;
-        if (reqSkillId == "copper1") return SkillEffects.CopperUnlocked;
+        if (reqSkillId == "none") return true;
+        if (reqSkillId == "copper1" || reqSkillId == "copper") return SkillEffects.CopperUnlocked;
         if (!warnedSkills.Contains(reqSkillId))
         {
             warnedSkills.Add(reqSkillId);
@@ -249,7 +250,7 @@ public static class GameData
 
     static void LoadMinerals()
     {
-        var table = LoadCsv("data/minerals");
+        var table = LoadCsv("data/stone");
         if (table == null) return;
         foreach (var row in table.Rows)
         {
@@ -268,7 +269,7 @@ public static class GameData
 
     static void LoadEnemies()
     {
-        var table = LoadCsv("data/enemies");
+        var table = LoadCsv("data/enemy");
         if (table == null) return;
         foreach (var row in table.Rows)
         {
@@ -290,7 +291,7 @@ public static class GameData
 
     static void LoadWaves()
     {
-        var table = LoadCsv("data/waves");
+        var table = LoadCsv("data/wave");
         if (table == null) return;
         foreach (var row in table.Rows)
         {
@@ -300,6 +301,8 @@ public static class GameData
             w.spawnCountMin = table.GetInt(row, "spawnCountMin");
             w.spawnCountMax = table.GetInt(row, "spawnCountMax");
             w.difficultyMultiplier = table.GetFloat(row, "difficultyMultiplier");
+            if (w.difficultyMultiplier == 0f)
+                w.difficultyMultiplier = table.GetFloat(row, "difficultyMult");
             w.isBossWave = table.GetBool(row, "isBossWave");
             w.desc = table.Get(row, "desc");
             if (w.wave > 0) waves[w.wave] = w;
@@ -308,7 +311,7 @@ public static class GameData
 
     static void LoadForgeTable()
     {
-        var table = LoadCsv("data/forgeTable");
+        var table = LoadCsv("data/forge");
         if (table == null) return;
         foreach (var row in table.Rows)
         {

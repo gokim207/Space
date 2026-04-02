@@ -945,8 +945,8 @@ public class GameFlowManager : MonoBehaviour
         if (entry == null) return 0;
         int w = entry.baseWeight;
         int delta = SkillEffects.ForgeStabilityLevel * 5;
-        if (entry.id == "x0_5") w = Mathf.Max(5, w - delta);
-        if (entry.id == "x2") w = Mathf.Min(35, w + delta);
+        if (Mathf.Abs(entry.multiplier - 0.5f) < 0.001f) w = Mathf.Max(5, w - delta);
+        if (Mathf.Abs(entry.multiplier - 2.0f) < 0.001f) w = Mathf.Min(35, w + delta);
         return Mathf.Max(0, w);
     }
 
