@@ -87,6 +87,18 @@ public static class GameData
         public string desc;
     }
 
+    public class OxygenDef
+    {
+        public string oxygenId;
+        public float startOxygen;
+        public float maxOxygen;
+        public float decreaseInterval;
+        public float decayMin;
+        public float decayMax;
+        public float killReward;
+        public string desc;
+    }
+
     public class SkillEffectDef
     {
         public string skillId;
@@ -107,6 +119,7 @@ public static class GameData
     static Dictionary<string, EnemySpawnDef> enemySpawns = new Dictionary<string, EnemySpawnDef>();
     static Dictionary<string, WeaponDef> weapons = new Dictionary<string, WeaponDef>();
     static Dictionary<string, ProjectileDef> projectiles = new Dictionary<string, ProjectileDef>();
+    static Dictionary<string, OxygenDef> oxygenDefs = new Dictionary<string, OxygenDef>();
     static List<SkillEffectDef> skillEffects = new List<SkillEffectDef>();
     static HashSet<string> warnedSkills = new HashSet<string>();
 
@@ -184,6 +197,14 @@ public static class GameData
         return p;
     }
 
+    public static OxygenDef GetOxygen(string oxygenId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(oxygenId)) return null;
+        oxygenDefs.TryGetValue(oxygenId, out var o);
+        return o;
+    }
+
     public static List<SkillEffectDef> GetSkillEffects()
     {
         EnsureLoaded();
@@ -201,6 +222,7 @@ public static class GameData
         LoadEnemySpawns();
         LoadWeapons();
         LoadProjectiles();
+        LoadOxygen();
         LoadSkillEffects();
     }
 
@@ -336,6 +358,26 @@ public static class GameData
             p.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(p.projectileId))
                 projectiles[p.projectileId] = p;
+        }
+    }
+
+    static void LoadOxygen()
+    {
+        var table = LoadCsv("data/oxygen");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var o = new OxygenDef();
+            o.oxygenId = table.Get(row, "oxygenId");
+            o.startOxygen = table.GetFloat(row, "startOxygen");
+            o.maxOxygen = table.GetFloat(row, "maxOxygen");
+            o.decreaseInterval = table.GetFloat(row, "decreaseInterval");
+            o.decayMin = table.GetFloat(row, "decayMin");
+            o.decayMax = table.GetFloat(row, "decayMax");
+            o.killReward = table.GetFloat(row, "killReward");
+            o.desc = table.Get(row, "desc");
+            if (!string.IsNullOrEmpty(o.oxygenId))
+                oxygenDefs[o.oxygenId] = o;
         }
     }
 

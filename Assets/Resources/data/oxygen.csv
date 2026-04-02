@@ -1,0 +1,3 @@
+oxygenId,startOxygen,maxOxygen,decreaseInterval,decayMin,decayMax,killReward,desc
+default,30,100,1,0.8,1.5,2,기본 생존 산소 설정
+hardcore,20,80,0.8,1,2,1.5,하드 모드용 (더 빨리 닳고 덜 회복됨)

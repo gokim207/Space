@@ -9,6 +9,10 @@ public class OxygenSystem : MonoBehaviour
     public float oxygenDecreaseInterval = 1f;
     private float timer;
     public WaveManager waveManager;
+    public string oxygenId = "default";
+    public float killReward = 0f;
+    public float decayMin = 0.8f;
+    public float decayMax = 1.5f;
     // UI
     public Image oxygenFill; // assign Image with Fill method
     public Text oxygenText; // optional numeric text
@@ -16,9 +20,10 @@ public class OxygenSystem : MonoBehaviour
 
     void Awake()
     {
+        ApplyOxygenConfig();
         currentOxygen = startOxygen + SkillEffects.MaxOxygenBonus;
         timer = 0f;
-        maxOxygen = startOxygen + SkillEffects.MaxOxygenBonus;
+        maxOxygen = (maxOxygen > 0f ? maxOxygen : startOxygen) + SkillEffects.MaxOxygenBonus;
     }
 
     void Start()
@@ -35,7 +40,7 @@ public class OxygenSystem : MonoBehaviour
         if (timer >= oxygenDecreaseInterval)
         {
             timer = 0f;
-            float dec = Random.Range(0.8f, 1.5f) * SkillEffects.OxygenDecayMultiplier;
+            float dec = Random.Range(decayMin, decayMax) * SkillEffects.OxygenDecayMultiplier;
             ChangeOxygen(-dec);
         }
     }
@@ -53,6 +58,18 @@ public class OxygenSystem : MonoBehaviour
         }
         RefreshUI();
         // TODO: UI 갱신
+    }
+
+    void ApplyOxygenConfig()
+    {
+        var def = GameData.GetOxygen(oxygenId);
+        if (def == null) return;
+        if (def.startOxygen > 0f) startOxygen = def.startOxygen;
+        if (def.maxOxygen > 0f) maxOxygen = def.maxOxygen;
+        if (def.decreaseInterval > 0f) oxygenDecreaseInterval = def.decreaseInterval;
+        if (def.decayMin > 0f) decayMin = def.decayMin;
+        if (def.decayMax > 0f) decayMax = def.decayMax;
+        killReward = def.killReward;
     }
 
     void RefreshUI()
