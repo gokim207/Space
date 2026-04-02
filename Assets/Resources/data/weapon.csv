@@ -1,0 +1,5 @@
+weaponId,damage,fireInterval,bulletSpeed,detectRange,pierceCount,projCount,desc
+starter_gun,5,0.5,15,12,0,1,기본 권총 (단발)
+machine_gun,3,0.1,20,10,0,1,"빠른 연사, 낮은 데미지"
+sniper_rail,20,2,40,20,5,1,"긴 사거리, 다수 관통"
+multi_shot,4,0.8,12,10,1,3,부채꼴로 3발 동시 발사

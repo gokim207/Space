@@ -63,6 +63,18 @@ public static class GameData
         public string desc;
     }
 
+    public class WeaponDef
+    {
+        public string weaponId;
+        public int damage;
+        public float fireInterval;
+        public float bulletSpeed;
+        public float detectRange;
+        public int pierceCount;
+        public int projCount;
+        public string desc;
+    }
+
     public class SkillEffectDef
     {
         public string skillId;
@@ -81,6 +93,7 @@ public static class GameData
     static Dictionary<int, WaveDef> waves = new Dictionary<int, WaveDef>();
     static List<ForgeEntry> forgeEntries = new List<ForgeEntry>();
     static Dictionary<string, EnemySpawnDef> enemySpawns = new Dictionary<string, EnemySpawnDef>();
+    static Dictionary<string, WeaponDef> weapons = new Dictionary<string, WeaponDef>();
     static List<SkillEffectDef> skillEffects = new List<SkillEffectDef>();
     static HashSet<string> warnedSkills = new HashSet<string>();
 
@@ -142,6 +155,14 @@ public static class GameData
         return s;
     }
 
+    public static WeaponDef GetWeapon(string weaponId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(weaponId)) return null;
+        weapons.TryGetValue(weaponId, out var w);
+        return w;
+    }
+
     public static List<SkillEffectDef> GetSkillEffects()
     {
         EnsureLoaded();
@@ -157,6 +178,7 @@ public static class GameData
         LoadWaves();
         LoadForgeTable();
         LoadEnemySpawns();
+        LoadWeapons();
         LoadSkillEffects();
     }
 
@@ -252,6 +274,26 @@ public static class GameData
             s.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(s.spawnId))
                 enemySpawns[s.spawnId] = s;
+        }
+    }
+
+    static void LoadWeapons()
+    {
+        var table = LoadCsv("data/weapon");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var w = new WeaponDef();
+            w.weaponId = table.Get(row, "weaponId");
+            w.damage = table.GetInt(row, "damage");
+            w.fireInterval = table.GetFloat(row, "fireInterval");
+            w.bulletSpeed = table.GetFloat(row, "bulletSpeed");
+            w.detectRange = table.GetFloat(row, "detectRange");
+            w.pierceCount = table.GetInt(row, "pierceCount");
+            w.projCount = table.GetInt(row, "projCount");
+            w.desc = table.Get(row, "desc");
+            if (!string.IsNullOrEmpty(w.weaponId))
+                weapons[w.weaponId] = w;
         }
     }
 

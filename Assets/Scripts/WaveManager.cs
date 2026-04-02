@@ -31,6 +31,7 @@ public class WaveManager : MonoBehaviour
     public Text waveText;
     public Text waveTimerText;
     public Text oreText;
+    public string weaponId = "starter_gun";
 
     public int RemainingWaveSeconds
     {
@@ -74,7 +75,7 @@ public class WaveManager : MonoBehaviour
     {
         CurrentState = GameState.Run;
         fireTimer = 0f;
-        baseFireInterval = fireInterval;
+        ApplyWeaponConfig();
         currentWave = 1;
         waveTimer = 0f;
         ApplyWaveConfig(currentWave);
@@ -165,6 +166,7 @@ public class WaveManager : MonoBehaviour
             projectilePrefab = temp;
             Debug.Log("임시 Projectile prefab을 생성했습니다 (ProjectilePrefab_Temp)");
         }
+        ApplyProjectileStats();
         // TODO: 웨이브, 산소 등 초기화
         Debug.Log("게임 시작!");
         Debug.Log($"Wave {currentWave} 시작");
@@ -347,6 +349,26 @@ public class WaveManager : MonoBehaviour
             }
             pgo.SetActive(true);
         }
+    }
+
+    void ApplyWeaponConfig()
+    {
+        var w = GameData.GetWeapon(weaponId);
+        if (w == null) return;
+        if (w.fireInterval > 0f) fireInterval = w.fireInterval;
+        baseFireInterval = fireInterval;
+        if (w.detectRange > 0f) fireRange = w.detectRange;
+    }
+
+    void ApplyProjectileStats()
+    {
+        var w = GameData.GetWeapon(weaponId);
+        if (w == null) return;
+        if (projectilePrefab == null) return;
+        var proj = projectilePrefab.GetComponent<Projectile>();
+        if (proj == null) return;
+        if (w.bulletSpeed > 0f) proj.speed = w.bulletSpeed;
+        if (w.damage > 0) proj.damage = w.damage;
     }
 
     Transform FindNearestEnemy(Vector3 from, float range)
