@@ -75,6 +75,18 @@ public static class GameData
         public string desc;
     }
 
+    public class ProjectileDef
+    {
+        public string projectileId;
+        public float speed;
+        public float lifeTime;
+        public float damageMult;
+        public int pierceCount;
+        public float hitRadius;
+        public string prefabId;
+        public string desc;
+    }
+
     public class SkillEffectDef
     {
         public string skillId;
@@ -94,6 +106,7 @@ public static class GameData
     static List<ForgeEntry> forgeEntries = new List<ForgeEntry>();
     static Dictionary<string, EnemySpawnDef> enemySpawns = new Dictionary<string, EnemySpawnDef>();
     static Dictionary<string, WeaponDef> weapons = new Dictionary<string, WeaponDef>();
+    static Dictionary<string, ProjectileDef> projectiles = new Dictionary<string, ProjectileDef>();
     static List<SkillEffectDef> skillEffects = new List<SkillEffectDef>();
     static HashSet<string> warnedSkills = new HashSet<string>();
 
@@ -163,6 +176,14 @@ public static class GameData
         return w;
     }
 
+    public static ProjectileDef GetProjectile(string projectileId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(projectileId)) return null;
+        projectiles.TryGetValue(projectileId, out var p);
+        return p;
+    }
+
     public static List<SkillEffectDef> GetSkillEffects()
     {
         EnsureLoaded();
@@ -179,6 +200,7 @@ public static class GameData
         LoadForgeTable();
         LoadEnemySpawns();
         LoadWeapons();
+        LoadProjectiles();
         LoadSkillEffects();
     }
 
@@ -294,6 +316,26 @@ public static class GameData
             w.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(w.weaponId))
                 weapons[w.weaponId] = w;
+        }
+    }
+
+    static void LoadProjectiles()
+    {
+        var table = LoadCsv("data/projectTile");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var p = new ProjectileDef();
+            p.projectileId = table.Get(row, "projectileId");
+            p.speed = table.GetFloat(row, "speed");
+            p.lifeTime = table.GetFloat(row, "lifeTime");
+            p.damageMult = table.GetFloat(row, "damageMult");
+            p.pierceCount = table.GetInt(row, "pierceCount");
+            p.hitRadius = table.GetFloat(row, "hitRadius");
+            p.prefabId = table.Get(row, "prefabId");
+            p.desc = table.Get(row, "desc");
+            if (!string.IsNullOrEmpty(p.projectileId))
+                projectiles[p.projectileId] = p;
         }
     }
 

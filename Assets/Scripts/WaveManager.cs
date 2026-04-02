@@ -32,6 +32,7 @@ public class WaveManager : MonoBehaviour
     public Text waveTimerText;
     public Text oreText;
     public string weaponId = "starter_gun";
+    public string projectileId = "default";
 
     public int RemainingWaveSeconds
     {
@@ -339,6 +340,7 @@ public class WaveManager : MonoBehaviour
             if (proj != null)
             {
                 proj.damage = Mathf.Max(1, proj.damage + SkillEffects.DamageBonus);
+                proj.damage = Mathf.Max(1, Mathf.RoundToInt(proj.damage * proj.damageMultiplier));
             }
             pgo.transform.localScale = Vector3.one;
             var psr = pgo.GetComponent<SpriteRenderer>();
@@ -363,12 +365,21 @@ public class WaveManager : MonoBehaviour
     void ApplyProjectileStats()
     {
         var w = GameData.GetWeapon(weaponId);
-        if (w == null) return;
         if (projectilePrefab == null) return;
         var proj = projectilePrefab.GetComponent<Projectile>();
         if (proj == null) return;
-        if (w.bulletSpeed > 0f) proj.speed = w.bulletSpeed;
-        if (w.damage > 0) proj.damage = w.damage;
+        if (w != null)
+        {
+            if (w.bulletSpeed > 0f) proj.speed = w.bulletSpeed;
+            if (w.damage > 0) proj.damage = w.damage;
+        }
+        var pdef = GameData.GetProjectile(projectileId);
+        if (pdef != null)
+        {
+            if (pdef.speed > 0f) proj.speed = pdef.speed;
+            if (pdef.lifeTime > 0f) proj.lifeTime = pdef.lifeTime;
+            if (pdef.damageMult > 0f) proj.damageMultiplier = pdef.damageMult;
+        }
     }
 
     Transform FindNearestEnemy(Vector3 from, float range)
