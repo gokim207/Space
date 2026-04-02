@@ -99,6 +99,17 @@ public static class GameData
         public string desc;
     }
 
+    public class PlayerDef
+    {
+        public string id;
+        public float baseMoveSpeed;
+        public int maxHp;
+        public float invincibilityTime;
+        public float radius;
+        public float fixedY;
+        public string desc;
+    }
+
     public class SkillEffectDef
     {
         public string skillId;
@@ -120,6 +131,7 @@ public static class GameData
     static Dictionary<string, WeaponDef> weapons = new Dictionary<string, WeaponDef>();
     static Dictionary<string, ProjectileDef> projectiles = new Dictionary<string, ProjectileDef>();
     static Dictionary<string, OxygenDef> oxygenDefs = new Dictionary<string, OxygenDef>();
+    static Dictionary<string, PlayerDef> players = new Dictionary<string, PlayerDef>();
     static List<SkillEffectDef> skillEffects = new List<SkillEffectDef>();
     static HashSet<string> warnedSkills = new HashSet<string>();
 
@@ -205,6 +217,14 @@ public static class GameData
         return o;
     }
 
+    public static PlayerDef GetPlayer(string playerId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(playerId)) return null;
+        players.TryGetValue(playerId, out var p);
+        return p;
+    }
+
     public static List<SkillEffectDef> GetSkillEffects()
     {
         EnsureLoaded();
@@ -223,6 +243,7 @@ public static class GameData
         LoadWeapons();
         LoadProjectiles();
         LoadOxygen();
+        LoadPlayers();
         LoadSkillEffects();
     }
 
@@ -378,6 +399,25 @@ public static class GameData
             o.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(o.oxygenId))
                 oxygenDefs[o.oxygenId] = o;
+        }
+    }
+
+    static void LoadPlayers()
+    {
+        var table = LoadCsv("data/player");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var p = new PlayerDef();
+            p.id = table.Get(row, "id");
+            p.baseMoveSpeed = table.GetFloat(row, "baseMoveSpeed");
+            p.maxHp = table.GetInt(row, "maxHp");
+            p.invincibilityTime = table.GetFloat(row, "invincibilityTime");
+            p.radius = table.GetFloat(row, "radius");
+            p.fixedY = table.GetFloat(row, "fixedY");
+            p.desc = table.Get(row, "desc");
+            if (!string.IsNullOrEmpty(p.id))
+                players[p.id] = p;
         }
     }
 

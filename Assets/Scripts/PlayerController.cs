@@ -11,12 +11,15 @@ public class PlayerController : MonoBehaviour
     public WaveManager waveManager;
     public float desiredPlayerY = 5f; // 런 시 플레이어 Y 위치 목표
     public int hp = 1;
+    public string playerId = "default";
+    private float fixedPlayerY = 0f;
 
     private float angle = 90f; // 시작 각도(12시 방향)
     private bool warnedWaveManagerMissing = false;
 
     void Start()
     {
+        ApplyPlayerConfig();
         // 자동 할당: Planet 이름으로 찾기
         if (planetCenter == null)
         {
@@ -73,8 +76,19 @@ public class PlayerController : MonoBehaviour
         if (planetCenter != null)
         {
             planetCenter.position = new Vector3(0f, -5.3f, planetCenter.position.z);
-            // desiredPlayerY와 planetCenter.y로부터 radius 계산
-            radius = Mathf.Abs(desiredPlayerY - planetCenter.position.y);
+            if (fixedPlayerY != 0f)
+            {
+                desiredPlayerY = fixedPlayerY;
+                radius = Mathf.Abs(desiredPlayerY - planetCenter.position.y);
+            }
+            else if (radius > 0f)
+            {
+                desiredPlayerY = planetCenter.position.y + radius;
+            }
+            else
+            {
+                radius = Mathf.Abs(desiredPlayerY - planetCenter.position.y);
+            }
         }
 
         // 시작 위치 세팅 (계산된 radius 사용)
@@ -84,6 +98,16 @@ public class PlayerController : MonoBehaviour
         transform.up = (transform.position - planetCenter.position).normalized;
         UpdateCameraPosition();
         Debug.Log($"PlayerController 초기화 완료: angle={angle}, radius={radius}");
+    }
+
+    void ApplyPlayerConfig()
+    {
+        var def = GameData.GetPlayer(playerId);
+        if (def == null) return;
+        if (def.baseMoveSpeed > 0f) moveSpeed = def.baseMoveSpeed;
+        if (def.maxHp > 0) hp = def.maxHp;
+        if (def.radius > 0f) radius = def.radius;
+        if (def.fixedY != 0f) fixedPlayerY = def.fixedY;
     }
 
     void Update()
