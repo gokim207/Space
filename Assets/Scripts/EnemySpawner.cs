@@ -15,7 +15,9 @@ public class EnemySpawner : MonoBehaviour
     public int hpPerWave = 1;
     public float baseMoveSpeed = 1.0f;
     public float speedPerWave = 0.05f;
+    public string spawnId = "default";
     bool warnedWaveManagerMissing = false;
+    private float nextSpawnInterval = 2f;
 
     void Start()
     {
@@ -112,10 +114,27 @@ public class EnemySpawner : MonoBehaviour
         }
         timer += Time.deltaTime;
         // spawn tick
-        if (timer >= spawnInterval)
+        if (timer >= nextSpawnInterval)
         {
             timer = 0f;
-            SpawnEnemy();
+            var spawnDef = ResolveSpawnDef();
+            int count = 1;
+            float minDist = spawnOffset;
+            float maxDist = spawnOffset;
+            string pattern = "random";
+            if (spawnDef != null)
+            {
+                count = Mathf.Max(1, Random.Range(spawnDef.minAmount, spawnDef.maxAmount + 1));
+                minDist = spawnDef.minDist;
+                maxDist = spawnDef.maxDist;
+                pattern = spawnDef.spawnPattern;
+                nextSpawnInterval = Random.Range(spawnDef.minInterval, spawnDef.maxInterval);
+            }
+            else
+            {
+                nextSpawnInterval = spawnInterval;
+            }
+            SpawnBatch(count, minDist, maxDist, pattern);
         }
     }
 
@@ -127,10 +146,17 @@ public class EnemySpawner : MonoBehaviour
         {
             count = Random.Range(waveDef.spawnCountMin, waveDef.spawnCountMax + 1);
         }
-        for (int i = 0; i < count; i++)
+        var spawnDef = ResolveSpawnDef();
+        float minDist = spawnOffset;
+        float maxDist = spawnOffset;
+        string pattern = "random";
+        if (spawnDef != null)
         {
-            SpawnEnemy();
+            minDist = spawnDef.minDist;
+            maxDist = spawnDef.maxDist;
+            pattern = spawnDef.spawnPattern;
         }
+        SpawnBatch(count, minDist, maxDist, pattern);
     }
 
     Transform GetPlayerTransform()
@@ -144,29 +170,10 @@ public class EnemySpawner : MonoBehaviour
         return playerT;
     }
 
-    void SpawnEnemy()
+    void SpawnEnemy(Vector3 pos)
     {
         if (enemyPrefab == null || planetCenter == null) return;
         var playerT = GetPlayerTransform();
-        float dist = planetSurfaceRadius + spawnOffset;
-        Vector3 pos = Vector3.zero;
-        bool found = false;
-        for (int i = 0; i < 10; i++)
-        {
-            float ang = Random.Range(0f, 360f) * Mathf.Deg2Rad;
-            pos = planetCenter.position + new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), 0f) * dist;
-            if (playerT == null || Vector3.Distance(pos, playerT.position) >= minDistanceFromPlayer)
-            {
-                found = true;
-                break;
-            }
-        }
-        if (!found && playerT != null)
-        {
-            // fallback: place opposite side of player
-            Vector3 dir = (planetCenter.position - playerT.position).normalized;
-            pos = planetCenter.position + dir * dist;
-        }
         var go = Instantiate(enemyPrefab, pos, Quaternion.identity);
         go.SetActive(true);
         var e = go.GetComponent<Enemy>();
@@ -222,6 +229,57 @@ public class EnemySpawner : MonoBehaviour
             else
                 go.transform.localScale = Vector3.one;
         }
+    }
+
+    void SpawnBatch(int count, float minDist, float maxDist, string pattern)
+    {
+        if (enemyPrefab == null || planetCenter == null) return;
+        if (count <= 0) return;
+
+        float dist = planetSurfaceRadius + Mathf.Max(0.1f, Random.Range(minDist, maxDist));
+        float baseAngle = Random.Range(0f, 360f);
+        float spreadDeg = 12f;
+
+        for (int i = 0; i < count; i++)
+        {
+            float angDeg = 0f;
+            if (pattern == "cluster")
+            {
+                angDeg = baseAngle + Random.Range(-spreadDeg, spreadDeg);
+            }
+            else if (pattern == "surround")
+            {
+                float step = 360f / count;
+                angDeg = baseAngle + (step * i);
+            }
+            else
+            {
+                angDeg = Random.Range(0f, 360f);
+            }
+
+            Vector3 pos = planetCenter.position + new Vector3(Mathf.Cos(angDeg * Mathf.Deg2Rad), Mathf.Sin(angDeg * Mathf.Deg2Rad), 0f) * dist;
+            var playerT = GetPlayerTransform();
+            if (playerT != null && Vector3.Distance(pos, playerT.position) < minDistanceFromPlayer)
+            {
+                Vector3 dir = (planetCenter.position - playerT.position).normalized;
+                pos = planetCenter.position + dir * dist;
+            }
+            SpawnEnemy(pos);
+        }
+    }
+
+    GameData.EnemySpawnDef ResolveSpawnDef()
+    {
+        var wave = waveManager != null ? waveManager.currentWave : 1;
+        var waveDef = GameData.GetWave(wave);
+        if (waveDef != null && waveDef.isBossWave)
+        {
+            var bossWarn = GameData.GetEnemySpawn("boss_warning");
+            if (bossWarn != null) return bossWarn;
+        }
+        var def = GameData.GetEnemySpawn(spawnId);
+        if (def != null) return def;
+        return GameData.GetEnemySpawn("default");
     }
 
     GameData.EnemyDef PickEnemyDef(int wave)

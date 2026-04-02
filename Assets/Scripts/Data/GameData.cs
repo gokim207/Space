@@ -50,6 +50,19 @@ public static class GameData
         public string desc;
     }
 
+    public class EnemySpawnDef
+    {
+        public string spawnId;
+        public float minInterval;
+        public float maxInterval;
+        public int minAmount;
+        public int maxAmount;
+        public float minDist;
+        public float maxDist;
+        public string spawnPattern;
+        public string desc;
+    }
+
     public class SkillEffectDef
     {
         public string skillId;
@@ -67,6 +80,7 @@ public static class GameData
     static List<EnemyDef> enemies = new List<EnemyDef>();
     static Dictionary<int, WaveDef> waves = new Dictionary<int, WaveDef>();
     static List<ForgeEntry> forgeEntries = new List<ForgeEntry>();
+    static Dictionary<string, EnemySpawnDef> enemySpawns = new Dictionary<string, EnemySpawnDef>();
     static List<SkillEffectDef> skillEffects = new List<SkillEffectDef>();
     static HashSet<string> warnedSkills = new HashSet<string>();
 
@@ -120,6 +134,14 @@ public static class GameData
         return forgeEntries;
     }
 
+    public static EnemySpawnDef GetEnemySpawn(string spawnId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(spawnId)) return null;
+        enemySpawns.TryGetValue(spawnId, out var s);
+        return s;
+    }
+
     public static List<SkillEffectDef> GetSkillEffects()
     {
         EnsureLoaded();
@@ -134,6 +156,7 @@ public static class GameData
         LoadEnemies();
         LoadWaves();
         LoadForgeTable();
+        LoadEnemySpawns();
         LoadSkillEffects();
     }
 
@@ -208,6 +231,27 @@ public static class GameData
             f.baseWeight = table.GetInt(row, "baseWeight");
             f.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(f.id)) forgeEntries.Add(f);
+        }
+    }
+
+    static void LoadEnemySpawns()
+    {
+        var table = LoadCsv("data/enemySpawn");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var s = new EnemySpawnDef();
+            s.spawnId = table.Get(row, "spawnId");
+            s.minInterval = table.GetFloat(row, "minInterval");
+            s.maxInterval = table.GetFloat(row, "maxInterval");
+            s.minAmount = table.GetInt(row, "minAmount");
+            s.maxAmount = table.GetInt(row, "maxAmount");
+            s.minDist = table.GetFloat(row, "minDist");
+            s.maxDist = table.GetFloat(row, "maxDist");
+            s.spawnPattern = table.Get(row, "spawnPattern");
+            s.desc = table.Get(row, "desc");
+            if (!string.IsNullOrEmpty(s.spawnId))
+                enemySpawns[s.spawnId] = s;
         }
     }
 
