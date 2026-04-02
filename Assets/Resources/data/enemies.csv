@@ -1,3 +1,0 @@
-id,baseHP,hpPerWave,baseSpeed,speedPerWave,colorRGB,spawnWeight,dropOreId,minWave,reqSkill,desc
-enemy_stone,2,1,1.0,0.05,0.15|0.15|0.15,100,stone,1,,"기본 적"
-enemy_copper,4,2,1.0,0.05,0.72|0.45|0.20,25,copper,3,copper1,"구리 적"

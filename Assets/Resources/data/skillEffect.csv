@@ -1,0 +1,10 @@
+skillId,targetStat,calcType,baseVal,perLevel,minVal,maxVal,desc
+atk,damageBonus,add,0,1,-9999,9999,0 + (1 * level)
+firerate,fireIntervalMult,add,1,-0.03,0.2,1,1 + (-0.03 * level)
+oxygenkill,oxygenOnKill,add,0,3,-9999,9999,0 + (3 * level)
+oxygenmax,maxOxygen,add,0,10,-9999,9999,0 + (10 * level)
+oxygendecay,oxygenDecayMult,add,1,-0.03,0.1,1,1 + (-0.03 * level)
+forge,forgeCooldownReduce,add,0,0.2,-9999,9999,0 + (0.2 * level)
+anvil,forgeStabilityLevel,add,0,1,0,3,0 + (1 * level)
+value,valueMult,pow,1,1.5,-9999,9999,1 * (1.5 ^ level)
+copper,copperUnlocked,bool,0,1,-9999,9999,level > 0 이면 True

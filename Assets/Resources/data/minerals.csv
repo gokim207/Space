@@ -1,3 +1,0 @@
-id,name,value,dropWeight,colorRGB,minWave,reqSkill,desc
-stone,돌,1,100,0.15|0.15|0.15,1,,"기본 광물"
-copper,구리,10,25,0.72|0.45|0.20,3,copper1,"3웨이브 이후부터 등장"

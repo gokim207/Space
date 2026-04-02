@@ -237,16 +237,7 @@ public class SkillTreeManager : MonoBehaviour
 
     void ApplySkillEffects()
     {
-        int L(string key) => GetLevelByEffectKey(key);
-        SkillEffects.SetDamageLevel(L("atk"));
-        SkillEffects.SetValueLevel(L("value"));
-        SkillEffects.SetCopperLevel(L("copper"));
-        SkillEffects.SetFireRateLevel(L("firerate"));
-        SkillEffects.SetForgeCooldownLevel(L("forge"));
-        SkillEffects.SetForgeStabilityLevel(L("anvil"));
-        SkillEffects.SetOxygenOnKillLevel(L("oxygenkill"));
-        SkillEffects.SetMaxOxygenLevel(L("oxygenmax"));
-        SkillEffects.SetOxygenDecayLevel(L("oxygendecay"));
+        SkillEffects.ApplyAllFromTable(GetLevelByEffectKey);
     }
 
     void RefreshUnlocks()

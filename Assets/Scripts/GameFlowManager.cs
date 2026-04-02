@@ -713,14 +713,6 @@ public class GameFlowManager : MonoBehaviour
         stone = 0;
         copper = 0;
         playtimeSeconds = 0f;
-        SkillEffects.SetDamageLevel(0);
-        SkillEffects.SetFireRateLevel(0);
-        SkillEffects.SetOxygenOnKillLevel(0);
-        SkillEffects.SetMaxOxygenLevel(0);
-        SkillEffects.SetOxygenDecayLevel(0);
-        SkillEffects.SetForgeCooldownLevel(0);
-        SkillEffects.SetValueLevel(0);
-        SkillEffects.SetCopperLevel(0);
         SkillTreeManager.ResetAllSkills();
     }
 

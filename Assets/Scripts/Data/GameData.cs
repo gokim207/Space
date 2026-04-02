@@ -50,11 +50,24 @@ public static class GameData
         public string desc;
     }
 
+    public class SkillEffectDef
+    {
+        public string skillId;
+        public string targetStat;
+        public string calcType;
+        public float baseVal;
+        public float perLevel;
+        public float minVal;
+        public float maxVal;
+        public string desc;
+    }
+
     static bool loaded = false;
     static Dictionary<string, MineralDef> minerals = new Dictionary<string, MineralDef>();
     static List<EnemyDef> enemies = new List<EnemyDef>();
     static Dictionary<int, WaveDef> waves = new Dictionary<int, WaveDef>();
     static List<ForgeEntry> forgeEntries = new List<ForgeEntry>();
+    static List<SkillEffectDef> skillEffects = new List<SkillEffectDef>();
     static HashSet<string> warnedSkills = new HashSet<string>();
 
     public static bool IsSkillUnlocked(string reqSkillId)
@@ -107,6 +120,12 @@ public static class GameData
         return forgeEntries;
     }
 
+    public static List<SkillEffectDef> GetSkillEffects()
+    {
+        EnsureLoaded();
+        return skillEffects;
+    }
+
     static void EnsureLoaded()
     {
         if (loaded) return;
@@ -115,6 +134,7 @@ public static class GameData
         LoadEnemies();
         LoadWaves();
         LoadForgeTable();
+        LoadSkillEffects();
     }
 
     static void LoadMinerals()
@@ -188,6 +208,26 @@ public static class GameData
             f.baseWeight = table.GetInt(row, "baseWeight");
             f.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(f.id)) forgeEntries.Add(f);
+        }
+    }
+
+    static void LoadSkillEffects()
+    {
+        var table = LoadCsv("data/skillEffect");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var s = new SkillEffectDef();
+            s.skillId = table.Get(row, "skillId");
+            s.targetStat = table.Get(row, "targetStat");
+            s.calcType = table.Get(row, "calcType");
+            s.baseVal = table.GetFloat(row, "baseVal");
+            s.perLevel = table.GetFloat(row, "perLevel");
+            s.minVal = table.GetFloat(row, "minVal");
+            s.maxVal = table.GetFloat(row, "maxVal");
+            s.desc = table.Get(row, "desc");
+            if (!string.IsNullOrEmpty(s.skillId) && !string.IsNullOrEmpty(s.targetStat))
+                skillEffects.Add(s);
         }
     }
 

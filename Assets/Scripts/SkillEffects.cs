@@ -14,49 +14,147 @@ public static class SkillEffects
 
     public static void SetDamageLevel(int level)
     {
-        DamageBonus = Mathf.Max(0, level); // +1 per level
+        ApplyFromTable("atk", level);
     }
 
     public static void SetFireRateLevel(int level)
     {
-        float mult = 1f - (0.03f * Mathf.Max(0, level));
-        FireIntervalMultiplier = Mathf.Clamp(mult, 0.2f, 1f);
+        ApplyFromTable("firerate", level);
     }
 
     public static void SetOxygenOnKillLevel(int level)
     {
-        OxygenOnKillBonus = Mathf.Max(0, level) * 3f;
+        ApplyFromTable("oxygenkill", level);
     }
 
     public static void SetMaxOxygenLevel(int level)
     {
-        MaxOxygenBonus = Mathf.Max(0, level) * 10f;
+        ApplyFromTable("oxygenmax", level);
     }
 
     public static void SetOxygenDecayLevel(int level)
     {
-        float mult = 1f - (0.03f * Mathf.Max(0, level));
-        OxygenDecayMultiplier = Mathf.Clamp(mult, 0.1f, 1f);
+        ApplyFromTable("oxygendecay", level);
     }
 
     public static void SetForgeCooldownLevel(int level)
     {
-        ForgeCooldownReduction = Mathf.Max(0, level) * 0.2f;
+        ApplyFromTable("forge", level);
     }
 
     public static void SetForgeStabilityLevel(int level)
     {
-        ForgeStabilityLevel = Mathf.Clamp(level, 0, 3);
+        ApplyFromTable("anvil", level);
     }
 
     public static void SetValueLevel(int level)
     {
-        int l = Mathf.Max(0, level);
-        ValueMultiplier = Mathf.Pow(1.5f, l); // 1.5x per level
+        ApplyFromTable("value", level);
     }
 
     public static void SetCopperLevel(int level)
     {
-        CopperUnlocked = level > 0;
+        ApplyFromTable("copper", level);
+    }
+
+    public static void ApplyAllFromTable(System.Func<string, int> levelForSkillId)
+    {
+        ResetDefaults();
+        var entries = GameData.GetSkillEffects();
+        if (entries == null || entries.Count == 0) return;
+        foreach (var e in entries)
+        {
+            int level = levelForSkillId != null ? levelForSkillId(e.skillId) : 0;
+            ApplyEffect(e, level);
+        }
+    }
+
+    public static void ApplyFromTable(string skillId, int level)
+    {
+        var entries = GameData.GetSkillEffects();
+        if (entries == null || entries.Count == 0) return;
+        bool applied = false;
+        foreach (var e in entries)
+        {
+            if (e.skillId != skillId) continue;
+            ApplyEffect(e, level);
+            applied = true;
+        }
+        if (!applied)
+            Debug.LogWarning($"SkillEffects: Missing skillEffect entry for skillId '{skillId}'.");
+    }
+
+    static void ResetDefaults()
+    {
+        DamageBonus = 0;
+        FireIntervalMultiplier = 1f;
+        OxygenOnKillBonus = 0f;
+        MaxOxygenBonus = 0f;
+        OxygenDecayMultiplier = 1f;
+        ForgeCooldownReduction = 0f;
+        ForgeStabilityLevel = 0;
+        ValueMultiplier = 1f;
+        CopperUnlocked = false;
+    }
+
+    static void ApplyEffect(GameData.SkillEffectDef e, int level)
+    {
+        if (e == null) return;
+        float value = e.baseVal;
+        if (e.calcType == "add")
+        {
+            value = e.baseVal + (e.perLevel * level);
+        }
+        else if (e.calcType == "pow")
+        {
+            value = e.baseVal * Mathf.Pow(e.perLevel, level);
+        }
+        else if (e.calcType == "bool")
+        {
+            value = level > 0 ? 1f : 0f;
+        }
+        else if (e.calcType == "mul")
+        {
+            value = e.baseVal * (e.perLevel * level);
+        }
+
+        float min = e.minVal;
+        float max = e.maxVal;
+        if (min <= max)
+            value = Mathf.Clamp(value, min, max);
+
+        switch (e.targetStat)
+        {
+            case "damageBonus":
+                DamageBonus = Mathf.RoundToInt(value);
+                break;
+            case "fireIntervalMult":
+                FireIntervalMultiplier = value;
+                break;
+            case "oxygenOnKill":
+                OxygenOnKillBonus = value;
+                break;
+            case "maxOxygen":
+                MaxOxygenBonus = value;
+                break;
+            case "oxygenDecayMult":
+                OxygenDecayMultiplier = value;
+                break;
+            case "forgeCooldownReduce":
+                ForgeCooldownReduction = value;
+                break;
+            case "forgeStabilityLevel":
+                ForgeStabilityLevel = Mathf.RoundToInt(value);
+                break;
+            case "valueMult":
+                ValueMultiplier = value;
+                break;
+            case "copperUnlocked":
+                CopperUnlocked = value > 0.5f;
+                break;
+            default:
+                Debug.LogWarning($"SkillEffects: Unknown targetStat '{e.targetStat}'.");
+                break;
+        }
     }
 }
