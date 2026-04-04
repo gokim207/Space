@@ -13,6 +13,7 @@ public class PlayerController : MonoBehaviour
     public int hp = 1;
     public string playerId = "default";
     private float fixedPlayerY = 0f;
+    public float surfacePadding = 0.0f;
 
     private float angle = 90f; // 시작 각도(12시 방향)
     private bool warnedWaveManagerMissing = false;
@@ -76,6 +77,30 @@ public class PlayerController : MonoBehaviour
         if (planetCenter != null)
         {
             planetCenter.position = new Vector3(0f, -5.3f, planetCenter.position.z);
+            float planetSurfaceRadius = 0f;
+            var cc = planetCenter.GetComponent<CircleCollider2D>();
+            if (cc != null)
+                planetSurfaceRadius = Mathf.Abs(cc.radius) * planetCenter.lossyScale.x;
+            else
+            {
+                var sr = planetCenter.GetComponent<SpriteRenderer>();
+                if (sr != null)
+                    planetSurfaceRadius = Mathf.Max(sr.bounds.extents.x, sr.bounds.extents.y);
+            }
+            if (planetSurfaceRadius <= 0f) planetSurfaceRadius = 1f;
+
+            float playerRadius = 0.5f;
+            var pr = GetComponent<SpriteRenderer>();
+            if (pr != null)
+                playerRadius = Mathf.Max(pr.bounds.extents.x, pr.bounds.extents.y);
+            var bc = GetComponent<BoxCollider2D>();
+            if (bc != null)
+                playerRadius = Mathf.Max(playerRadius, Mathf.Max(bc.bounds.extents.x, bc.bounds.extents.y));
+            var pc = GetComponent<CircleCollider2D>();
+            if (pc != null)
+                playerRadius = Mathf.Max(playerRadius, pc.radius * transform.lossyScale.x);
+
+            float minOrbitRadius = planetSurfaceRadius + playerRadius + surfacePadding;
             if (fixedPlayerY != 0f)
             {
                 desiredPlayerY = fixedPlayerY;
@@ -89,6 +114,9 @@ public class PlayerController : MonoBehaviour
             {
                 radius = Mathf.Abs(desiredPlayerY - planetCenter.position.y);
             }
+            if (radius < minOrbitRadius)
+                radius = minOrbitRadius;
+            desiredPlayerY = planetCenter.position.y + radius;
         }
 
         // 시작 위치 세팅 (계산된 radius 사용)
@@ -106,7 +134,8 @@ public class PlayerController : MonoBehaviour
         if (def == null) return;
         if (def.baseMoveSpeed > 0f) moveSpeed = def.baseMoveSpeed;
         if (def.maxHp > 0) hp = def.maxHp;
-        if (def.radius > 0f) radius = def.radius;
+        // radius here is orbit radius, not player size; ignore tiny values to avoid starting inside planet
+        if (def.radius > 1f) radius = def.radius;
         if (def.fixedY != 0f) fixedPlayerY = def.fixedY;
     }
 

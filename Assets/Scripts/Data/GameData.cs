@@ -186,6 +186,13 @@ public static class GameData
         return forgeEntries;
     }
 
+    public static void ReloadForgeEntries()
+    {
+        EnsureLoaded();
+        forgeEntries.Clear();
+        LoadForgeTable();
+    }
+
     public static EnemySpawnDef GetEnemySpawn(string spawnId)
     {
         EnsureLoaded();
@@ -458,6 +465,25 @@ public static class GameData
     static CsvTable LoadCsv(string resourcePath)
     {
         var asset = Resources.Load<TextAsset>(resourcePath);
+        if (asset == null)
+        {
+            // Fallback: search within the folder for a matching name (case-insensitive)
+            int slash = resourcePath.LastIndexOf('/');
+            string folder = slash >= 0 ? resourcePath.Substring(0, slash) : "";
+            string name = slash >= 0 ? resourcePath.Substring(slash + 1) : resourcePath;
+            var all = Resources.LoadAll<TextAsset>(folder);
+            if (all != null)
+            {
+                foreach (var a in all)
+                {
+                    if (a != null && string.Equals(a.name, name, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        asset = a;
+                        break;
+                    }
+                }
+            }
+        }
         if (asset == null)
         {
             Debug.LogWarning($"GameData: Missing CSV at Resources/{resourcePath}.csv");

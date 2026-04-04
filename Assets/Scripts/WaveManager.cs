@@ -232,7 +232,7 @@ public class WaveManager : MonoBehaviour
         if (oxygenSystem != null)
         {
             float totalOxygen = oxygen + SkillEffects.OxygenOnKillBonus;
-            if (oxygenSystem != null && oxygenSystem.killReward > 0f)
+            if (oxygenSystem != null && oxygenSystem.killReward > 0f && SkillEffects.OxygenOnKillBonus > 0f)
                 totalOxygen += oxygenSystem.killReward;
             if (totalOxygen > 0f)
                 oxygenSystem.ChangeOxygen(totalOxygen);

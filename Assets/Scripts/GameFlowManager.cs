@@ -71,7 +71,7 @@ public class GameFlowManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        BuildUI();
+        EnsureUI();
         SceneManager.sceneLoaded += OnSceneLoaded;
         EnsureTestSlotMoney();
         if (SceneManager.GetActiveScene().name == "TitleScene")
@@ -89,6 +89,7 @@ public class GameFlowManager : MonoBehaviour
         canvasGO.transform.SetParent(transform);
         canvas = canvasGO.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000;
         canvasGO.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         canvasGO.AddComponent<GraphicRaycaster>();
 
@@ -181,6 +182,17 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(confirmPanel, "취소", new Vector2(0.55f, 0.45f), new Vector2(0.55f, 0.45f), new Vector2(60f, -20f), () => ConfirmDelete(false));
     }
 
+    void EnsureUI()
+    {
+        if (canvas == null)
+            BuildUI();
+        if (canvas != null)
+        {
+            canvas.enabled = true;
+            canvas.gameObject.SetActive(true);
+        }
+    }
+
     GameObject CreatePanel(string name, Color bg)
     {
         var panel = new GameObject(name);
@@ -201,6 +213,8 @@ public class GameFlowManager : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         var t = go.AddComponent<Text>();
         t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (t.font == null)
+            t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
         t.text = text;
         t.fontSize = size;
         t.color = Color.white;
@@ -239,6 +253,8 @@ public class GameFlowManager : MonoBehaviour
         textGO.transform.SetParent(go.transform, false);
         var t = textGO.AddComponent<Text>();
         t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (t.font == null)
+            t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
         t.text = label;
         t.fontSize = 18;
         t.color = Color.black;
@@ -319,6 +335,8 @@ public class GameFlowManager : MonoBehaviour
         srt.pivot = new Vector2(0f, 1f);
         srt.anchoredPosition = new Vector2(20f, -20f);
         srt.sizeDelta = new Vector2(200f, 28f);
+        var stoneRowBtn = stoneRow.AddComponent<Button>();
+        stoneRowBtn.onClick.AddListener(() => SetSelectedOre(OreSelect.Stone));
 
         stoneBtn = CreateColorButton(stoneRow, new Vector2(0f, 0.5f), new Color(0.1f, 0.1f, 0.1f), () => { Debug.Log("Stone icon clicked"); SetSelectedOre(OreSelect.Stone); }, new Vector2(-90f, 0f));
         forgeStoneIconImage = stoneBtn.GetComponent<Image>();
@@ -337,6 +355,8 @@ public class GameFlowManager : MonoBehaviour
         crt.pivot = new Vector2(0f, 1f);
         crt.anchoredPosition = new Vector2(20f, -20f - rowGap);
         crt.sizeDelta = new Vector2(200f, 28f);
+        var copperRowBtn = copperRow.AddComponent<Button>();
+        copperRowBtn.onClick.AddListener(() => SetSelectedOre(OreSelect.Copper));
 
         copperBtn = CreateColorButton(copperRow, new Vector2(0f, 0.5f), new Color(0.72f, 0.45f, 0.2f), () => { Debug.Log("Copper icon clicked"); SetSelectedOre(OreSelect.Copper); }, new Vector2(-90f, 0f));
         forgeCopperIconImage = copperBtn.GetComponent<Image>();
@@ -392,6 +412,7 @@ public class GameFlowManager : MonoBehaviour
 
     public void ShowRun()
     {
+        EnsureUI();
         CurrentPhase = GamePhase.Run;
         Time.timeScale = 1f;
         runHud.SetActive(true);
@@ -429,6 +450,7 @@ public class GameFlowManager : MonoBehaviour
         titlePanel.SetActive(false);
         slotPanel.SetActive(false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
+        GameData.ReloadForgeEntries();
         SyncForgeData();
     }
 
@@ -447,6 +469,7 @@ public class GameFlowManager : MonoBehaviour
 
     public void ShowTitle()
     {
+        EnsureUI();
         CurrentPhase = GamePhase.Title;
         Time.timeScale = 0f;
         runHud.SetActive(false);
@@ -517,6 +540,7 @@ public class GameFlowManager : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        EnsureUI();
         EnsureEventSystem();
         if (scene.name == "UpgradeScene")
         {
@@ -904,6 +928,7 @@ public class GameFlowManager : MonoBehaviour
         var entries = GameData.GetForgeEntries();
         if (entries == null || entries.Count == 0)
         {
+            Debug.LogWarning("Forge odds: forge.csv not loaded or empty. Using fallback.");
             float adj = 0.05f * SkillEffects.ForgeStabilityLevel;
             float p05 = Mathf.Max(0.05f, 0.20f - adj);
             float p1 = 0.45f;
