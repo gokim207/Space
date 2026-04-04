@@ -44,7 +44,7 @@ public static class GameData
 
     public class ForgeEntry
     {
-        public string id;
+        public string forgeId;
         public float multiplier;
         public int baseWeight;
         public string desc;
@@ -323,11 +323,13 @@ public static class GameData
         foreach (var row in table.Rows)
         {
             var f = new ForgeEntry();
-            f.id = table.Get(row, "id");
+            f.forgeId = table.Get(row, "forgeId");
+            if (string.IsNullOrEmpty(f.forgeId))
+                f.forgeId = table.Get(row, "id");
             f.multiplier = table.GetFloat(row, "multiplier");
             f.baseWeight = table.GetInt(row, "baseWeight");
             f.desc = table.Get(row, "desc");
-            if (!string.IsNullOrEmpty(f.id)) forgeEntries.Add(f);
+            if (!string.IsNullOrEmpty(f.forgeId)) forgeEntries.Add(f);
         }
     }
 
@@ -486,7 +488,22 @@ public static class GameData
         }
         if (asset == null)
         {
-            Debug.LogWarning($"GameData: Missing CSV at Resources/{resourcePath}.csv");
+            var list = Resources.LoadAll<TextAsset>("data");
+            if (list != null)
+            {
+                var names = new System.Text.StringBuilder();
+                for (int i = 0; i < list.Length; i++)
+                {
+                    if (list[i] == null) continue;
+                    if (names.Length > 0) names.Append(", ");
+                    names.Append(list[i].name);
+                }
+                Debug.LogWarning($"GameData: Missing CSV at Resources/{resourcePath}.csv. Found in Resources/data: [{names}]");
+            }
+            else
+            {
+                Debug.LogWarning($"GameData: Missing CSV at Resources/{resourcePath}.csv");
+            }
             return null;
         }
         return CsvTable.Parse(asset.text);
@@ -506,7 +523,17 @@ public static class GameData
         {
             var rows = ParseCsv(text);
             if (rows.Count == 0) return null;
-            var table = new CsvTable(rows[0]);
+            // normalize headers (trim + strip BOM)
+            var rawHeaders = rows[0];
+            for (int i = 0; i < rawHeaders.Length; i++)
+            {
+                if (rawHeaders[i] == null) continue;
+                var h = rawHeaders[i].Trim();
+                if (h.Length > 0 && h[0] == '\uFEFF')
+                    h = h.Substring(1);
+                rawHeaders[i] = h;
+            }
+            var table = new CsvTable(rawHeaders);
             for (int i = 1; i < rows.Count; i++)
             {
                 var row = rows[i];
