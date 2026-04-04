@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
@@ -34,6 +35,13 @@ public class GameFlowManager : MonoBehaviour
     private Text forgeCountdownLabel;
     private Text forgeGainLabel;
     private Text oddsLabel;
+    private TMP_Text moneyLabelTMP;
+    private TMP_Text skillMoneyLabelTMP;
+    private TMP_Text forgeStoneLabelTMP;
+    private TMP_Text forgeCopperLabelTMP;
+    private TMP_Text forgeCountdownLabelTMP;
+    private TMP_Text forgeGainLabelTMP;
+    private TMP_Text oddsLabelTMP;
     private float money = 0f;
     private int stone = 0; // total owned
     private int copper = 0;
@@ -59,6 +67,27 @@ public class GameFlowManager : MonoBehaviour
     private bool forgeReady = true;
     private float forgeCooldown = 0f;
 
+    [Header("Scene UI (Optional)")]
+    public Canvas sceneCanvas;
+    public GameObject sceneForgePanel;
+    public GameObject sceneSkillPanel;
+    public GameObject sceneRunHud;
+    public GameObject sceneEndPanel;
+    public GameObject sceneTitlePanel;
+    public GameObject sceneSlotPanel;
+    public TMP_Text sceneOddsText;
+    public TMP_Text sceneStoneText;
+    public TMP_Text sceneCopperText;
+    public TMP_Text sceneForgeCountdownText;
+    public TMP_Text sceneForgeGainText;
+    public TMP_Text sceneMoneyText;
+    public Button sceneBtnForgeTab;
+    public Button sceneBtnSkillTab;
+    public Button sceneBtnStartRun;
+    public Button sceneBtnForgeAction;
+    public Image sceneStoneIcon;
+    public Image sceneCopperIcon;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void EnsureExists()
     {
@@ -71,7 +100,8 @@ public class GameFlowManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        EnsureUI();
+        if (!TryBindSceneUI())
+            EnsureUI();
         SceneManager.sceneLoaded += OnSceneLoaded;
         EnsureTestSlotMoney();
         if (SceneManager.GetActiveScene().name == "TitleScene")
@@ -182,8 +212,195 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(confirmPanel, "취소", new Vector2(0.55f, 0.45f), new Vector2(0.55f, 0.45f), new Vector2(60f, -20f), () => ConfirmDelete(false));
     }
 
+    bool TryBindSceneUI()
+    {
+        // If any scene UI reference is provided, use scene UI instead of building.
+        bool hasSceneUI = sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null;
+        if (!hasSceneUI)
+        {
+            // Attempt auto-bind by common object names in the active scene.
+            var activeScene = SceneManager.GetActiveScene();
+            sceneCanvas = sceneCanvas != null ? sceneCanvas : FindCanvasInScene(activeScene);
+            sceneForgePanel = sceneForgePanel != null ? sceneForgePanel : FindInScene(activeScene, "forgePanel", "ForgePanel");
+            sceneSkillPanel = sceneSkillPanel != null ? sceneSkillPanel : FindInScene(activeScene, "skillPanel", "SkillPanel");
+            sceneRunHud = sceneRunHud != null ? sceneRunHud : FindInScene(activeScene, "runHud", "RunHUD");
+            sceneEndPanel = sceneEndPanel != null ? sceneEndPanel : FindInScene(activeScene, "endPanel", "EndPanel");
+            sceneTitlePanel = sceneTitlePanel != null ? sceneTitlePanel : FindInScene(activeScene, "titlePanel", "TitlePanel");
+            sceneSlotPanel = sceneSlotPanel != null ? sceneSlotPanel : FindInScene(activeScene, "slotPanel", "SlotPanel");
+
+            sceneOddsText = sceneOddsText != null ? sceneOddsText : FindTmpText(activeScene, "oddsText", "OddsText");
+            sceneStoneText = sceneStoneText != null ? sceneStoneText : FindTmpText(activeScene, "stoneText", "StoneText");
+            sceneCopperText = sceneCopperText != null ? sceneCopperText : FindTmpText(activeScene, "copperText", "CopperText");
+            sceneForgeCountdownText = sceneForgeCountdownText != null ? sceneForgeCountdownText : FindTmpText(activeScene, "time", "forgeTime", "ForgeTime");
+            sceneForgeGainText = sceneForgeGainText != null ? sceneForgeGainText : FindTmpText(activeScene, "forgeGain", "oreResultText", "OreResultText");
+            sceneMoneyText = sceneMoneyText != null ? sceneMoneyText : FindTmpText(activeScene, "moneyText", "MoneyText", "moneyLabel", "MoneyLabel");
+
+            sceneBtnForgeTab = sceneBtnForgeTab != null ? sceneBtnForgeTab : FindButton(activeScene, "btnForge", "BtnForge");
+            sceneBtnSkillTab = sceneBtnSkillTab != null ? sceneBtnSkillTab : FindButton(activeScene, "btnSkill", "BtnSkill");
+            sceneBtnStartRun = sceneBtnStartRun != null ? sceneBtnStartRun : FindButton(activeScene, "btnStart", "BtnStart");
+            sceneBtnForgeAction = sceneBtnForgeAction != null ? sceneBtnForgeAction : FindButton(activeScene, "btnForgeStart", "BtnForgeStart");
+
+            sceneStoneIcon = sceneStoneIcon != null ? sceneStoneIcon : FindImage(activeScene, "stoneIcon", "StoneIcon");
+            sceneCopperIcon = sceneCopperIcon != null ? sceneCopperIcon : FindImage(activeScene, "copperIcon", "CopperIcon");
+
+            hasSceneUI = sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null;
+        }
+
+        if (!hasSceneUI) return false;
+
+        canvas = sceneCanvas != null ? sceneCanvas : GetComponentInChildren<Canvas>();
+        runHud = sceneRunHud;
+        endPanel = sceneEndPanel;
+        forgePanel = sceneForgePanel;
+        skillPanel = sceneSkillPanel;
+        titlePanel = sceneTitlePanel;
+        slotPanel = sceneSlotPanel;
+
+        oddsLabelTMP = sceneOddsText;
+        forgeStoneLabelTMP = sceneStoneText;
+        forgeCopperLabelTMP = sceneCopperText;
+        forgeCountdownLabelTMP = sceneForgeCountdownText;
+        forgeGainLabelTMP = sceneForgeGainText;
+        moneyLabelTMP = sceneMoneyText;
+
+        forgeStoneIconImage = sceneStoneIcon;
+        forgeCopperIconImage = sceneCopperIcon;
+
+        if (sceneBtnForgeTab != null)
+        {
+            sceneBtnForgeTab.onClick.RemoveAllListeners();
+            sceneBtnForgeTab.onClick.AddListener(() => ShowForge());
+        }
+        if (sceneBtnSkillTab != null)
+        {
+            sceneBtnSkillTab.onClick.RemoveAllListeners();
+            sceneBtnSkillTab.onClick.AddListener(() => ShowSkillTree());
+        }
+        if (sceneBtnStartRun != null)
+        {
+            sceneBtnStartRun.onClick.RemoveAllListeners();
+            sceneBtnStartRun.onClick.AddListener(() => GoToRunScene());
+        }
+        if (sceneBtnForgeAction != null)
+        {
+            sceneBtnForgeAction.onClick.RemoveAllListeners();
+            sceneBtnForgeAction.onClick.AddListener(() => TryForge());
+        }
+
+        if (forgeStoneIconImage != null)
+        {
+            var btn = GetOrAdd<Button>(forgeStoneIconImage.gameObject);
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() => SetSelectedOre(OreSelect.Stone));
+            btn.onClick.AddListener(() => StartCoroutine(FlashImage(forgeStoneIconImage, forgeStoneIconImage.color)));
+        }
+        if (forgeCopperIconImage != null)
+        {
+            var btn = GetOrAdd<Button>(forgeCopperIconImage.gameObject);
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() => SetSelectedOre(OreSelect.Copper));
+            btn.onClick.AddListener(() => StartCoroutine(FlashImage(forgeCopperIconImage, forgeCopperIconImage.color)));
+        }
+
+        return true;
+    }
+
+    Canvas FindCanvasInScene(Scene scene)
+    {
+        var canvases = FindObjectsOfType<Canvas>(true);
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            if (canvases[i] != null && canvases[i].gameObject.scene == scene)
+                return canvases[i];
+        }
+        return null;
+    }
+
+    GameObject FindInScene(Scene scene, params string[] names)
+    {
+        var all = FindObjectsOfType<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            var t = all[i];
+            if (t == null || t.gameObject.scene != scene) continue;
+            for (int n = 0; n < names.Length; n++)
+            {
+                if (t.name == names[n]) return t.gameObject;
+            }
+        }
+        return null;
+    }
+
+    TMP_Text FindTmpText(Scene scene, params string[] names)
+    {
+        var go = FindInScene(scene, names);
+        if (go == null) return null;
+        var tmp = go.GetComponent<TMP_Text>();
+        if (tmp != null) return tmp;
+        return go.GetComponentInChildren<TMP_Text>(true);
+    }
+
+    Button FindButton(Scene scene, params string[] names)
+    {
+        var go = FindInScene(scene, names);
+        if (go == null) return null;
+        var btn = go.GetComponent<Button>();
+        if (btn != null) return btn;
+        return go.GetComponentInChildren<Button>(true);
+    }
+
+    Image FindImage(Scene scene, params string[] names)
+    {
+        var go = FindInScene(scene, names);
+        if (go == null) return null;
+        return go.GetComponent<Image>();
+    }
+
+
+    T GetOrAdd<T>(GameObject go) where T : Component
+    {
+        var c = go.GetComponent<T>();
+        if (c == null) c = go.AddComponent<T>();
+        return c;
+    }
+
     void EnsureUI()
     {
+        var sceneName = SceneManager.GetActiveScene().name;
+        bool useSceneOnly = sceneName == "UpgradeScene";
+
+        if (useSceneOnly)
+        {
+            // UpgradeScene: use scene UI only.
+            DestroyAutoUIHierarchy();
+            if (TryBindSceneUI())
+            {
+                DestroyAutoCanvasIfSceneUI();
+                if (canvas != null)
+                {
+                    canvas.enabled = true;
+                    canvas.gameObject.SetActive(true);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("UpgradeScene UI not bound. Please assign scene UI references or use expected object names.");
+            }
+            return;
+        }
+
+        // Other scenes: allow auto-built UI fallback.
+        if (TryBindSceneUI())
+        {
+            DestroyAutoCanvasIfSceneUI();
+            if (canvas != null)
+            {
+                canvas.enabled = true;
+                canvas.gameObject.SetActive(true);
+            }
+            return;
+        }
+
         if (canvas == null)
             BuildUI();
         if (canvas != null)
@@ -191,6 +408,43 @@ public class GameFlowManager : MonoBehaviour
             canvas.enabled = true;
             canvas.gameObject.SetActive(true);
         }
+    }
+
+    void DestroyAutoCanvasIfSceneUI()
+    {
+        if (sceneCanvas == null) return;
+        // If we previously built a UI_Canvas under this manager, remove it to avoid overlap.
+        var childCanvas = GetComponentInChildren<Canvas>(true);
+        if (childCanvas != null && childCanvas.gameObject.name == "UI_Canvas" && childCanvas != sceneCanvas)
+        {
+            Destroy(childCanvas.gameObject);
+        }
+    }
+
+    void DestroyAutoUIHierarchy()
+    {
+        // Remove auto-generated UI objects that might persist from previous scenes.
+        var childCanvas = GetComponentInChildren<Canvas>(true);
+        if (childCanvas != null && childCanvas.gameObject.name == "UI_Canvas")
+        {
+            Destroy(childCanvas.gameObject);
+        }
+
+        // Also clean known auto panels that were created under this manager.
+        string[] autoNames = { "RunHUD", "EndPanel", "ForgePanel", "SkillPanel", "TitlePanel", "SlotPanel", "ConfirmPanel" };
+        for (int i = 0; i < autoNames.Length; i++)
+        {
+            var go = transform.Find(autoNames[i]);
+            if (go != null)
+                Destroy(go.gameObject);
+        }
+
+        if (slotStatusCo != null)
+        {
+            StopCoroutine(slotStatusCo);
+            slotStatusCo = null;
+        }
+        slotStatusLabel = null;
     }
 
     GameObject CreatePanel(string name, Color bg)
@@ -415,12 +669,12 @@ public class GameFlowManager : MonoBehaviour
         EnsureUI();
         CurrentPhase = GamePhase.Run;
         Time.timeScale = 1f;
-        runHud.SetActive(true);
-        endPanel.SetActive(false);
-        forgePanel.SetActive(false);
-        skillPanel.SetActive(false);
-        titlePanel.SetActive(false);
-        slotPanel.SetActive(false);
+        SetActiveSafe(runHud, true);
+        SetActiveSafe(endPanel, false);
+        SetActiveSafe(forgePanel, false);
+        SetActiveSafe(skillPanel, false);
+        SetActiveSafe(titlePanel, false);
+        SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         endProcessed = false;
     }
@@ -429,12 +683,12 @@ public class GameFlowManager : MonoBehaviour
     {
         CurrentPhase = GamePhase.End;
         Time.timeScale = 0f;
-        runHud.SetActive(true);
-        endPanel.SetActive(true);
-        forgePanel.SetActive(false);
-        skillPanel.SetActive(false);
-        titlePanel.SetActive(false);
-        slotPanel.SetActive(false);
+        SetActiveSafe(runHud, true);
+        SetActiveSafe(endPanel, true);
+        SetActiveSafe(forgePanel, false);
+        SetActiveSafe(skillPanel, false);
+        SetActiveSafe(titlePanel, false);
+        SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         SyncEndResults();
     }
@@ -443,12 +697,12 @@ public class GameFlowManager : MonoBehaviour
     {
         CurrentPhase = GamePhase.Forge;
         Time.timeScale = 0f;
-        runHud.SetActive(false);
-        endPanel.SetActive(false);
-        forgePanel.SetActive(true);
-        skillPanel.SetActive(false);
-        titlePanel.SetActive(false);
-        slotPanel.SetActive(false);
+        SetActiveSafe(runHud, false);
+        SetActiveSafe(endPanel, false);
+        SetActiveSafe(forgePanel, true);
+        SetActiveSafe(skillPanel, false);
+        SetActiveSafe(titlePanel, false);
+        SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         GameData.ReloadForgeEntries();
         SyncForgeData();
@@ -458,12 +712,12 @@ public class GameFlowManager : MonoBehaviour
     {
         CurrentPhase = GamePhase.SkillTree;
         Time.timeScale = 0f;
-        runHud.SetActive(false);
-        endPanel.SetActive(false);
-        forgePanel.SetActive(false);
-        skillPanel.SetActive(true);
-        titlePanel.SetActive(false);
-        slotPanel.SetActive(false);
+        SetActiveSafe(runHud, false);
+        SetActiveSafe(endPanel, false);
+        SetActiveSafe(forgePanel, false);
+        SetActiveSafe(skillPanel, true);
+        SetActiveSafe(titlePanel, false);
+        SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
     }
 
@@ -472,12 +726,12 @@ public class GameFlowManager : MonoBehaviour
         EnsureUI();
         CurrentPhase = GamePhase.Title;
         Time.timeScale = 0f;
-        runHud.SetActive(false);
-        endPanel.SetActive(false);
-        forgePanel.SetActive(false);
-        skillPanel.SetActive(false);
-        titlePanel.SetActive(true);
-        slotPanel.SetActive(false);
+        SetActiveSafe(runHud, false);
+        SetActiveSafe(endPanel, false);
+        SetActiveSafe(forgePanel, false);
+        SetActiveSafe(skillPanel, false);
+        SetActiveSafe(titlePanel, true);
+        SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
     }
 
@@ -493,10 +747,9 @@ public class GameFlowManager : MonoBehaviour
 
     void Update()
     {
-        if (oxygenLabel == null) return;
         if (oxygenSystem == null) oxygenSystem = FindObjectOfType<OxygenSystem>();
         if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
-        if (oxygenSystem != null)
+        if (oxygenSystem != null && oxygenLabel != null)
         {
             oxygenLabel.text = $"남은 산소 ({oxygenSystem.currentOxygen:0.0} / {oxygenSystem.MaxOxygen:0.0})";
         }
@@ -515,16 +768,13 @@ public class GameFlowManager : MonoBehaviour
             else
                 oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
         }
-        if (CurrentPhase == GamePhase.SkillTree && skillMoneyLabel != null)
+        if (CurrentPhase == GamePhase.SkillTree)
         {
-            skillMoneyLabel.text = $"{money:0.0} $";
+            SetLabelText(skillMoneyLabel, skillMoneyLabelTMP, $"{money:0.0} $");
         }
-        if (CurrentPhase == GamePhase.Forge && forgeCountdownLabel != null)
+        if (CurrentPhase == GamePhase.Forge)
         {
-            if (forgeReady)
-                forgeCountdownLabel.text = "";
-            else
-                forgeCountdownLabel.text = $"{forgeCooldown:0.0}s";
+            SetLabelText(forgeCountdownLabel, forgeCountdownLabelTMP, forgeReady ? "" : $"{forgeCooldown:0.0}s");
         }
         if (CurrentPhase == GamePhase.Forge)
         {
@@ -560,11 +810,37 @@ public class GameFlowManager : MonoBehaviour
 
     void EnsureEventSystem()
     {
-        if (FindObjectOfType<EventSystem>() != null) return;
-        var es = new GameObject("EventSystem");
-        es.AddComponent<EventSystem>();
-        es.AddComponent<InputSystemUIInputModule>();
-        DontDestroyOnLoad(es);
+        var systems = FindObjectsOfType<EventSystem>(true);
+        if (systems.Length == 0)
+        {
+            var es = new GameObject("EventSystem");
+            es.AddComponent<EventSystem>();
+            es.AddComponent<InputSystemUIInputModule>();
+            return;
+        }
+
+        if (systems.Length == 1) return;
+
+        // Keep the one in the active scene if possible, destroy the rest.
+        var activeScene = SceneManager.GetActiveScene();
+        EventSystem keep = null;
+        for (int i = 0; i < systems.Length; i++)
+        {
+            if (systems[i] != null && systems[i].gameObject.scene == activeScene)
+            {
+                keep = systems[i];
+                break;
+            }
+        }
+        if (keep == null) keep = systems[0];
+
+        for (int i = 0; i < systems.Length; i++)
+        {
+            var es = systems[i];
+            if (es == null || es == keep) continue;
+            es.gameObject.SetActive(false);
+            Destroy(es.gameObject);
+        }
     }
 
     void EnsureTestSlotMoney()
@@ -604,14 +880,12 @@ public class GameFlowManager : MonoBehaviour
     {
         float stoneValue = GetMineralValue("stone", 1f) * SkillEffects.ValueMultiplier;
         float copperValue = GetMineralValue("copper", 10f) * SkillEffects.ValueMultiplier;
-        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${stoneValue:0.0})";
-        if (forgeCopperLabel != null)
-        {
-            forgeCopperLabel.text = $"구리 : {copper}(${copperValue:0.0})";
-            forgeCopperLabel.gameObject.SetActive(IsMineralUnlocked("copper"));
-        }
+        SetLabelText(forgeStoneLabel, forgeStoneLabelTMP, $"돌 : {stone}(${stoneValue:0.0})");
+        SetLabelText(forgeCopperLabel, forgeCopperLabelTMP, $"구리 : {copper}(${copperValue:0.0})");
+        SetActiveSafe(forgeCopperLabel != null ? forgeCopperLabel.gameObject : null, IsMineralUnlocked("copper"));
+        SetActiveSafe(forgeCopperLabelTMP != null ? forgeCopperLabelTMP.gameObject : null, IsMineralUnlocked("copper"));
         if (forgeCopperButton != null) forgeCopperButton.SetActive(IsMineralUnlocked("copper"));
-        if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
+        SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
         UpdateOddsLabel();
     }
 
@@ -630,10 +904,11 @@ public class GameFlowManager : MonoBehaviour
         float gain = baseValue * multiplier;
         money += gain;
 
-        if (forgeGainLabel != null)
+        if (forgeGainLabel != null || forgeGainLabelTMP != null)
         {
-            forgeGainLabel.text = $"+{gain:0.0}$";
-            forgeGainLabel.gameObject.SetActive(true);
+            SetLabelText(forgeGainLabel, forgeGainLabelTMP, $"+{gain:0.0}$");
+            SetActiveSafe(forgeGainLabel != null ? forgeGainLabel.gameObject : null, true);
+            SetActiveSafe(forgeGainLabelTMP != null ? forgeGainLabelTMP.gameObject : null, true);
             StartCoroutine(FloatingGain());
         }
 
@@ -649,14 +924,12 @@ public class GameFlowManager : MonoBehaviour
         }
         float stoneValue = GetMineralValue("stone", 1f) * SkillEffects.ValueMultiplier;
         float copperValue = GetMineralValue("copper", 10f) * SkillEffects.ValueMultiplier;
-        if (forgeStoneLabel != null) forgeStoneLabel.text = $"돌 : {stone}(${stoneValue:0.0})";
-        if (forgeCopperLabel != null)
-        {
-            forgeCopperLabel.text = $"구리 : {copper}(${copperValue:0.0})";
-            forgeCopperLabel.gameObject.SetActive(IsMineralUnlocked("copper"));
-        }
+        SetLabelText(forgeStoneLabel, forgeStoneLabelTMP, $"돌 : {stone}(${stoneValue:0.0})");
+        SetLabelText(forgeCopperLabel, forgeCopperLabelTMP, $"구리 : {copper}(${copperValue:0.0})");
+        SetActiveSafe(forgeCopperLabel != null ? forgeCopperLabel.gameObject : null, IsMineralUnlocked("copper"));
+        SetActiveSafe(forgeCopperLabelTMP != null ? forgeCopperLabelTMP.gameObject : null, IsMineralUnlocked("copper"));
         if (forgeCopperButton != null) forgeCopperButton.SetActive(IsMineralUnlocked("copper"));
-        if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
+        SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
         // no persistence during testing
 
         StartCoroutine(ForgeCooldown());
@@ -672,7 +945,7 @@ public class GameFlowManager : MonoBehaviour
         if (money + 0.0001f < amount) return false;
         money -= amount;
         if (money < 0f) money = 0f;
-        if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
+        SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
         return true;
     }
 
@@ -680,7 +953,7 @@ public class GameFlowManager : MonoBehaviour
     {
         if (amount <= 0f) return;
         money += amount;
-        if (moneyLabel != null) moneyLabel.text = $"{money:0.0} $";
+        SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
     }
 
     void SyncEndResults()
@@ -904,27 +1177,34 @@ public class GameFlowManager : MonoBehaviour
     System.Collections.IEnumerator FloatingGain()
     {
         float t = 0f;
-        Vector3 start = forgeGainLabel.rectTransform.anchoredPosition;
+        RectTransform rt = null;
+        if (forgeGainLabel != null) rt = forgeGainLabel.rectTransform;
+        else if (forgeGainLabelTMP != null) rt = forgeGainLabelTMP.rectTransform;
+        if (rt == null) yield break;
+        Vector3 start = rt.anchoredPosition;
         Vector3 end = start + new Vector3(0f, 40f, 0f);
         while (t < 1f)
         {
             t += Time.unscaledDeltaTime * 1.2f;
-            forgeGainLabel.rectTransform.anchoredPosition = Vector3.Lerp(start, end, t);
-            var c = forgeGainLabel.color;
+            rt.anchoredPosition = Vector3.Lerp(start, end, t);
+            var c = forgeGainLabel != null ? forgeGainLabel.color : forgeGainLabelTMP.color;
             c.a = Mathf.Lerp(1f, 0f, t);
-            forgeGainLabel.color = c;
+            if (forgeGainLabel != null) forgeGainLabel.color = c;
+            if (forgeGainLabelTMP != null) forgeGainLabelTMP.color = c;
             yield return null;
         }
-        var reset = forgeGainLabel.color;
+        var reset = forgeGainLabel != null ? forgeGainLabel.color : forgeGainLabelTMP.color;
         reset.a = 1f;
-        forgeGainLabel.color = reset;
-        forgeGainLabel.rectTransform.anchoredPosition = start;
-        forgeGainLabel.gameObject.SetActive(false);
+        if (forgeGainLabel != null) forgeGainLabel.color = reset;
+        if (forgeGainLabelTMP != null) forgeGainLabelTMP.color = reset;
+        rt.anchoredPosition = start;
+        SetActiveSafe(forgeGainLabel != null ? forgeGainLabel.gameObject : null, false);
+        SetActiveSafe(forgeGainLabelTMP != null ? forgeGainLabelTMP.gameObject : null, false);
     }
 
     void UpdateOddsLabel()
     {
-        if (oddsLabel == null) return;
+        if (oddsLabel == null && oddsLabelTMP == null) return;
         var entries = GameData.GetForgeEntries();
         if (entries == null || entries.Count == 0)
         {
@@ -935,7 +1215,8 @@ public class GameFlowManager : MonoBehaviour
             float p2 = Mathf.Min(0.35f, 0.20f + adj);
             float p5 = 0.10f;
             float p10 = 0.05f;
-            oddsLabel.text = $"0.5x : {p05 * 100f:0}%\n1x : {p1 * 100f:0}%\n2x : {p2 * 100f:0}%\n5x : {p5 * 100f:0}%\n10x : {p10 * 100f:0}%";
+            string text = $"0.5x : {p05 * 100f:0}%\n1x : {p1 * 100f:0}%\n2x : {p2 * 100f:0}%\n5x : {p5 * 100f:0}%\n10x : {p10 * 100f:0}%";
+            SetLabelText(oddsLabel, oddsLabelTMP, text);
             return;
         }
         int total = 0;
@@ -950,7 +1231,18 @@ public class GameFlowManager : MonoBehaviour
             lines.Append($"{mult}x : {pct:0}%");
             if (i < entries.Count - 1) lines.Append("\n");
         }
-        oddsLabel.text = lines.ToString();
+        SetLabelText(oddsLabel, oddsLabelTMP, lines.ToString());
+    }
+
+    void SetLabelText(Text legacy, TMP_Text tmp, string value)
+    {
+        if (legacy != null) legacy.text = value;
+        if (tmp != null) tmp.text = value;
+    }
+
+    void SetActiveSafe(GameObject go, bool active)
+    {
+        if (go != null) go.SetActive(active);
     }
 
     float GetMineralValue(string id, float fallback)
@@ -988,21 +1280,30 @@ public class GameFlowManager : MonoBehaviour
 
     System.Collections.IEnumerator SlotStatusFloat()
     {
+        if (slotStatusLabel == null) yield break;
+        var rt = slotStatusLabel.rectTransform;
+        if (rt == null) yield break;
         float t = 0f;
-        Vector3 start = slotStatusLabel.rectTransform.anchoredPosition;
+        Vector3 start = rt.anchoredPosition;
         Vector3 end = start + new Vector3(0f, 30f, 0f);
         var c = slotStatusLabel.color;
         c.a = 1f;
         slotStatusLabel.color = c;
         while (t < 1f)
         {
+            if (slotStatusLabel == null) yield break;
+            rt = slotStatusLabel.rectTransform;
+            if (rt == null) yield break;
             t += Time.unscaledDeltaTime * 1.0f;
-            slotStatusLabel.rectTransform.anchoredPosition = Vector3.Lerp(start, end, t);
+            rt.anchoredPosition = Vector3.Lerp(start, end, t);
             c.a = Mathf.Lerp(1f, 0f, t);
             slotStatusLabel.color = c;
             yield return null;
         }
-        slotStatusLabel.rectTransform.anchoredPosition = start;
+        if (slotStatusLabel == null) yield break;
+        rt = slotStatusLabel.rectTransform;
+        if (rt == null) yield break;
+        rt.anchoredPosition = start;
         c.a = 1f;
         slotStatusLabel.color = c;
         slotStatusLabel.text = "";
