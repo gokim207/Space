@@ -794,11 +794,17 @@ public class GameFlowManager : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        if (scene.name == "UpgradeScene")
+            upgradeSceneBound = false;
         EnsureUI();
         EnsureEventSystem();
         if (scene.name == "UpgradeScene")
         {
+            ForceBindUpgradeSceneByName();
             BindUpgradeSceneButtons();
+            // Reset forge state only when entering UpgradeScene (not when toggling panels)
+            forgeReady = true;
+            forgeCooldown = 0f;
             // read persisted ore count if WaveManager isn't in this scene
             if (CurrentSlot >= 1) LoadSlot(CurrentSlot);
             ShowForge();
@@ -821,6 +827,7 @@ public class GameFlowManager : MonoBehaviour
 
         // Ensure we have references, then bind click handlers.
         TryBindSceneUI();
+        ForceBindUpgradeSceneByName();
 
         var forgeBtn = FindButton(scene, "btnForge", "BtnForge");
         var skillBtn = FindButton(scene, "btnSkill", "BtnSkill");
@@ -849,6 +856,76 @@ public class GameFlowManager : MonoBehaviour
         }
 
         upgradeSceneBound = true;
+    }
+
+    void ForceBindUpgradeSceneByName()
+    {
+        var scene = SceneManager.GetActiveScene();
+        if (scene.name != "UpgradeScene") return;
+
+        // Panels
+        if (sceneForgePanel == null) sceneForgePanel = FindInScene(scene, "forgePanel");
+        if (sceneSkillPanel == null) sceneSkillPanel = FindInScene(scene, "skillPanel");
+        if (sceneRunHud == null) sceneRunHud = FindInScene(scene, "runHud");
+        if (sceneEndPanel == null) sceneEndPanel = FindInScene(scene, "endPanel");
+        if (sceneTitlePanel == null) sceneTitlePanel = FindInScene(scene, "titlePanel");
+        if (sceneSlotPanel == null) sceneSlotPanel = FindInScene(scene, "slotPanel");
+
+        // Texts
+        if (sceneOddsText == null) sceneOddsText = FindTmpByName(scene, "oddsText", "odds");
+        if (sceneStoneText == null) sceneStoneText = FindTmpByName(scene, "stoneText", "stoneCount");
+        if (sceneCopperText == null) sceneCopperText = FindTmpByName(scene, "copperText", "copperCount");
+        if (sceneForgeCountdownText == null) sceneForgeCountdownText = FindTmpByName(scene, "time", "forgeTime", "countdown");
+        if (sceneForgeGainText == null) sceneForgeGainText = FindTmpByName(scene, "oreResultText", "forgeGainText", "gainText", "forgeGain", "gain");
+        if (sceneMoneyText == null) sceneMoneyText = FindTmpByName(scene, "moneyText", "money", "moneyLabel");
+
+        // Icons
+        if (sceneStoneIcon == null) sceneStoneIcon = FindImageByName(scene, "stoneIcon", "stoneImg", "stoneImage");
+        if (sceneCopperIcon == null) sceneCopperIcon = FindImageByName(scene, "copperIcon", "copperImg", "copperImage");
+
+        // Apply to runtime fields
+        if (sceneForgePanel != null) forgePanel = sceneForgePanel;
+        if (sceneSkillPanel != null) skillPanel = sceneSkillPanel;
+        if (sceneRunHud != null) runHud = sceneRunHud;
+        if (sceneEndPanel != null) endPanel = sceneEndPanel;
+        if (sceneTitlePanel != null) titlePanel = sceneTitlePanel;
+        if (sceneSlotPanel != null) slotPanel = sceneSlotPanel;
+
+        if (sceneOddsText != null) oddsLabelTMP = sceneOddsText;
+        if (sceneStoneText != null) forgeStoneLabelTMP = sceneStoneText;
+        if (sceneCopperText != null) forgeCopperLabelTMP = sceneCopperText;
+        if (sceneForgeCountdownText != null) forgeCountdownLabelTMP = sceneForgeCountdownText;
+        if (sceneForgeGainText != null) forgeGainLabelTMP = sceneForgeGainText;
+        if (sceneMoneyText != null) moneyLabelTMP = sceneMoneyText;
+
+        if (sceneStoneIcon != null) forgeStoneIconImage = sceneStoneIcon;
+        if (sceneCopperIcon != null) forgeCopperIconImage = sceneCopperIcon;
+    }
+
+    TMP_Text FindTmpByName(Scene scene, params string[] names)
+    {
+        var go = FindInScene(scene, names);
+        if (go != null)
+        {
+            var tmp = go.GetComponent<TMP_Text>();
+            if (tmp != null) return tmp;
+            tmp = go.GetComponentInChildren<TMP_Text>(true);
+            if (tmp != null) return tmp;
+        }
+        return null;
+    }
+
+    Image FindImageByName(Scene scene, params string[] names)
+    {
+        var go = FindInScene(scene, names);
+        if (go != null)
+        {
+            var img = go.GetComponent<Image>();
+            if (img != null) return img;
+            img = go.GetComponentInChildren<Image>(true);
+            if (img != null) return img;
+        }
+        return null;
     }
 
     void EnsureEventSystem()
@@ -928,6 +1005,7 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(forgeCopperLabel != null ? forgeCopperLabel.gameObject : null, IsMineralUnlocked("copper"));
         SetActiveSafe(forgeCopperLabelTMP != null ? forgeCopperLabelTMP.gameObject : null, IsMineralUnlocked("copper"));
         if (forgeCopperButton != null) forgeCopperButton.SetActive(IsMineralUnlocked("copper"));
+        if (forgeCopperIconImage != null) forgeCopperIconImage.gameObject.SetActive(IsMineralUnlocked("copper"));
         SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
         UpdateOddsLabel();
     }
