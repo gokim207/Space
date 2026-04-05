@@ -87,6 +87,7 @@ public class GameFlowManager : MonoBehaviour
     public Button sceneBtnForgeAction;
     public Image sceneStoneIcon;
     public Image sceneCopperIcon;
+    private bool upgradeSceneBound = false;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void EnsureExists()
@@ -346,7 +347,10 @@ public class GameFlowManager : MonoBehaviour
         if (go == null) return null;
         var btn = go.GetComponent<Button>();
         if (btn != null) return btn;
-        return go.GetComponentInChildren<Button>(true);
+        btn = go.GetComponentInChildren<Button>(true);
+        if (btn != null) return btn;
+        // If there's no Button component, add one to the named object (common for image-only buttons).
+        return go.AddComponent<Button>();
     }
 
     Image FindImage(Scene scene, params string[] names)
@@ -794,6 +798,7 @@ public class GameFlowManager : MonoBehaviour
         EnsureEventSystem();
         if (scene.name == "UpgradeScene")
         {
+            BindUpgradeSceneButtons();
             // read persisted ore count if WaveManager isn't in this scene
             if (CurrentSlot >= 1) LoadSlot(CurrentSlot);
             ShowForge();
@@ -806,6 +811,44 @@ public class GameFlowManager : MonoBehaviour
         {
             ShowRun();
         }
+    }
+
+    void BindUpgradeSceneButtons()
+    {
+        if (upgradeSceneBound) return;
+        var scene = SceneManager.GetActiveScene();
+        if (scene.name != "UpgradeScene") return;
+
+        // Ensure we have references, then bind click handlers.
+        TryBindSceneUI();
+
+        var forgeBtn = FindButton(scene, "btnForge", "BtnForge");
+        var skillBtn = FindButton(scene, "btnSkill", "BtnSkill");
+        var forgeStartBtn = FindButton(scene, "btnForgeStart", "BtnForgeStart");
+        var startBtn = FindButton(scene, "btnStart", "BtnStart");
+
+        if (forgeBtn != null)
+        {
+            forgeBtn.onClick.RemoveAllListeners();
+            forgeBtn.onClick.AddListener(() => ShowForge());
+        }
+        if (skillBtn != null)
+        {
+            skillBtn.onClick.RemoveAllListeners();
+            skillBtn.onClick.AddListener(() => ShowSkillTree());
+        }
+        if (forgeStartBtn != null)
+        {
+            forgeStartBtn.onClick.RemoveAllListeners();
+            forgeStartBtn.onClick.AddListener(() => TryForge());
+        }
+        if (startBtn != null)
+        {
+            startBtn.onClick.RemoveAllListeners();
+            startBtn.onClick.AddListener(() => GoToRunScene());
+        }
+
+        upgradeSceneBound = true;
     }
 
     void EnsureEventSystem()
