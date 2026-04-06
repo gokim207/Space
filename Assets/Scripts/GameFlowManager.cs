@@ -737,6 +737,7 @@ public class GameFlowManager : MonoBehaviour
         ForceBindUpgradeSceneByName();
         if (skillPanel == null)
             EnsureLegacySkillPanel();
+        RefreshSkillMoneyBinding();
         SetActiveSafe(runHud, false);
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, false);
@@ -744,6 +745,17 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(titlePanel, false);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
+        UpdateMoneyLabels();
+    }
+
+    void RefreshSkillMoneyBinding()
+    {
+        if (skillPanel == null) return;
+        // Always re-scan inside skillPanel to avoid cross-binding to forge money text.
+        var tmp = FindTmpInDescendants(skillPanel, "moneyText", "money", "moneyLabel");
+        if (tmp == null)
+            tmp = FindTmpInDescendants(skillPanel, "moneyBar");
+        if (tmp != null) skillMoneyLabelTMP = tmp;
     }
 
     void EnsureLegacySkillPanel()
@@ -811,7 +823,7 @@ public class GameFlowManager : MonoBehaviour
         }
         if (CurrentPhase == GamePhase.SkillTree)
         {
-            SetLabelText(skillMoneyLabel, skillMoneyLabelTMP, $"$ {money:0.0}");
+            UpdateMoneyLabels();
         }
         if (CurrentPhase == GamePhase.Forge)
         {
@@ -899,6 +911,10 @@ public class GameFlowManager : MonoBehaviour
             skillMoneyLabelTMP = FindTmpInChild(skillPanel, "moneyText", "money", "moneyLabel");
         if (skillMoneyLabelTMP == null && skillPanel != null)
             skillMoneyLabelTMP = FindTmpInChildParent(skillPanel, "moneyBar");
+        if (skillMoneyLabelTMP == null && skillPanel != null)
+            skillMoneyLabelTMP = FindTmpInDescendants(skillPanel, "moneyText", "money", "moneyLabel");
+        if (skillMoneyLabelTMP == null && skillPanel != null)
+            skillMoneyLabelTMP = FindTmpInDescendants(skillPanel, "moneyBar");
         if (moneyLabel == null) moneyLabel = FindLegacyTextByName(scene, "moneyText", "money", "moneyLabel");
         if (moneyLabel == null) moneyLabel = FindLegacyTextInParent(scene, "moneyBar");
 
@@ -967,6 +983,28 @@ public class GameFlowManager : MonoBehaviour
         var t = root.transform.Find(parentName);
         if (t == null) return null;
         return t.GetComponentInChildren<TMP_Text>(true);
+    }
+
+    TMP_Text FindTmpInDescendants(GameObject root, params string[] names)
+    {
+        if (root == null) return null;
+        var all = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            var t = all[i];
+            if (t == null) continue;
+            for (int n = 0; n < names.Length; n++)
+            {
+                if (t.name == names[n])
+                {
+                    var tmp = t.GetComponent<TMP_Text>();
+                    if (tmp != null) return tmp;
+                    tmp = t.GetComponentInChildren<TMP_Text>(true);
+                    if (tmp != null) return tmp;
+                }
+            }
+        }
+        return null;
     }
 
     Text FindLegacyTextByName(Scene scene, params string[] names)
@@ -1100,7 +1138,7 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(forgeCopperLabelTMP != null ? forgeCopperLabelTMP.gameObject : null, IsMineralUnlocked("copper"));
         if (forgeCopperButton != null) forgeCopperButton.SetActive(IsMineralUnlocked("copper"));
         if (forgeCopperIconImage != null) forgeCopperIconImage.gameObject.SetActive(IsMineralUnlocked("copper"));
-        SetLabelText(moneyLabel, moneyLabelTMP, $"$ {money:0.0}");
+        UpdateMoneyLabels();
         UpdateOddsLabel();
 
         // Ensure gain label exists for floating green text feedback.
@@ -1168,7 +1206,7 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(forgeCopperLabel != null ? forgeCopperLabel.gameObject : null, IsMineralUnlocked("copper"));
         SetActiveSafe(forgeCopperLabelTMP != null ? forgeCopperLabelTMP.gameObject : null, IsMineralUnlocked("copper"));
         if (forgeCopperButton != null) forgeCopperButton.SetActive(IsMineralUnlocked("copper"));
-        SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
+        UpdateMoneyLabels();
         // no persistence during testing
 
         StartCoroutine(ForgeCooldown());
@@ -1184,7 +1222,7 @@ public class GameFlowManager : MonoBehaviour
         if (money + 0.0001f < amount) return false;
         money -= amount;
         if (money < 0f) money = 0f;
-        SetLabelText(moneyLabel, moneyLabelTMP, $"$ {money:0.0}");
+        UpdateMoneyLabels();
         return true;
     }
 
@@ -1192,7 +1230,7 @@ public class GameFlowManager : MonoBehaviour
     {
         if (amount <= 0f) return;
         money += amount;
-        SetLabelText(moneyLabel, moneyLabelTMP, $"$ {money:0.0}");
+        UpdateMoneyLabels();
     }
 
     void SyncEndResults()
@@ -1482,6 +1520,12 @@ public class GameFlowManager : MonoBehaviour
     void SetActiveSafe(GameObject go, bool active)
     {
         if (go != null) go.SetActive(active);
+    }
+
+    void UpdateMoneyLabels()
+    {
+        SetLabelText(moneyLabel, moneyLabelTMP, $"$ {money:0.0}");
+        SetLabelText(skillMoneyLabel, skillMoneyLabelTMP, $"$ {money:0.0}");
     }
 
     float GetMineralValue(string id, float fallback)
