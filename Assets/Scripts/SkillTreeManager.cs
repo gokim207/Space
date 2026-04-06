@@ -495,6 +495,18 @@ public class SkillTreeManager : MonoBehaviour
         mgr.RefreshVisuals();
     }
 
+    public static int GetSkillLevel(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return 0;
+        var mgr = FindManager();
+        if (mgr != null && mgr.nodes.TryGetValue(id, out var node))
+            return node.level;
+
+        int slot = GameFlowManager.CurrentSlot;
+        if (slot < 1) return 0;
+        return PlayerPrefs.GetInt($"slot_{slot}_skill_{id}", 0);
+    }
+
     static SkillTreeManager FindManager()
     {
         var mgr = FindObjectOfType<SkillTreeManager>();

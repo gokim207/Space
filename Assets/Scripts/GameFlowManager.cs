@@ -737,6 +737,7 @@ public class GameFlowManager : MonoBehaviour
         ForceBindUpgradeSceneByName();
         if (skillPanel == null)
             EnsureLegacySkillPanel();
+        EnsureSkillTooltipManager();
         RefreshSkillMoneyBinding();
         SetActiveSafe(runHud, false);
         SetActiveSafe(endPanel, false);
@@ -746,6 +747,14 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         UpdateMoneyLabels();
+    }
+
+    void EnsureSkillTooltipManager()
+    {
+        if (skillPanel == null) return;
+        var mgr = skillPanel.GetComponent<SkillTooltipManager>();
+        if (mgr == null) mgr = skillPanel.AddComponent<SkillTooltipManager>();
+        mgr.AutoBindIfMissing();
     }
 
     void RefreshSkillMoneyBinding()
