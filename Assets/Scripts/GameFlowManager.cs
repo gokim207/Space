@@ -701,6 +701,7 @@ public class GameFlowManager : MonoBehaviour
     {
         CurrentPhase = GamePhase.Forge;
         Time.timeScale = 0f;
+        ForceBindUpgradeSceneByName();
         SetActiveSafe(runHud, false);
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, true);
@@ -708,6 +709,8 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(titlePanel, false);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
+        SetActiveSafe(forgeGainLabel != null ? forgeGainLabel.gameObject : null, false);
+        SetActiveSafe(forgeGainLabelTMP != null ? forgeGainLabelTMP.gameObject : null, false);
         GameData.ReloadForgeEntries();
         SyncForgeData();
     }
@@ -716,6 +719,9 @@ public class GameFlowManager : MonoBehaviour
     {
         CurrentPhase = GamePhase.SkillTree;
         Time.timeScale = 0f;
+        ForceBindUpgradeSceneByName();
+        if (skillPanel == null)
+            EnsureLegacySkillPanel();
         SetActiveSafe(runHud, false);
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, false);
@@ -723,6 +729,22 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(titlePanel, false);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
+    }
+
+    void EnsureLegacySkillPanel()
+    {
+        if (skillPanel != null) return;
+        // Build legacy UI if scene skill panel is not provided (UpgradeScene only).
+        if (SceneManager.GetActiveScene().name != "UpgradeScene") return;
+        if (canvas == null)
+            BuildUI();
+        if (canvas == null) return;
+        if (skillPanel == null)
+        {
+            // BuildUI creates SkillPanel; fetch it if present.
+            var t = transform.Find("SkillPanel");
+            if (t != null) skillPanel = t.gameObject;
+        }
     }
 
     public void ShowTitle()
@@ -774,7 +796,7 @@ public class GameFlowManager : MonoBehaviour
         }
         if (CurrentPhase == GamePhase.SkillTree)
         {
-            SetLabelText(skillMoneyLabel, skillMoneyLabelTMP, $"{money:0.0} $");
+            SetLabelText(skillMoneyLabel, skillMoneyLabelTMP, $"$ {money:0.0}");
         }
         if (CurrentPhase == GamePhase.Forge)
         {
@@ -876,8 +898,11 @@ public class GameFlowManager : MonoBehaviour
         if (sceneStoneText == null) sceneStoneText = FindTmpByName(scene, "stoneText", "stoneCount");
         if (sceneCopperText == null) sceneCopperText = FindTmpByName(scene, "copperText", "copperCount");
         if (sceneForgeCountdownText == null) sceneForgeCountdownText = FindTmpByName(scene, "time", "forgeTime", "countdown");
-        if (sceneForgeGainText == null) sceneForgeGainText = FindTmpByName(scene, "oreResultText", "forgeGainText", "gainText", "forgeGain", "gain");
+        if (sceneForgeGainText == null) sceneForgeGainText = FindTmpByName(scene, "addMoneyText", "oreResultText", "forgeGainText", "gainText", "forgeGain", "gain");
         if (sceneMoneyText == null) sceneMoneyText = FindTmpByName(scene, "moneyText", "money", "moneyLabel");
+        if (sceneMoneyText == null) sceneMoneyText = FindTmpInParent(scene, "moneyBar");
+        if (moneyLabel == null) moneyLabel = FindLegacyTextByName(scene, "moneyText", "money", "moneyLabel");
+        if (moneyLabel == null) moneyLabel = FindLegacyTextInParent(scene, "moneyBar");
 
         // Icons
         if (sceneStoneIcon == null) sceneStoneIcon = FindImageByName(scene, "stoneIcon", "stoneImg", "stoneImage");
@@ -897,6 +922,7 @@ public class GameFlowManager : MonoBehaviour
         if (sceneForgeCountdownText != null) forgeCountdownLabelTMP = sceneForgeCountdownText;
         if (sceneForgeGainText != null) forgeGainLabelTMP = sceneForgeGainText;
         if (sceneMoneyText != null) moneyLabelTMP = sceneMoneyText;
+        if (skillMoneyLabelTMP == null && sceneMoneyText != null) skillMoneyLabelTMP = sceneMoneyText;
 
         if (sceneStoneIcon != null) forgeStoneIconImage = sceneStoneIcon;
         if (sceneCopperIcon != null) forgeCopperIconImage = sceneCopperIcon;
@@ -913,6 +939,33 @@ public class GameFlowManager : MonoBehaviour
             if (tmp != null) return tmp;
         }
         return null;
+    }
+
+    TMP_Text FindTmpInParent(Scene scene, string parentName)
+    {
+        var parent = FindInScene(scene, parentName);
+        if (parent == null) return null;
+        return parent.GetComponentInChildren<TMP_Text>(true);
+    }
+
+    Text FindLegacyTextByName(Scene scene, params string[] names)
+    {
+        var go = FindInScene(scene, names);
+        if (go != null)
+        {
+            var t = go.GetComponent<Text>();
+            if (t != null) return t;
+            t = go.GetComponentInChildren<Text>(true);
+            if (t != null) return t;
+        }
+        return null;
+    }
+
+    Text FindLegacyTextInParent(Scene scene, string parentName)
+    {
+        var parent = FindInScene(scene, parentName);
+        if (parent == null) return null;
+        return parent.GetComponentInChildren<Text>(true);
     }
 
     Image FindImageByName(Scene scene, params string[] names)
@@ -1006,8 +1059,32 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(forgeCopperLabelTMP != null ? forgeCopperLabelTMP.gameObject : null, IsMineralUnlocked("copper"));
         if (forgeCopperButton != null) forgeCopperButton.SetActive(IsMineralUnlocked("copper"));
         if (forgeCopperIconImage != null) forgeCopperIconImage.gameObject.SetActive(IsMineralUnlocked("copper"));
-        SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
+        SetLabelText(moneyLabel, moneyLabelTMP, $"$ {money:0.0}");
         UpdateOddsLabel();
+
+        // Ensure gain label exists for floating green text feedback.
+        EnsureForgeGainLabel();
+    }
+
+    void EnsureForgeGainLabel()
+    {
+        if (forgeGainLabel != null || forgeGainLabelTMP != null) return;
+        if (forgePanel == null) return;
+
+        var go = new GameObject("forgeGainText");
+        go.transform.SetParent(forgePanel.transform, false);
+        var tmp = go.AddComponent<TMP_Text>();
+        tmp.text = "";
+        tmp.fontSize = 22;
+        tmp.color = Color.green;
+        tmp.alignment = TextAlignmentOptions.Center;
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.60f, 0.70f);
+        rt.anchorMax = new Vector2(0.60f, 0.70f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = new Vector2(200f, 40f);
+        forgeGainLabelTMP = tmp;
+        forgeGainLabelTMP.gameObject.SetActive(false);
     }
 
     void TryForge()
@@ -1066,7 +1143,7 @@ public class GameFlowManager : MonoBehaviour
         if (money + 0.0001f < amount) return false;
         money -= amount;
         if (money < 0f) money = 0f;
-        SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
+        SetLabelText(moneyLabel, moneyLabelTMP, $"$ {money:0.0}");
         return true;
     }
 
@@ -1074,7 +1151,7 @@ public class GameFlowManager : MonoBehaviour
     {
         if (amount <= 0f) return;
         money += amount;
-        SetLabelText(moneyLabel, moneyLabelTMP, $"{money:0.0} $");
+        SetLabelText(moneyLabel, moneyLabelTMP, $"$ {money:0.0}");
     }
 
     void SyncEndResults()
