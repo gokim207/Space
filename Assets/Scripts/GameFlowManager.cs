@@ -353,6 +353,21 @@ public class GameFlowManager : MonoBehaviour
         return go.AddComponent<Button>();
     }
 
+    void BindAllButtonsByName(Scene scene, System.Action handler, params string[] names)
+    {
+        if (handler == null) return;
+        var all = FindAllInScene(scene, names);
+        for (int i = 0; i < all.Count; i++)
+        {
+            var go = all[i];
+            if (go == null) continue;
+            var btn = go.GetComponent<Button>();
+            if (btn == null) btn = go.AddComponent<Button>();
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() => handler());
+        }
+    }
+
     Image FindImage(Scene scene, params string[] names)
     {
         var go = FindInScene(scene, names);
@@ -851,31 +866,10 @@ public class GameFlowManager : MonoBehaviour
         TryBindSceneUI();
         ForceBindUpgradeSceneByName();
 
-        var forgeBtn = FindButton(scene, "btnForge", "BtnForge");
-        var skillBtn = FindButton(scene, "btnSkill", "BtnSkill");
-        var forgeStartBtn = FindButton(scene, "btnForgeStart", "BtnForgeStart");
-        var startBtn = FindButton(scene, "btnStart", "BtnStart");
-
-        if (forgeBtn != null)
-        {
-            forgeBtn.onClick.RemoveAllListeners();
-            forgeBtn.onClick.AddListener(() => ShowForge());
-        }
-        if (skillBtn != null)
-        {
-            skillBtn.onClick.RemoveAllListeners();
-            skillBtn.onClick.AddListener(() => ShowSkillTree());
-        }
-        if (forgeStartBtn != null)
-        {
-            forgeStartBtn.onClick.RemoveAllListeners();
-            forgeStartBtn.onClick.AddListener(() => TryForge());
-        }
-        if (startBtn != null)
-        {
-            startBtn.onClick.RemoveAllListeners();
-            startBtn.onClick.AddListener(() => GoToRunScene());
-        }
+        BindAllButtonsByName(scene, () => ShowForge(), "btnForge", "BtnForge");
+        BindAllButtonsByName(scene, () => ShowSkillTree(), "btnSkill", "BtnSkill");
+        BindAllButtonsByName(scene, () => TryForge(), "btnForgeStart", "BtnForgeStart");
+        BindAllButtonsByName(scene, () => GoToRunScene(), "btnStart", "BtnStart");
 
         upgradeSceneBound = true;
     }
@@ -901,6 +895,10 @@ public class GameFlowManager : MonoBehaviour
         if (sceneForgeGainText == null) sceneForgeGainText = FindTmpByName(scene, "addMoneyText", "oreResultText", "forgeGainText", "gainText", "forgeGain", "gain");
         if (sceneMoneyText == null) sceneMoneyText = FindTmpByName(scene, "moneyText", "money", "moneyLabel");
         if (sceneMoneyText == null) sceneMoneyText = FindTmpInParent(scene, "moneyBar");
+        if (skillMoneyLabelTMP == null && skillPanel != null)
+            skillMoneyLabelTMP = FindTmpInChild(skillPanel, "moneyText", "money", "moneyLabel");
+        if (skillMoneyLabelTMP == null && skillPanel != null)
+            skillMoneyLabelTMP = FindTmpInChildParent(skillPanel, "moneyBar");
         if (moneyLabel == null) moneyLabel = FindLegacyTextByName(scene, "moneyText", "money", "moneyLabel");
         if (moneyLabel == null) moneyLabel = FindLegacyTextInParent(scene, "moneyBar");
 
@@ -948,6 +946,29 @@ public class GameFlowManager : MonoBehaviour
         return parent.GetComponentInChildren<TMP_Text>(true);
     }
 
+    TMP_Text FindTmpInChild(GameObject root, params string[] names)
+    {
+        if (root == null) return null;
+        for (int i = 0; i < names.Length; i++)
+        {
+            var t = root.transform.Find(names[i]);
+            if (t == null) continue;
+            var tmp = t.GetComponent<TMP_Text>();
+            if (tmp != null) return tmp;
+            tmp = t.GetComponentInChildren<TMP_Text>(true);
+            if (tmp != null) return tmp;
+        }
+        return null;
+    }
+
+    TMP_Text FindTmpInChildParent(GameObject root, string parentName)
+    {
+        if (root == null) return null;
+        var t = root.transform.Find(parentName);
+        if (t == null) return null;
+        return t.GetComponentInChildren<TMP_Text>(true);
+    }
+
     Text FindLegacyTextByName(Scene scene, params string[] names)
     {
         var go = FindInScene(scene, names);
@@ -966,6 +987,26 @@ public class GameFlowManager : MonoBehaviour
         var parent = FindInScene(scene, parentName);
         if (parent == null) return null;
         return parent.GetComponentInChildren<Text>(true);
+    }
+
+    System.Collections.Generic.List<GameObject> FindAllInScene(Scene scene, params string[] names)
+    {
+        var results = new System.Collections.Generic.List<GameObject>();
+        var all = FindObjectsOfType<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            var t = all[i];
+            if (t == null || t.gameObject.scene != scene) continue;
+            for (int n = 0; n < names.Length; n++)
+            {
+                if (t.name == names[n])
+                {
+                    results.Add(t.gameObject);
+                    break;
+                }
+            }
+        }
+        return results;
     }
 
     Image FindImageByName(Scene scene, params string[] names)
