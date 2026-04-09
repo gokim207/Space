@@ -68,11 +68,9 @@ public class SkillTooltipManager : MonoBehaviour
         int max = Mathf.Max(1, info.maxLevel);
         int nextCost = GetNextCost(info, level);
 
-        int displayLevel = Mathf.Clamp(level + 1, 1, max);
-
         SetText(titleText, titleTextLegacy, info.title);
         SetText(descText, descTextLegacy, info.desc);
-        SetText(levelText, levelTextLegacy, $"레벨 : {displayLevel} / {max}");
+        SetText(levelText, levelTextLegacy, $"레벨 : {level} / {max}");
         SetText(priceText, priceTextLegacy, level >= max ? "MAX" : $"$ {nextCost}");
         if (priceButton != null) priceButton.interactable = false;
 

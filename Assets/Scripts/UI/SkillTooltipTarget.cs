@@ -13,6 +13,8 @@ public class SkillTooltipTarget : MonoBehaviour, IPointerEnterHandler, IPointerE
         mgr = FindObjectOfType<SkillTooltipManager>();
         if (string.IsNullOrEmpty(skillId))
             skillId = gameObject.name;
+
+        EnsureRaycastTarget();
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -26,5 +28,17 @@ public class SkillTooltipTarget : MonoBehaviour, IPointerEnterHandler, IPointerE
     {
         if (mgr == null) return;
         mgr.Hide();
+    }
+
+    void EnsureRaycastTarget()
+    {
+        var graphic = GetComponent<UnityEngine.UI.Graphic>();
+        if (graphic == null)
+        {
+            var img = gameObject.AddComponent<UnityEngine.UI.Image>();
+            img.color = new Color(1f, 1f, 1f, 0f);
+            graphic = img;
+        }
+        graphic.raycastTarget = true;
     }
 }

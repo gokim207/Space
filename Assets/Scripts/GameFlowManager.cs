@@ -32,6 +32,8 @@ public class GameFlowManager : MonoBehaviour
     private GameObject forgeCopperButton;
     private Image forgeStoneIconImage;
     private Image forgeCopperIconImage;
+    private Color? forgeStoneBaseColor;
+    private Color? forgeCopperBaseColor;
     private Text forgeCountdownLabel;
     private Text forgeGainLabel;
     private Text oddsLabel;
@@ -291,16 +293,24 @@ public class GameFlowManager : MonoBehaviour
         if (forgeStoneIconImage != null)
         {
             var btn = GetOrAdd<Button>(forgeStoneIconImage.gameObject);
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = forgeStoneIconImage;
+            forgeStoneIconImage.raycastTarget = true;
+            if (!forgeStoneBaseColor.HasValue) forgeStoneBaseColor = forgeStoneIconImage.color;
             btn.onClick.RemoveAllListeners();
             btn.onClick.AddListener(() => SetSelectedOre(OreSelect.Stone));
-            btn.onClick.AddListener(() => StartCoroutine(FlashImage(forgeStoneIconImage, forgeStoneIconImage.color)));
+            btn.onClick.AddListener(() => StartCoroutine(FlashImage(forgeStoneIconImage, forgeStoneBaseColor.Value)));
         }
         if (forgeCopperIconImage != null)
         {
             var btn = GetOrAdd<Button>(forgeCopperIconImage.gameObject);
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = forgeCopperIconImage;
+            forgeCopperIconImage.raycastTarget = true;
+            if (!forgeCopperBaseColor.HasValue) forgeCopperBaseColor = forgeCopperIconImage.color;
             btn.onClick.RemoveAllListeners();
             btn.onClick.AddListener(() => SetSelectedOre(OreSelect.Copper));
-            btn.onClick.AddListener(() => StartCoroutine(FlashImage(forgeCopperIconImage, forgeCopperIconImage.color)));
+            btn.onClick.AddListener(() => StartCoroutine(FlashImage(forgeCopperIconImage, forgeCopperBaseColor.Value)));
         }
 
         return true;
@@ -677,10 +687,10 @@ public class GameFlowManager : MonoBehaviour
     void SetSelectedOre(OreSelect ore)
     {
         selectedOre = ore;
-        if (ore == OreSelect.Stone && forgeStoneIconImage != null)
-            StartCoroutine(FlashImage(forgeStoneIconImage, forgeStoneIconImage.color));
-        if (ore == OreSelect.Copper && forgeCopperIconImage != null)
-            StartCoroutine(FlashImage(forgeCopperIconImage, forgeCopperIconImage.color));
+        if (ore == OreSelect.Stone && forgeStoneIconImage != null && forgeStoneBaseColor.HasValue)
+            StartCoroutine(FlashImage(forgeStoneIconImage, forgeStoneBaseColor.Value));
+        if (ore == OreSelect.Copper && forgeCopperIconImage != null && forgeCopperBaseColor.HasValue)
+            StartCoroutine(FlashImage(forgeCopperIconImage, forgeCopperBaseColor.Value));
     }
 
     public void ShowRun()
@@ -737,6 +747,7 @@ public class GameFlowManager : MonoBehaviour
         ForceBindUpgradeSceneByName();
         if (skillPanel == null)
             EnsureLegacySkillPanel();
+        EnsureSkillTreeDataManager();
         EnsureSkillTooltipManager();
         RefreshSkillMoneyBinding();
         SetActiveSafe(runHud, false);
@@ -755,6 +766,27 @@ public class GameFlowManager : MonoBehaviour
         var mgr = skillPanel.GetComponent<SkillTooltipManager>();
         if (mgr == null) mgr = skillPanel.AddComponent<SkillTooltipManager>();
         mgr.AutoBindIfMissing();
+    }
+
+    void EnsureSkillTreeDataManager()
+    {
+        var mgr = FindObjectOfType<SkillTreeManager>();
+        if (mgr == null)
+        {
+            var go = new GameObject("SkillTreeManager");
+            mgr = go.AddComponent<SkillTreeManager>();
+        }
+        mgr.InitDataOnly();
+        var binder = FindObjectOfType<SkillTreeUIBinder>();
+        if (binder == null && skillPanel != null)
+            binder = skillPanel.GetComponent<SkillTreeUIBinder>();
+        if (binder == null && skillPanel != null)
+            binder = skillPanel.AddComponent<SkillTreeUIBinder>();
+        if (binder != null)
+        {
+            binder.AutoBind();
+            binder.RefreshAll();
+        }
     }
 
     void RefreshSkillMoneyBinding()

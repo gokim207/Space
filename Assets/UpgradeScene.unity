@@ -941,7 +941,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &245832301
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2207,6 +2207,7 @@ GameObject:
   - component: {fileID: 1012219990}
   - component: {fileID: 1012219989}
   - component: {fileID: 1012219991}
+  - component: {fileID: 1012219992}
   m_Layer: 5
   m_Name: atk1
   m_TagString: Untagged
@@ -2283,6 +2284,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e71da6c6af8874b3fbf695d9b1ea7a9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkillTooltipTarget
+  skillId: atk1
+--- !u!114 &1012219992
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1012219987}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e94060fbc42414c6781d844ac79ad3a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillNodeButton
   skillId: atk1
 --- !u!1 &1221870328
 GameObject:
@@ -4524,7 +4538,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2058350426
 RectTransform:
   m_ObjectHideFlags: 0

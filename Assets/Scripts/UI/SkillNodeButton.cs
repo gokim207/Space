@@ -13,13 +13,32 @@ public class SkillNodeButton : MonoBehaviour, IPointerClickHandler
         tooltip = FindObjectOfType<SkillTooltipManager>();
         if (string.IsNullOrEmpty(skillId))
             skillId = gameObject.name;
+
+        EnsureRaycastTarget();
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
         if (string.IsNullOrEmpty(skillId)) return;
-        SkillTreeManager.TryBuyById(skillId);
+        var bought = SkillTreeManager.TryBuyById(skillId);
         if (tooltip != null)
             tooltip.Show(skillId, rt);
+        if (bought)
+        {
+            var binder = FindObjectOfType<SkillTreeUIBinder>();
+            if (binder != null) binder.RefreshAll();
+        }
+    }
+
+    void EnsureRaycastTarget()
+    {
+        var graphic = GetComponent<UnityEngine.UI.Graphic>();
+        if (graphic == null)
+        {
+            var img = gameObject.AddComponent<UnityEngine.UI.Image>();
+            img.color = new Color(1f, 1f, 1f, 0f);
+            graphic = img;
+        }
+        graphic.raycastTarget = true;
     }
 }

@@ -52,6 +52,14 @@ public class SkillTreeManager : MonoBehaviour
         RefreshVisuals();
     }
 
+    public void InitDataOnly()
+    {
+        BuildNodes();
+        ApplyLevelsFromPrefs();
+        RefreshUnlocks();
+        RefreshVisuals();
+    }
+
     void BuildNodes()
     {
         nodes.Clear();
@@ -267,6 +275,7 @@ public class SkillTreeManager : MonoBehaviour
     {
         foreach (var n in nodes.Values)
         {
+            if (n.image == null || n.button == null) continue;
             if (!n.unlocked)
             {
                 n.image.color = new Color(0.35f, 0.35f, 0.35f, 1f);
@@ -291,6 +300,7 @@ public class SkillTreeManager : MonoBehaviour
 
     void ShowTooltip(Node n)
     {
+        if (tooltip == null || tooltipText == null || n == null) return;
         hoverNode = n;
         string valueText = NextValue(n);
         string extra = string.IsNullOrEmpty(valueText) ? "" : $"\n효과: {valueText}";
@@ -519,10 +529,15 @@ public class SkillTreeManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(id)) return false;
         var mgr = FindManager();
-        if (mgr == null) return false;
+        if (mgr == null)
+        {
+            Debug.LogWarning("SkillTreeManager not found. Cannot buy skill.");
+            return false;
+        }
         if (!mgr.nodes.TryGetValue(id, out var node)) return false;
+        int before = node.level;
         mgr.TryBuy(node);
-        return true;
+        return node.level > before;
     }
 
     void Update()
