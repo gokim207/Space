@@ -12,6 +12,10 @@ public class SkillTooltipManager : MonoBehaviour
     public TMP_Text levelText;
     public TMP_Text priceText;
     public Button priceButton;
+    public Text titleTextLegacy;
+    public Text descTextLegacy;
+    public Text levelTextLegacy;
+    public Text priceTextLegacy;
 
     [Header("Placement")]
     public Vector2 offset = new Vector2(0f, 12f);
@@ -44,8 +48,13 @@ public class SkillTooltipManager : MonoBehaviour
             if (titleText == null) titleText = FindTmp(detailPanel, "title");
             if (descText == null) descText = FindTmp(detailPanel, "desc");
             if (levelText == null) levelText = FindTmp(detailPanel, "level");
-            if (priceText == null) priceText = FindTmp(detailPanel, "moneyText");
+            if (priceText == null) priceText = FindTmpDeep(detailPanel, "moneyText");
             if (priceButton == null) priceButton = FindButton(detailPanel, "btnMoney");
+
+            if (titleTextLegacy == null) titleTextLegacy = FindLegacy(detailPanel, "title");
+            if (descTextLegacy == null) descTextLegacy = FindLegacy(detailPanel, "desc");
+            if (levelTextLegacy == null) levelTextLegacy = FindLegacy(detailPanel, "level");
+            if (priceTextLegacy == null) priceTextLegacy = FindLegacyDeep(detailPanel, "moneyText");
         }
     }
 
@@ -59,10 +68,12 @@ public class SkillTooltipManager : MonoBehaviour
         int max = Mathf.Max(1, info.maxLevel);
         int nextCost = GetNextCost(info, level);
 
-        if (titleText != null) titleText.text = info.title;
-        if (descText != null) descText.text = info.desc;
-        if (levelText != null) levelText.text = $"레벨 : {level} / {max}";
-        if (priceText != null) priceText.text = level >= max ? "MAX" : $"$ {nextCost}";
+        int displayLevel = Mathf.Clamp(level + 1, 1, max);
+
+        SetText(titleText, titleTextLegacy, info.title);
+        SetText(descText, descTextLegacy, info.desc);
+        SetText(levelText, levelTextLegacy, $"레벨 : {displayLevel} / {max}");
+        SetText(priceText, priceTextLegacy, level >= max ? "MAX" : $"$ {nextCost}");
         if (priceButton != null) priceButton.interactable = false;
 
         PositionNear(anchor);
@@ -209,6 +220,48 @@ public class SkillTooltipManager : MonoBehaviour
         var tmp = t.GetComponent<TMP_Text>();
         if (tmp != null) return tmp;
         return t.GetComponentInChildren<TMP_Text>(true);
+    }
+
+    Text FindLegacy(Transform root, string name)
+    {
+        if (root == null) return null;
+        var t = root.Find(name);
+        if (t == null) return null;
+        var txt = t.GetComponent<Text>();
+        if (txt != null) return txt;
+        return t.GetComponentInChildren<Text>(true);
+    }
+
+    TMP_Text FindTmpDeep(Transform root, string name)
+    {
+        if (root == null) return null;
+        var all = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i].name != name) continue;
+            var tmp = all[i].GetComponent<TMP_Text>();
+            if (tmp != null) return tmp;
+        }
+        return null;
+    }
+
+    Text FindLegacyDeep(Transform root, string name)
+    {
+        if (root == null) return null;
+        var all = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i].name != name) continue;
+            var txt = all[i].GetComponent<Text>();
+            if (txt != null) return txt;
+        }
+        return null;
+    }
+
+    void SetText(TMP_Text tmp, Text legacy, string value)
+    {
+        if (tmp != null) tmp.text = value;
+        if (legacy != null) legacy.text = value;
     }
 
     Button FindButton(Transform root, string name)

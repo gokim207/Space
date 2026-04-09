@@ -515,6 +515,16 @@ public class SkillTreeManager : MonoBehaviour
         return all != null && all.Length > 0 ? all[0] : null;
     }
 
+    public static bool TryBuyById(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return false;
+        var mgr = FindManager();
+        if (mgr == null) return false;
+        if (!mgr.nodes.TryGetValue(id, out var node)) return false;
+        mgr.TryBuy(node);
+        return true;
+    }
+
     void Update()
     {
         if (Mouse.current == null || container == null) return;
