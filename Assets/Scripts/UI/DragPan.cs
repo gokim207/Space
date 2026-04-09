@@ -12,6 +12,17 @@ public class DragPan : MonoBehaviour, IBeginDragHandler, IDragHandler
 
     private Vector2 lastPos;
 
+    public void CenterOn(RectTransform target)
+    {
+        if (content == null || target == null) return;
+        var view = viewport != null ? viewport : bounds;
+        if (view == null) return;
+
+        Vector3 targetLocalInContent = content.InverseTransformPoint(target.position);
+        Vector2 desired = -new Vector2(targetLocalInContent.x, targetLocalInContent.y);
+        content.anchoredPosition = desired;
+        ClampContent();
+    }
     public void OnBeginDrag(PointerEventData eventData)
     {
         lastPos = eventData.position;

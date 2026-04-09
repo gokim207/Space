@@ -758,6 +758,18 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         UpdateMoneyLabels();
+        CenterSkillTreeOnDefault();
+    }
+
+    void CenterSkillTreeOnDefault()
+    {
+        if (skillPanel == null) return;
+        var drag = skillPanel.GetComponent<DragPan>();
+        if (drag == null) return;
+        if (drag.content == null) return;
+        var target = FindInScene(SceneManager.GetActiveScene(), "atk1");
+        if (target == null) return;
+        drag.CenterOn(target.transform as RectTransform);
     }
 
     void EnsureSkillTooltipManager()
@@ -890,6 +902,7 @@ public class GameFlowManager : MonoBehaviour
         EnsureEventSystem();
         if (scene.name == "UpgradeScene")
         {
+            EnsureSceneCanvasActive(scene);
             ForceBindUpgradeSceneByName();
             BindUpgradeSceneButtons();
             // Reset forge state only when entering UpgradeScene (not when toggling panels)
@@ -898,6 +911,9 @@ public class GameFlowManager : MonoBehaviour
             // read persisted ore count if WaveManager isn't in this scene
             if (CurrentSlot >= 1) LoadSlot(CurrentSlot);
             ShowForge();
+            // Hard-force forge as the default view on load
+            SetActiveSafe(forgePanel, true);
+            SetActiveSafe(skillPanel, false);
         }
         else if (scene.name == "TitleScene")
         {
@@ -906,6 +922,17 @@ public class GameFlowManager : MonoBehaviour
         else
         {
             ShowRun();
+        }
+    }
+
+    void EnsureSceneCanvasActive(Scene scene)
+    {
+        var canvases = FindObjectsOfType<Canvas>(true);
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            var c = canvases[i];
+            if (c == null || c.gameObject.scene != scene) continue;
+            if (!c.gameObject.activeSelf) c.gameObject.SetActive(true);
         }
     }
 
@@ -932,22 +959,32 @@ public class GameFlowManager : MonoBehaviour
         var scene = SceneManager.GetActiveScene();
         if (scene.name != "UpgradeScene") return;
 
+        bool NeedsRebind(GameObject go)
+        {
+            return go == null || go.Equals(null) || go.scene != scene;
+        }
+
+        bool NeedsRebindComponent(Component c)
+        {
+            return c == null || c.Equals(null) || c.gameObject.scene != scene;
+        }
+
         // Panels
-        if (sceneForgePanel == null) sceneForgePanel = FindInScene(scene, "forgePanel");
-        if (sceneSkillPanel == null) sceneSkillPanel = FindInScene(scene, "skillPanel");
-        if (sceneRunHud == null) sceneRunHud = FindInScene(scene, "runHud");
-        if (sceneEndPanel == null) sceneEndPanel = FindInScene(scene, "endPanel");
-        if (sceneTitlePanel == null) sceneTitlePanel = FindInScene(scene, "titlePanel");
-        if (sceneSlotPanel == null) sceneSlotPanel = FindInScene(scene, "slotPanel");
+        if (NeedsRebind(sceneForgePanel)) sceneForgePanel = FindInScene(scene, "forgePanel");
+        if (NeedsRebind(sceneSkillPanel)) sceneSkillPanel = FindInScene(scene, "skillPanel");
+        if (NeedsRebind(sceneRunHud)) sceneRunHud = FindInScene(scene, "runHud");
+        if (NeedsRebind(sceneEndPanel)) sceneEndPanel = FindInScene(scene, "endPanel");
+        if (NeedsRebind(sceneTitlePanel)) sceneTitlePanel = FindInScene(scene, "titlePanel");
+        if (NeedsRebind(sceneSlotPanel)) sceneSlotPanel = FindInScene(scene, "slotPanel");
 
         // Texts
-        if (sceneOddsText == null) sceneOddsText = FindTmpByName(scene, "oddsText", "odds");
-        if (sceneStoneText == null) sceneStoneText = FindTmpByName(scene, "stoneText", "stoneCount");
-        if (sceneCopperText == null) sceneCopperText = FindTmpByName(scene, "copperText", "copperCount");
-        if (sceneForgeCountdownText == null) sceneForgeCountdownText = FindTmpByName(scene, "time", "forgeTime", "countdown");
-        if (sceneForgeGainText == null) sceneForgeGainText = FindTmpByName(scene, "addMoneyText", "oreResultText", "forgeGainText", "gainText", "forgeGain", "gain");
-        if (sceneMoneyText == null) sceneMoneyText = FindTmpByName(scene, "moneyText", "money", "moneyLabel");
-        if (sceneMoneyText == null) sceneMoneyText = FindTmpInParent(scene, "moneyBar");
+        if (NeedsRebindComponent(sceneOddsText)) sceneOddsText = FindTmpByName(scene, "oddsText", "odds");
+        if (NeedsRebindComponent(sceneStoneText)) sceneStoneText = FindTmpByName(scene, "stoneText", "stoneCount");
+        if (NeedsRebindComponent(sceneCopperText)) sceneCopperText = FindTmpByName(scene, "copperText", "copperCount");
+        if (NeedsRebindComponent(sceneForgeCountdownText)) sceneForgeCountdownText = FindTmpByName(scene, "time", "forgeTime", "countdown");
+        if (NeedsRebindComponent(sceneForgeGainText)) sceneForgeGainText = FindTmpByName(scene, "addMoneyText", "oreResultText", "forgeGainText", "gainText", "forgeGain", "gain");
+        if (NeedsRebindComponent(sceneMoneyText)) sceneMoneyText = FindTmpByName(scene, "moneyText", "money", "moneyLabel");
+        if (NeedsRebindComponent(sceneMoneyText)) sceneMoneyText = FindTmpInParent(scene, "moneyBar");
         if (skillMoneyLabelTMP == null && skillPanel != null)
             skillMoneyLabelTMP = FindTmpInChild(skillPanel, "moneyText", "money", "moneyLabel");
         if (skillMoneyLabelTMP == null && skillPanel != null)
@@ -956,12 +993,16 @@ public class GameFlowManager : MonoBehaviour
             skillMoneyLabelTMP = FindTmpInDescendants(skillPanel, "moneyText", "money", "moneyLabel");
         if (skillMoneyLabelTMP == null && skillPanel != null)
             skillMoneyLabelTMP = FindTmpInDescendants(skillPanel, "moneyBar");
-        if (moneyLabel == null) moneyLabel = FindLegacyTextByName(scene, "moneyText", "money", "moneyLabel");
-        if (moneyLabel == null) moneyLabel = FindLegacyTextInParent(scene, "moneyBar");
+        if (moneyLabel == null || moneyLabel.Equals(null) || moneyLabel.gameObject.scene != scene)
+            moneyLabel = FindLegacyTextByName(scene, "moneyText", "money", "moneyLabel");
+        if (moneyLabel == null || moneyLabel.Equals(null) || moneyLabel.gameObject.scene != scene)
+            moneyLabel = FindLegacyTextInParent(scene, "moneyBar");
 
         // Icons
-        if (sceneStoneIcon == null) sceneStoneIcon = FindImageByName(scene, "stoneIcon", "stoneImg", "stoneImage");
-        if (sceneCopperIcon == null) sceneCopperIcon = FindImageByName(scene, "copperIcon", "copperImg", "copperImage");
+        if (sceneStoneIcon == null || sceneStoneIcon.Equals(null) || sceneStoneIcon.gameObject.scene != scene)
+            sceneStoneIcon = FindImageByName(scene, "stoneIcon", "stoneImg", "stoneImage");
+        if (sceneCopperIcon == null || sceneCopperIcon.Equals(null) || sceneCopperIcon.gameObject.scene != scene)
+            sceneCopperIcon = FindImageByName(scene, "copperIcon", "copperImg", "copperImage");
 
         // Apply to runtime fields
         if (sceneForgePanel != null) forgePanel = sceneForgePanel;
@@ -1349,6 +1390,9 @@ public class GameFlowManager : MonoBehaviour
         copper = PlayerPrefs.GetInt($"slot_{slot}_copper", 0);
         playtimeSeconds = PlayerPrefs.GetFloat($"slot_{slot}_time", 0f);
         SkillTreeManager.LoadSkills(slot);
+        // If SkillTreeManager isn't available yet, still apply skill effects from saved data
+        if (FindObjectOfType<SkillTreeManager>() == null)
+            SkillEffects.ApplyAllFromTable(SkillTreeManager.GetSkillLevel);
     }
 
     void DeleteSlot(int slot)

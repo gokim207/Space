@@ -21,6 +21,8 @@ public class SkillNodeButton : MonoBehaviour, IPointerClickHandler
     {
         if (string.IsNullOrEmpty(skillId)) return;
         var bought = SkillTreeManager.TryBuyById(skillId);
+        if (tooltip == null)
+            tooltip = FindObjectOfType<SkillTooltipManager>();
         if (tooltip != null)
             tooltip.Show(skillId, rt);
         if (bought)

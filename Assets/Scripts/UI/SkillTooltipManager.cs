@@ -60,6 +60,8 @@ public class SkillTooltipManager : MonoBehaviour
 
     public void Show(string skillId, RectTransform anchor)
     {
+        if (detailPanel == null)
+            AutoBindIfMissing();
         if (detailPanel == null) return;
         if (string.IsNullOrEmpty(skillId)) return;
         if (!skills.TryGetValue(skillId, out var info)) return;

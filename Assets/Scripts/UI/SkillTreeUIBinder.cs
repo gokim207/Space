@@ -10,7 +10,7 @@ public class SkillTreeUIBinder : MonoBehaviour
     public RectTransform linkContainer;
 
     [Header("Visuals")]
-    public bool hideLocked = false;
+    public bool hideLocked = true;
     public Color unlockedColor = Color.white;
     public Color lockedColor = new Color(0.35f, 0.35f, 0.35f, 1f);
     public Color maxColor = new Color(1f, 0.9f, 0.2f, 1f);
@@ -61,6 +61,12 @@ public class SkillTreeUIBinder : MonoBehaviour
             var t = skillPanel.Find("skillContent");
             if (t != null) skillContent = t as RectTransform;
         }
+        if (skillContent == null && skillPanel != null)
+        {
+            var node = skillPanel.GetComponentInChildren<SkillNodeButton>(true);
+            if (node != null)
+                skillContent = node.transform.parent as RectTransform;
+        }
         if (linkContainer == null && skillPanel != null)
         {
             var t = skillPanel.Find("skillLinks");
@@ -68,7 +74,10 @@ public class SkillTreeUIBinder : MonoBehaviour
             else
             {
                 var go = new GameObject("skillLinks");
-                go.transform.SetParent(skillPanel, false);
+                if (skillContent != null)
+                    go.transform.SetParent(skillContent, false);
+                else
+                    go.transform.SetParent(skillPanel, false);
                 linkContainer = go.AddComponent<RectTransform>();
                 linkContainer.anchorMin = Vector2.zero;
                 linkContainer.anchorMax = Vector2.one;
@@ -140,6 +149,11 @@ public class SkillTreeUIBinder : MonoBehaviour
         if (linkContainer == null) return;
         foreach (Transform child in linkContainer) Destroy(child.gameObject);
 
+        var canvas = linkContainer.GetComponentInParent<Canvas>();
+        Camera cam = null;
+        if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            cam = canvas.worldCamera;
+
         foreach (var def in defs.Values)
         {
             foreach (var req in def.reqs)
@@ -154,8 +168,8 @@ public class SkillTreeUIBinder : MonoBehaviour
                 var rt = go.GetComponent<RectTransform>();
                 rt.pivot = new Vector2(0.5f, 0.5f);
 
-                Vector2 pA = a.anchoredPosition;
-                Vector2 pB = b.anchoredPosition;
+                Vector2 pA = WorldToLocal(linkContainer, a, cam);
+                Vector2 pB = WorldToLocal(linkContainer, b, cam);
                 Vector2 dir = pB - pA;
                 float len = dir.magnitude;
                 rt.sizeDelta = new Vector2(len, 6f);
@@ -167,8 +181,18 @@ public class SkillTreeUIBinder : MonoBehaviour
         }
     }
 
+    Vector2 WorldToLocal(RectTransform container, RectTransform target, Camera cam)
+    {
+        Vector2 localPoint;
+        Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, target.position);
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(container, screen, cam, out localPoint);
+        return localPoint;
+    }
+
     public void RefreshAll()
     {
+        if (links.Count == 0 && defs.Count > 0 && ui.Count > 0)
+            BuildLinks();
         foreach (var kv in ui)
         {
             var id = kv.Key;
