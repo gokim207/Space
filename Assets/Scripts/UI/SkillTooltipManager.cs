@@ -55,6 +55,9 @@ public class SkillTooltipManager : MonoBehaviour
             if (descTextLegacy == null) descTextLegacy = FindLegacy(detailPanel, "desc");
             if (levelTextLegacy == null) levelTextLegacy = FindLegacy(detailPanel, "level");
             if (priceTextLegacy == null) priceTextLegacy = FindLegacyDeep(detailPanel, "moneyText");
+
+            // Prevent tooltip from stealing hover raycasts (causes flicker on edges).
+            DisableRaycasts(detailPanel);
         }
     }
 
@@ -64,6 +67,7 @@ public class SkillTooltipManager : MonoBehaviour
             AutoBindIfMissing();
         if (detailPanel == null) return;
         if (string.IsNullOrEmpty(skillId)) return;
+        skillId = ResolveId(skillId);
         if (!skills.TryGetValue(skillId, out var info)) return;
 
         int level = GetSkillLevel(skillId);
@@ -79,6 +83,17 @@ public class SkillTooltipManager : MonoBehaviour
         PositionNear(anchor);
         detailPanel.gameObject.SetActive(true);
         detailPanel.SetAsLastSibling();
+    }
+
+    void DisableRaycasts(RectTransform root)
+    {
+        if (root == null) return;
+        var graphics = root.GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+            graphics[i].raycastTarget = false;
+        var cg = root.GetComponent<CanvasGroup>();
+        if (cg == null) cg = root.gameObject.AddComponent<CanvasGroup>();
+        cg.blocksRaycasts = false;
     }
 
     public void Hide()
@@ -115,7 +130,21 @@ public class SkillTooltipManager : MonoBehaviour
 
     int GetSkillLevel(string id)
     {
+        id = ResolveId(id);
         return SkillTreeManager.GetSkillLevel(id);
+    }
+
+    string ResolveId(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return id;
+        if (skills.ContainsKey(id)) return id;
+        if (skills.ContainsKey(id + "1")) return id + "1";
+        if (id.EndsWith("1"))
+        {
+            var trimmed = id.Substring(0, id.Length - 1);
+            if (skills.ContainsKey(trimmed)) return trimmed;
+        }
+        return id;
     }
 
     int GetNextCost(SkillInfo info, int level)

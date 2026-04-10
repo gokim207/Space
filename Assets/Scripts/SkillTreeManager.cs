@@ -35,6 +35,7 @@ public class SkillTreeManager : MonoBehaviour
     private bool dragMoved = false;
     private const float dragThreshold = 6f;
     private readonly List<LinkLine> links = new List<LinkLine>();
+    private bool dataInitialized = false;
 
     class LinkLine
     {
@@ -50,14 +51,17 @@ public class SkillTreeManager : MonoBehaviour
         ApplyLevelsFromPrefs();
         RefreshUnlocks();
         RefreshVisuals();
+        dataInitialized = true;
     }
 
     public void InitDataOnly()
     {
+        if (dataInitialized) return;
         BuildNodes();
         ApplyLevelsFromPrefs();
         RefreshUnlocks();
         RefreshVisuals();
+        dataInitialized = true;
     }
 
     void BuildNodes()
@@ -527,7 +531,19 @@ public class SkillTreeManager : MonoBehaviour
             Debug.LogWarning("SkillTreeManager not found. Cannot buy skill.");
             return false;
         }
-        if (!mgr.nodes.TryGetValue(id, out var node)) return false;
+        if (!mgr.nodes.TryGetValue(id, out var node))
+        {
+            var alt = id + "1";
+            if (!mgr.nodes.TryGetValue(alt, out node))
+            {
+                if (id.EndsWith("1"))
+                {
+                    var trimmed = id.Substring(0, id.Length - 1);
+                    mgr.nodes.TryGetValue(trimmed, out node);
+                }
+            }
+        }
+        if (node == null) return false;
         int before = node.level;
         mgr.TryBuy(node);
         return node.level > before;

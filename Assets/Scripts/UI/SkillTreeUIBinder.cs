@@ -127,6 +127,9 @@ public class SkillTreeUIBinder : MonoBehaviour
         foreach (var n in nodes)
         {
             var id = string.IsNullOrEmpty(n.skillId) ? n.gameObject.name : n.skillId;
+            var mappedId = ResolveId(id);
+            if (!string.IsNullOrEmpty(mappedId))
+                id = mappedId;
             var rect = n.transform as RectTransform;
             var graphic = n.GetComponent<Graphic>();
             if (graphic == null) graphic = n.GetComponentInChildren<Graphic>(true);
@@ -141,6 +144,19 @@ public class SkillTreeUIBinder : MonoBehaviour
                 button = btn
             };
         }
+    }
+
+    string ResolveId(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return id;
+        if (defs.ContainsKey(id)) return id;
+        if (defs.ContainsKey(id + "1")) return id + "1";
+        if (id.EndsWith("1"))
+        {
+            var trimmed = id.Substring(0, id.Length - 1);
+            if (defs.ContainsKey(trimmed)) return trimmed;
+        }
+        return id;
     }
 
     void BuildLinks()
