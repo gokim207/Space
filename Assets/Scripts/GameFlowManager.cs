@@ -22,6 +22,10 @@ public class GameFlowManager : MonoBehaviour
     private Text timeLabel;
     private Text oreResultLabel;
     private Text endReasonLabel;
+    private TMP_Text endReasonLabelTMP;
+    private TMP_Text endStoneResultTMP;
+    private TMP_Text endCopperResultTMP;
+    private GameObject endCopperRow;
     private OxygenSystem oxygenSystem;
     private WaveManager waveManager;
     private Text moneyLabel;
@@ -39,6 +43,9 @@ public class GameFlowManager : MonoBehaviour
     private Text oddsLabel;
     private TMP_Text moneyLabelTMP;
     private TMP_Text skillMoneyLabelTMP;
+    private TMP_Text oxygenLabelTMP;
+    private TMP_Text waveLabelTMP;
+    private TMP_Text timeLabelTMP;
     private TMP_Text forgeStoneLabelTMP;
     private TMP_Text forgeCopperLabelTMP;
     private TMP_Text forgeCountdownLabelTMP;
@@ -83,10 +90,18 @@ public class GameFlowManager : MonoBehaviour
     public TMP_Text sceneForgeCountdownText;
     public TMP_Text sceneForgeGainText;
     public TMP_Text sceneMoneyText;
+    public TMP_Text sceneRunOxygenText;
+    public TMP_Text sceneRunWaveText;
+    public TMP_Text sceneRunTimeText;
+    public TMP_Text sceneEndResultText;
+    public TMP_Text sceneEndStoneText;
+    public TMP_Text sceneEndCopperText;
     public Button sceneBtnForgeTab;
     public Button sceneBtnSkillTab;
     public Button sceneBtnStartRun;
     public Button sceneBtnForgeAction;
+    public Button sceneBtnAgain;
+    public Button sceneBtnEndUpgrade;
     public Image sceneStoneIcon;
     public Image sceneCopperIcon;
     private bool upgradeSceneBound = false;
@@ -218,7 +233,9 @@ public class GameFlowManager : MonoBehaviour
     bool TryBindSceneUI()
     {
         // If any scene UI reference is provided, use scene UI instead of building.
-        bool hasSceneUI = sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null;
+        bool hasSceneUI =
+            sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
+            sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null;
         if (!hasSceneUI)
         {
             // Attempt auto-bind by common object names in the active scene.
@@ -226,7 +243,7 @@ public class GameFlowManager : MonoBehaviour
             sceneCanvas = sceneCanvas != null ? sceneCanvas : FindCanvasInScene(activeScene);
             sceneForgePanel = sceneForgePanel != null ? sceneForgePanel : FindInScene(activeScene, "forgePanel", "ForgePanel");
             sceneSkillPanel = sceneSkillPanel != null ? sceneSkillPanel : FindInScene(activeScene, "skillPanel", "SkillPanel");
-            sceneRunHud = sceneRunHud != null ? sceneRunHud : FindInScene(activeScene, "runHud", "RunHUD");
+            sceneRunHud = sceneRunHud != null ? sceneRunHud : FindInScene(activeScene, "runPanel", "runHud", "RunPanel", "RunHUD");
             sceneEndPanel = sceneEndPanel != null ? sceneEndPanel : FindInScene(activeScene, "endPanel", "EndPanel");
             sceneTitlePanel = sceneTitlePanel != null ? sceneTitlePanel : FindInScene(activeScene, "titlePanel", "TitlePanel");
             sceneSlotPanel = sceneSlotPanel != null ? sceneSlotPanel : FindInScene(activeScene, "slotPanel", "SlotPanel");
@@ -237,16 +254,26 @@ public class GameFlowManager : MonoBehaviour
             sceneForgeCountdownText = sceneForgeCountdownText != null ? sceneForgeCountdownText : FindTmpText(activeScene, "time", "forgeTime", "ForgeTime");
             sceneForgeGainText = sceneForgeGainText != null ? sceneForgeGainText : FindTmpText(activeScene, "forgeGain", "oreResultText", "OreResultText");
             sceneMoneyText = sceneMoneyText != null ? sceneMoneyText : FindTmpText(activeScene, "moneyText", "MoneyText", "moneyLabel", "MoneyLabel");
+            sceneRunOxygenText = sceneRunOxygenText != null ? sceneRunOxygenText : FindTmpText(activeScene, "oxygenText", "oxygenLabel", "OxygenText", "OxygenLabel");
+            sceneRunWaveText = sceneRunWaveText != null ? sceneRunWaveText : FindTmpText(activeScene, "waveText", "waveLabel", "WaveText", "WaveLabel");
+            sceneRunTimeText = sceneRunTimeText != null ? sceneRunTimeText : FindTmpText(activeScene, "timeText", "timeLabel", "TimeText", "TimeLabel");
+            sceneEndResultText = sceneEndResultText != null ? sceneEndResultText : FindTmpText(activeScene, "resultText", "endReasonText", "EndReasonText", "resultLabel", "ResultText");
+            sceneEndStoneText = sceneEndStoneText != null ? sceneEndStoneText : FindTmpText(activeScene, "stoneText", "StoneText");
+            sceneEndCopperText = sceneEndCopperText != null ? sceneEndCopperText : FindTmpText(activeScene, "copperText", "CopperText");
 
             sceneBtnForgeTab = sceneBtnForgeTab != null ? sceneBtnForgeTab : FindButton(activeScene, "btnForge", "BtnForge");
             sceneBtnSkillTab = sceneBtnSkillTab != null ? sceneBtnSkillTab : FindButton(activeScene, "btnSkill", "BtnSkill");
             sceneBtnStartRun = sceneBtnStartRun != null ? sceneBtnStartRun : FindButton(activeScene, "btnStart", "BtnStart");
             sceneBtnForgeAction = sceneBtnForgeAction != null ? sceneBtnForgeAction : FindButton(activeScene, "btnForgeStart", "BtnForgeStart");
+            sceneBtnAgain = sceneBtnAgain != null ? sceneBtnAgain : FindButton(activeScene, "againButton", "AgainButton");
+            sceneBtnEndUpgrade = sceneBtnEndUpgrade != null ? sceneBtnEndUpgrade : FindButton(activeScene, "upgradeButton", "UpgradeButton");
 
             sceneStoneIcon = sceneStoneIcon != null ? sceneStoneIcon : FindImage(activeScene, "stoneIcon", "StoneIcon");
             sceneCopperIcon = sceneCopperIcon != null ? sceneCopperIcon : FindImage(activeScene, "copperIcon", "CopperIcon");
 
-            hasSceneUI = sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null;
+            hasSceneUI =
+                sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
+                sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null;
         }
 
         if (!hasSceneUI) return false;
@@ -265,6 +292,12 @@ public class GameFlowManager : MonoBehaviour
         forgeCountdownLabelTMP = sceneForgeCountdownText;
         forgeGainLabelTMP = sceneForgeGainText;
         moneyLabelTMP = sceneMoneyText;
+        if (sceneRunOxygenText != null) oxygenLabelTMP = sceneRunOxygenText;
+        if (sceneRunWaveText != null) waveLabelTMP = sceneRunWaveText;
+        if (sceneRunTimeText != null) timeLabelTMP = sceneRunTimeText;
+        if (sceneEndResultText != null) endReasonLabelTMP = sceneEndResultText;
+        if (sceneEndStoneText != null) endStoneResultTMP = sceneEndStoneText;
+        if (sceneEndCopperText != null) endCopperResultTMP = sceneEndCopperText;
 
         forgeStoneIconImage = sceneStoneIcon;
         forgeCopperIconImage = sceneCopperIcon;
@@ -288,6 +321,16 @@ public class GameFlowManager : MonoBehaviour
         {
             sceneBtnForgeAction.onClick.RemoveAllListeners();
             sceneBtnForgeAction.onClick.AddListener(() => TryForge());
+        }
+        if (sceneBtnAgain != null)
+        {
+            sceneBtnAgain.onClick.RemoveAllListeners();
+            sceneBtnAgain.onClick.AddListener(() => RestartRun());
+        }
+        if (sceneBtnEndUpgrade != null)
+        {
+            sceneBtnEndUpgrade.onClick.RemoveAllListeners();
+            sceneBtnEndUpgrade.onClick.AddListener(() => GoToUpgradeScene());
         }
 
         if (forgeStoneIconImage != null)
@@ -855,25 +898,26 @@ public class GameFlowManager : MonoBehaviour
     {
         if (oxygenSystem == null) oxygenSystem = FindObjectOfType<OxygenSystem>();
         if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
-        if (oxygenSystem != null && oxygenLabel != null)
+        if (oxygenSystem != null && CurrentPhase == GamePhase.Run)
         {
-            oxygenLabel.text = $"남은 산소 ({oxygenSystem.currentOxygen:0.0} / {oxygenSystem.MaxOxygen:0.0})";
+            var value = $"남은 산소 ({oxygenSystem.currentOxygen:0.0} / {oxygenSystem.MaxOxygen:0.0})";
+            if (oxygenLabel != null) oxygenLabel.text = value;
+            if (oxygenLabelTMP != null) oxygenLabelTMP.text = value;
         }
-        if (waveLabel != null && waveManager != null && CurrentPhase == GamePhase.Run)
+        if (waveManager != null && CurrentPhase == GamePhase.Run)
         {
-            waveLabel.text = $"Wave : {waveManager.currentWave}";
+            var value = $"Wave : {waveManager.currentWave}";
+            if (waveLabel != null) waveLabel.text = value;
+            if (waveLabelTMP != null) waveLabelTMP.text = value;
         }
-        if (timeLabel != null && waveManager != null && CurrentPhase == GamePhase.Run)
+        if (waveManager != null && CurrentPhase == GamePhase.Run)
         {
-            timeLabel.text = $"남은 시간 : {waveManager.RemainingWaveSeconds}s";
+            var value = $"남은 시간 : {waveManager.RemainingWaveSeconds}s";
+            if (timeLabel != null) timeLabel.text = value;
+            if (timeLabelTMP != null) timeLabelTMP.text = value;
         }
-        if (oreResultLabel != null && waveManager != null && (CurrentPhase == GamePhase.End))
-        {
-            if (IsMineralUnlocked("copper"))
-                oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})\n구리 : +{runCopperGained} (총 {copper})";
-            else
-                oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
-        }
+        if (waveManager != null && CurrentPhase == GamePhase.End)
+            SyncEndResultTexts();
         if (CurrentPhase == GamePhase.SkillTree)
         {
             UpdateMoneyLabels();
@@ -1324,14 +1368,31 @@ public class GameFlowManager : MonoBehaviour
         stone += runStoneGained;
         copper += runCopperGained;
         endProcessed = true;
+        SyncEndResultTexts();
+        if (CurrentSlot >= 1) SaveSlot(CurrentSlot);
+    }
+
+    void SyncEndResultTexts()
+    {
+        bool showCopper = IsMineralUnlocked("copper");
+
         if (oreResultLabel != null)
         {
-            if (IsMineralUnlocked("copper"))
+            if (showCopper)
                 oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})\n구리 : +{runCopperGained} (총 {copper})";
             else
                 oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
         }
-        if (CurrentSlot >= 1) SaveSlot(CurrentSlot);
+
+        if (endStoneResultTMP != null)
+            endStoneResultTMP.text = $"돌 : +{runStoneGained} (총 {stone})";
+
+        if (endCopperResultTMP != null)
+        {
+            endCopperResultTMP.text = $"구리 : +{runCopperGained} (총 {copper})";
+            var copperGo = endCopperResultTMP.transform.parent != null ? endCopperResultTMP.transform.parent.gameObject : endCopperResultTMP.gameObject;
+            SetActiveSafe(copperGo, showCopper);
+        }
     }
 
     void SelectSlot(int slot)
@@ -1487,6 +1548,8 @@ public class GameFlowManager : MonoBehaviour
     {
         if (endReasonLabel != null)
             endReasonLabel.text = $"사유 : {reason}";
+        if (endReasonLabelTMP != null)
+            endReasonLabelTMP.text = reason;
     }
 
     float RollForgeMultiplier()
