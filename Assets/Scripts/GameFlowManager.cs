@@ -102,6 +102,9 @@ public class GameFlowManager : MonoBehaviour
     public Button sceneBtnForgeAction;
     public Button sceneBtnAgain;
     public Button sceneBtnEndUpgrade;
+    public Button sceneBtnTitleStart;
+    public Button sceneBtnTitleContinue;
+    public Button sceneBtnTitleLeave;
     public Image sceneStoneIcon;
     public Image sceneCopperIcon;
     private bool upgradeSceneBound = false;
@@ -235,7 +238,8 @@ public class GameFlowManager : MonoBehaviour
         // If any scene UI reference is provided, use scene UI instead of building.
         bool hasSceneUI =
             sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
-            sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null;
+            sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null ||
+            sceneTitlePanel != null || sceneBtnTitleStart != null || sceneBtnTitleContinue != null || sceneBtnTitleLeave != null;
         if (!hasSceneUI)
         {
             // Attempt auto-bind by common object names in the active scene.
@@ -267,13 +271,17 @@ public class GameFlowManager : MonoBehaviour
             sceneBtnForgeAction = sceneBtnForgeAction != null ? sceneBtnForgeAction : FindButton(activeScene, "btnForgeStart", "BtnForgeStart");
             sceneBtnAgain = sceneBtnAgain != null ? sceneBtnAgain : FindButton(activeScene, "againButton", "AgainButton");
             sceneBtnEndUpgrade = sceneBtnEndUpgrade != null ? sceneBtnEndUpgrade : FindButton(activeScene, "upgradeButton", "UpgradeButton");
+            sceneBtnTitleStart = sceneBtnTitleStart != null ? sceneBtnTitleStart : FindButton(activeScene, "startButton", "StartButton");
+            sceneBtnTitleContinue = sceneBtnTitleContinue != null ? sceneBtnTitleContinue : FindButton(activeScene, "continueButton", "ContinueButton");
+            sceneBtnTitleLeave = sceneBtnTitleLeave != null ? sceneBtnTitleLeave : FindButton(activeScene, "leaveButton", "LeaveButton");
 
             sceneStoneIcon = sceneStoneIcon != null ? sceneStoneIcon : FindImage(activeScene, "stoneIcon", "StoneIcon");
             sceneCopperIcon = sceneCopperIcon != null ? sceneCopperIcon : FindImage(activeScene, "copperIcon", "CopperIcon");
 
             hasSceneUI =
                 sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
-                sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null;
+                sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null ||
+                sceneTitlePanel != null || sceneBtnTitleStart != null || sceneBtnTitleContinue != null || sceneBtnTitleLeave != null;
         }
 
         if (!hasSceneUI) return false;
@@ -332,6 +340,21 @@ public class GameFlowManager : MonoBehaviour
             sceneBtnEndUpgrade.onClick.RemoveAllListeners();
             sceneBtnEndUpgrade.onClick.AddListener(() => GoToUpgradeScene());
         }
+        if (sceneBtnTitleStart != null)
+        {
+            sceneBtnTitleStart.onClick.RemoveAllListeners();
+            sceneBtnTitleStart.onClick.AddListener(() => ShowSlotSelect(SlotMode.Save));
+        }
+        if (sceneBtnTitleContinue != null)
+        {
+            sceneBtnTitleContinue.onClick.RemoveAllListeners();
+            sceneBtnTitleContinue.onClick.AddListener(() => ShowSlotSelect(SlotMode.Load));
+        }
+        if (sceneBtnTitleLeave != null)
+        {
+            sceneBtnTitleLeave.onClick.RemoveAllListeners();
+            sceneBtnTitleLeave.onClick.AddListener(() => QuitGame());
+        }
 
         if (forgeStoneIconImage != null)
         {
@@ -357,6 +380,47 @@ public class GameFlowManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    void EnsureSlotSelectFallbackUI()
+    {
+        if (canvas == null || slotPanel != null) return;
+
+        slotPanel = CreatePanel("SlotPanel", new Color(0f, 0f, 0f, 0.35f));
+        slotStatusLabel = CreateLabel(slotPanel, "", new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, 20);
+        CreateLabel(slotPanel, "슬롯 선택", new Vector2(0.5f, 0.8f), new Vector2(0.5f, 0.8f), Vector2.zero, 22);
+        CreateButton(slotPanel, "뒤로", new Vector2(0.1f, 0.9f), new Vector2(0.1f, 0.9f), Vector2.zero, () => ShowTitle());
+
+        for (int i = 0; i < 3; i++)
+        {
+            int idx = i;
+            var btnGo = CreateButton(slotPanel, "", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 130f - (i * 120f)), () => SelectSlot(idx + 1));
+            var btnRt = btnGo.GetComponent<RectTransform>();
+            btnRt.sizeDelta = new Vector2(320f, 80f);
+            var btn = btnGo.GetComponent<Button>();
+            slotButtons[i] = btn;
+
+            var info = CreateLabel(btnGo, "파일\n돈: 0$\n플레이타임: 00:00", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 20, Color.black);
+            info.alignment = TextAnchor.MiddleCenter;
+            info.rectTransform.sizeDelta = new Vector2(300f, 120f);
+            slotTexts[i] = info;
+
+            var delBtn = CreateButton(btnGo, "삭제", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), () => AskDelete(idx + 1));
+            var delRt = delBtn.GetComponent<RectTransform>();
+            delRt.sizeDelta = new Vector2(60f, 30f);
+        }
+
+        if (confirmPanel == null)
+        {
+            confirmPanel = CreatePanel("ConfirmPanel", new Color(0f, 0f, 0f, 0.55f));
+            confirmPanel.SetActive(false);
+            CreateLabel(confirmPanel, "정말 삭제할까요?", new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), Vector2.zero, 22);
+            CreateButton(confirmPanel, "삭제", new Vector2(0.45f, 0.45f), new Vector2(0.45f, 0.45f), new Vector2(-60f, -20f), () => ConfirmDelete(true));
+            CreateButton(confirmPanel, "취소", new Vector2(0.55f, 0.45f), new Vector2(0.55f, 0.45f), new Vector2(60f, -20f), () => ConfirmDelete(false));
+        }
+
+        sceneSlotPanel = slotPanel;
+        slotPanel.SetActive(false);
     }
 
     Canvas FindCanvasInScene(Scene scene)
@@ -1016,7 +1080,7 @@ public class GameFlowManager : MonoBehaviour
         // Panels
         if (NeedsRebind(sceneForgePanel)) sceneForgePanel = FindInScene(scene, "forgePanel");
         if (NeedsRebind(sceneSkillPanel)) sceneSkillPanel = FindInScene(scene, "skillPanel");
-        if (NeedsRebind(sceneRunHud)) sceneRunHud = FindInScene(scene, "runHud");
+        if (NeedsRebind(sceneRunHud)) sceneRunHud = FindInScene(scene, "runPanel", "runHud", "RunPanel", "RunHUD");
         if (NeedsRebind(sceneEndPanel)) sceneEndPanel = FindInScene(scene, "endPanel");
         if (NeedsRebind(sceneTitlePanel)) sceneTitlePanel = FindInScene(scene, "titlePanel");
         if (NeedsRebind(sceneSlotPanel)) sceneSlotPanel = FindInScene(scene, "slotPanel");
