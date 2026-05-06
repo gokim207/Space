@@ -12,14 +12,20 @@ public class PlayerController : MonoBehaviour
     public float desiredPlayerY = 5f; // 런 시 플레이어 Y 위치 목표
     public int hp = 1;
     public string playerId = "default";
+    [Header("Directional Sprites")]
+    public Sprite leftSprite;
+    public Sprite rightSprite;
     private float fixedPlayerY = 0f;
     public float surfacePadding = 0.0f;
 
     private float angle = 90f; // 시작 각도(12시 방향)
     private bool warnedWaveManagerMissing = false;
+    private SpriteRenderer spriteRenderer;
+    private bool facingRight = true;
 
     void Start()
     {
+        spriteRenderer = GetComponent<SpriteRenderer>();
         ApplyPlayerConfig();
         // 자동 할당: Planet 이름으로 찾기
         if (planetCenter == null)
@@ -124,6 +130,7 @@ public class PlayerController : MonoBehaviour
         // 정확한 Y 위치 보정(정수/디자인 요구 시)
         transform.position = new Vector3(0f, desiredPlayerY, transform.position.z);
         transform.up = (transform.position - planetCenter.position).normalized;
+        ApplyFacingSprite(force: true);
         UpdateCameraPosition();
         Debug.Log($"PlayerController 초기화 완료: angle={angle}, radius={radius}");
     }
@@ -196,8 +203,31 @@ public class PlayerController : MonoBehaviour
 
         angle += -move * moveSpeed * Time.deltaTime; // 좌우 반전(시계/반시계)
         angle = angle % 360f;
+        UpdateFacing(move);
         UpdatePosition();
         UpdateCameraPosition();
+    }
+
+    void UpdateFacing(float move)
+    {
+        if (move > 0.01f)
+            facingRight = true;
+        else if (move < -0.01f)
+            facingRight = false;
+
+        ApplyFacingSprite();
+    }
+
+    void ApplyFacingSprite(bool force = false)
+    {
+        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null) return;
+
+        Sprite target = facingRight ? rightSprite : leftSprite;
+        if (target == null) return;
+        if (!force && spriteRenderer.sprite == target) return;
+
+        spriteRenderer.sprite = target;
     }
 
     void UpdatePosition()
