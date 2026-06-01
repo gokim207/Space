@@ -28,6 +28,8 @@ public class OxygenSystem : MonoBehaviour
 
     void Start()
     {
+        if (waveManager == null)
+            waveManager = FindObjectOfType<WaveManager>();
         RefreshUI();
     }
 
@@ -54,7 +56,8 @@ public class OxygenSystem : MonoBehaviour
             currentOxygen = 0;
             var flow = GameFlowManager.Instance;
             if (flow != null) flow.SetEndReason("산소 부족");
-            waveManager.EndRun();
+            if (waveManager != null)
+                waveManager.EndRun();
         }
         RefreshUI();
         // TODO: UI 갱신

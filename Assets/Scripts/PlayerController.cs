@@ -1,6 +1,7 @@
 using UnityEngine;
 // New Input System
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
@@ -10,6 +11,14 @@ public class PlayerController : MonoBehaviour
     public Camera mainCamera;
     public WaveManager waveManager;
     public float desiredPlayerY = 5f; // 런 시 플레이어 Y 위치 목표
+    [Header("Camera")]
+    public bool controlCamera = false;
+    public bool centerCameraOnPlanet = false;
+    public bool overrideCameraSize = false;
+    public float cameraOrthographicSize = 8f;
+    public float cameraZ = -10f;
+    [Header("Layout")]
+    public bool overrideSceneLayout = false;
     public int hp = 1;
     public string playerId = "default";
     [Header("Directional Sprites")]
@@ -27,6 +36,14 @@ public class PlayerController : MonoBehaviour
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
         ApplyPlayerConfig();
+        try
+        {
+            gameObject.tag = "Player";
+        }
+        catch (System.Exception)
+        {
+            Debug.LogWarning("Tag 'Player' is not defined in Project Settings -> Tags and Layers. Skipping tag assignment.");
+        }
         // 자동 할당: Planet 이름으로 찾기
         if (planetCenter == null)
         {
@@ -45,6 +62,12 @@ public class PlayerController : MonoBehaviour
         if (mainCamera == null)
         {
             Debug.LogError("Main Camera를 찾을 수 없습니다.");
+        }
+        else if (controlCamera)
+        {
+            mainCamera.orthographic = true;
+            if (overrideCameraSize && cameraOrthographicSize > 0f)
+                mainCamera.orthographicSize = cameraOrthographicSize;
         }
 
         // WaveManager 자동 할당
@@ -79,8 +102,18 @@ public class PlayerController : MonoBehaviour
             Debug.Log("Player가 Planet의 자식이어서 분리했습니다.");
         }
 
-        // 강제로 Planet 위치 지정(요청대로)
-        if (planetCenter != null)
+        // 씬에서 직접 배치한 레이아웃을 우선 사용
+        if (planetCenter != null && !overrideSceneLayout)
+        {
+            Vector3 fromPlanet = transform.position - planetCenter.position;
+            if (fromPlanet.sqrMagnitude > 0.0001f)
+            {
+                radius = fromPlanet.magnitude;
+                angle = Mathf.Atan2(fromPlanet.y, fromPlanet.x) * Mathf.Rad2Deg;
+            }
+            desiredPlayerY = transform.position.y;
+        }
+        else if (planetCenter != null)
         {
             planetCenter.position = new Vector3(0f, -5.3f, planetCenter.position.z);
             float planetSurfaceRadius = 0f;
@@ -125,11 +158,14 @@ public class PlayerController : MonoBehaviour
             desiredPlayerY = planetCenter.position.y + radius;
         }
 
-        // 시작 위치 세팅 (계산된 radius 사용)
-        UpdatePosition();
-        // 정확한 Y 위치 보정(정수/디자인 요구 시)
-        transform.position = new Vector3(0f, desiredPlayerY, transform.position.z);
-        transform.up = (transform.position - planetCenter.position).normalized;
+        // 시작 위치 세팅 (overrideSceneLayout를 사용할 때만 강제 보정)
+        if (overrideSceneLayout)
+        {
+            UpdatePosition();
+            transform.position = new Vector3(0f, desiredPlayerY, transform.position.z);
+        }
+        if (planetCenter != null)
+            transform.up = (transform.position - planetCenter.position).normalized;
         ApplyFacingSprite(force: true);
         UpdateCameraPosition();
         Debug.Log($"PlayerController 초기화 완료: angle={angle}, radius={radius}");
@@ -221,13 +257,19 @@ public class PlayerController : MonoBehaviour
     void ApplyFacingSprite(bool force = false)
     {
         if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null) spriteRenderer = GetComponentInChildren<SpriteRenderer>();
         if (spriteRenderer == null) return;
 
         Sprite target = facingRight ? rightSprite : leftSprite;
-        if (target == null) return;
-        if (!force && spriteRenderer.sprite == target) return;
-
-        spriteRenderer.sprite = target;
+        if (target != null)
+        {
+            if (!force && spriteRenderer.sprite == target) return;
+            spriteRenderer.sprite = target;
+        }
+        else
+        {
+            spriteRenderer.flipX = !facingRight;
+        }
     }
 
     void UpdatePosition()
@@ -242,22 +284,14 @@ public class PlayerController : MonoBehaviour
 
     void UpdateCameraPosition()
     {
-        if (mainCamera == null) return;
-        Vector3 camPos = transform.position;
-        camPos.z = -10f;
+        if (mainCamera == null || !controlCamera) return;
+        Vector3 camPos = centerCameraOnPlanet && planetCenter != null
+            ? planetCenter.position
+            : transform.position;
+        camPos.z = cameraZ;
         mainCamera.transform.position = camPos;
     }
 
-    // On-screen debug info for quick verification during Play
-    void OnGUI()
-    {
-        if (!Application.isPlaying) return;
-        GUIStyle style = new GUIStyle(GUI.skin.label);
-        style.normal.textColor = Color.white;
-        style.fontSize = 14;
-        string info = $"angle={angle:F1}\nradius={radius:F2}\nplayer={transform.position.x:F2},{transform.position.y:F2}\nplanet={ (planetCenter!=null? (planetCenter.position.x.ToString("F2")+","+planetCenter.position.y.ToString("F2")) : "null") }";
-        GUI.Label(new Rect(10, 10, 320, 80), info, style);
-    }
 
     // Scene view visualization: orbit circle and line to player
     void OnDrawGizmos()

@@ -250,7 +250,7 @@ public class GameFlowManager : MonoBehaviour
             sceneRunHud = sceneRunHud != null ? sceneRunHud : FindInScene(activeScene, "runPanel", "runHud", "RunPanel", "RunHUD");
             sceneEndPanel = sceneEndPanel != null ? sceneEndPanel : FindInScene(activeScene, "endPanel", "EndPanel");
             sceneTitlePanel = sceneTitlePanel != null ? sceneTitlePanel : FindInScene(activeScene, "titlePanel", "TitlePanel");
-            sceneSlotPanel = sceneSlotPanel != null ? sceneSlotPanel : FindInScene(activeScene, "slotPanel", "SlotPanel");
+            sceneSlotPanel = sceneSlotPanel != null ? sceneSlotPanel : FindInScene(activeScene, "slotPanel", "SlotPanel", "filePanel", "FilePanel");
 
             sceneOddsText = sceneOddsText != null ? sceneOddsText : FindTmpText(activeScene, "oddsText", "OddsText");
             sceneStoneText = sceneStoneText != null ? sceneStoneText : FindTmpText(activeScene, "stoneText", "StoneText");
@@ -356,6 +356,8 @@ public class GameFlowManager : MonoBehaviour
             sceneBtnTitleLeave.onClick.AddListener(() => QuitGame());
         }
 
+        BindSceneSlotButtons(SceneManager.GetActiveScene());
+
         if (forgeStoneIconImage != null)
         {
             var btn = GetOrAdd<Button>(forgeStoneIconImage.gameObject);
@@ -380,6 +382,28 @@ public class GameFlowManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    void BindSceneSlotButtons(Scene scene)
+    {
+        string[] names = { "file1", "file2", "file3" };
+        for (int i = 0; i < names.Length; i++)
+        {
+            int slot = i + 1;
+            var btn = FindButton(scene, names[i], names[i].ToUpperInvariant(), char.ToUpper(names[i][0]) + names[i].Substring(1));
+            if (btn == null) continue;
+
+            slotButtons[i] = btn;
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() => SelectSlot(slot));
+
+            if (slotTexts[i] == null)
+            {
+                var legacy = btn.GetComponentInChildren<Text>(true);
+                if (legacy != null)
+                    slotTexts[i] = legacy;
+            }
+        }
     }
 
     void EnsureSlotSelectFallbackUI()
@@ -503,11 +527,14 @@ public class GameFlowManager : MonoBehaviour
     void EnsureUI()
     {
         var sceneName = SceneManager.GetActiveScene().name;
-        bool useSceneOnly = sceneName == "UpgradeScene";
+        bool useSceneOnly =
+            sceneName == "UpgradeScene" ||
+            sceneName == "RunScene" ||
+            sceneName == "TitleScene";
 
         if (useSceneOnly)
         {
-            // UpgradeScene: use scene UI only.
+            // Scene-authored UI only.
             DestroyAutoUIHierarchy();
             if (TryBindSceneUI())
             {
@@ -520,7 +547,7 @@ public class GameFlowManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("UpgradeScene UI not bound. Please assign scene UI references or use expected object names.");
+                Debug.LogWarning($"{sceneName} UI not bound. Please assign scene UI references or use expected object names.");
             }
             return;
         }
@@ -950,10 +977,11 @@ public class GameFlowManager : MonoBehaviour
 
     void ShowSlotSelect(SlotMode mode)
     {
+        EnsureSlotSelectFallbackUI();
         slotMode = mode;
         CurrentPhase = GamePhase.SlotSelect;
-        titlePanel.SetActive(false);
-        slotPanel.SetActive(true);
+        SetActiveSafe(titlePanel, false);
+        SetActiveSafe(slotPanel, true);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         RefreshSlotUI();
     }
@@ -1083,7 +1111,7 @@ public class GameFlowManager : MonoBehaviour
         if (NeedsRebind(sceneRunHud)) sceneRunHud = FindInScene(scene, "runPanel", "runHud", "RunPanel", "RunHUD");
         if (NeedsRebind(sceneEndPanel)) sceneEndPanel = FindInScene(scene, "endPanel");
         if (NeedsRebind(sceneTitlePanel)) sceneTitlePanel = FindInScene(scene, "titlePanel");
-        if (NeedsRebind(sceneSlotPanel)) sceneSlotPanel = FindInScene(scene, "slotPanel");
+        if (NeedsRebind(sceneSlotPanel)) sceneSlotPanel = FindInScene(scene, "slotPanel", "filePanel");
 
         // Texts
         if (NeedsRebindComponent(sceneOddsText)) sceneOddsText = FindTmpByName(scene, "oddsText", "odds");

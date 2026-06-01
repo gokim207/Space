@@ -16,6 +16,7 @@ public class EnemySpawner : MonoBehaviour
     public float baseMoveSpeed = 1.0f;
     public float speedPerWave = 0.05f;
     public string spawnId = "default";
+    public float referencePlanetRadius = 5f;
     bool warnedWaveManagerMissing = false;
     private float nextSpawnInterval = 2f;
 
@@ -34,7 +35,6 @@ public class EnemySpawner : MonoBehaviour
             if (cc != null)
             {
                 planetSurfaceRadius = Mathf.Abs(cc.radius) * planetCenter.lossyScale.x;
-                Debug.Log($"EnemySpawner: planetSurfaceRadius from CircleCollider2D = {planetSurfaceRadius}");
             }
             else
             {
@@ -42,14 +42,11 @@ public class EnemySpawner : MonoBehaviour
                 if (sr != null)
                 {
                     planetSurfaceRadius = Mathf.Max(sr.bounds.extents.x, sr.bounds.extents.y);
-                    Debug.Log($"EnemySpawner: planetSurfaceRadius from SpriteRenderer bounds = {planetSurfaceRadius}");
                 }
             }
             if (planetSurfaceRadius <= 0f) planetSurfaceRadius = 1f; // fallback
         }
-        if (planetCenter != null)
-            Debug.Log($"EnemySpawner: planetCenter found at {planetCenter.position}");
-        else
+        if (planetCenter == null)
             Debug.LogWarning("EnemySpawner: planetCenter is null. Enemies will not spawn until planet exists or planetCenter is assigned.");
         // Auto-create a temporary enemy prefab if none assigned (so testing works without editor prefabs)
         if (enemyPrefab == null)
@@ -64,21 +61,43 @@ public class EnemySpawner : MonoBehaviour
             e.moveSpeed = baseMoveSpeed;
             enemyPrefab = temp;
             temp.SetActive(false); // template
-            Debug.Log("임시 Enemy prefab을 생성했습니다 (EnemyPrefab_Temp)");
         }
 
-        // Log existing enemies count (do not hide pre-placed enemies anymore)
-        var existing = FindObjectsOfType<Enemy>();
-        Debug.Log($"EnemySpawner: found {existing.Length} pre-placed Enemy components in scene.");
+        EnsureEnemyPrefabUsable();
 
+        // Log existing enemies count (do not hide pre-placed enemies anymore)
         // Try auto-assign waveManager if missing
         if (waveManager == null)
         {
             waveManager = FindObjectOfType<WaveManager>();
             if (waveManager != null)
-                Debug.Log("EnemySpawner: auto-assigned WaveManager.");
+                warnedWaveManagerMissing = false;
             else
                 Debug.LogWarning("EnemySpawner: WaveManager is null. Spawning will be paused until WaveManager exists.");
+        }
+    }
+
+    void EnsureEnemyPrefabUsable()
+    {
+        if (enemyPrefab == null) return;
+        if (enemyPrefab.GetComponent<Enemy>() == null)
+        {
+            var e = enemyPrefab.AddComponent<Enemy>();
+            e.maxHP = baseHP;
+            e.moveSpeed = baseMoveSpeed;
+        }
+        if (enemyPrefab.GetComponent<Collider2D>() == null)
+        {
+            enemyPrefab.AddComponent<BoxCollider2D>();
+        }
+        var rb = enemyPrefab.GetComponent<Rigidbody2D>();
+        if (rb == null) rb = enemyPrefab.AddComponent<Rigidbody2D>();
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        rb.gravityScale = 0f;
+        var sr = enemyPrefab.GetComponent<SpriteRenderer>();
+        if (sr != null)
+        {
+            try { sr.sortingOrder = Mathf.Max(sr.sortingOrder, 10); sr.maskInteraction = SpriteMaskInteraction.None; } catch (System.Exception) { }
         }
     }
 
@@ -177,6 +196,12 @@ public class EnemySpawner : MonoBehaviour
         var go = Instantiate(enemyPrefab, pos, Quaternion.identity);
         go.SetActive(true);
         var e = go.GetComponent<Enemy>();
+        if (e == null)
+        {
+            e = go.AddComponent<Enemy>();
+            e.maxHP = baseHP;
+            e.moveSpeed = baseMoveSpeed;
+        }
         if (e != null)
         {
             playerT = GetPlayerTransform();
@@ -188,7 +213,6 @@ public class EnemySpawner : MonoBehaviour
             if (e.moveSpeed <= 0f)
             {
                 e.moveSpeed = 1f;
-                Debug.Log("Spawned enemy moveSpeed was 0, reset to 1f for testing.");
             }
             int wave = waveManager != null ? waveManager.currentWave : 1;
             var def = PickEnemyDef(wave);
@@ -204,7 +228,8 @@ public class EnemySpawner : MonoBehaviour
                 if (!string.IsNullOrEmpty(def.dropOreId)) oreId = def.dropOreId;
             }
             e.oreId = oreId;
-            e.ApplyStats(scaledHp, scaledSpeed);
+            e.ApplyStats(scaledHp, scaledSpeed * GetWorldScale());
+            e.contactRadius = Mathf.Max(e.contactRadius, EstimateContactRadius(e, playerT));
             // Make spawned enemy visible and ensure it renders on top of planet
             var sr = e.GetComponent<SpriteRenderer>();
             if (sr != null)
@@ -280,6 +305,27 @@ public class EnemySpawner : MonoBehaviour
         var def = GameData.GetEnemySpawn(spawnId);
         if (def != null) return def;
         return GameData.GetEnemySpawn("default");
+    }
+
+    float GetWorldScale()
+    {
+        if (planetSurfaceRadius <= 0f) return 1f;
+        return Mathf.Max(1f, planetSurfaceRadius / Mathf.Max(0.01f, referencePlanetRadius));
+    }
+
+    float EstimateContactRadius(Enemy enemy, Transform playerT)
+    {
+        float radius = 0.5f * GetWorldScale();
+        var enemyRenderer = enemy.GetComponent<SpriteRenderer>();
+        if (enemyRenderer != null)
+            radius = Mathf.Max(radius, Mathf.Max(enemyRenderer.bounds.extents.x, enemyRenderer.bounds.extents.y));
+        if (playerT != null)
+        {
+            var playerRenderer = playerT.GetComponent<SpriteRenderer>();
+            if (playerRenderer != null)
+                radius += Mathf.Max(playerRenderer.bounds.extents.x, playerRenderer.bounds.extents.y);
+        }
+        return Mathf.Max(0.5f, radius);
     }
 
     GameData.EnemyDef PickEnemyDef(int wave)

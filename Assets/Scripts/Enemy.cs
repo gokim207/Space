@@ -44,10 +44,20 @@ public class Enemy : MonoBehaviour
 
     void Update()
     {
+        if (target == null)
+        {
+            var tagged = GameObject.FindWithTag("Player");
+            if (tagged != null) target = tagged.transform;
+            if (target == null)
+            {
+                var pc = FindObjectOfType<PlayerController>();
+                if (pc != null) target = pc.transform;
+            }
+        }
+        if (moveSpeed <= 0f) moveSpeed = 1f;
         if (target != null)
         {
-            Vector3 dir = (target.position - transform.position).normalized;
-            transform.position += dir * moveSpeed * Time.deltaTime;
+            transform.position = Vector3.MoveTowards(transform.position, target.position, moveSpeed * Time.deltaTime);
             // fallback proximity-based contact detection
             if (!hasDamaged && target != null)
             {
@@ -57,7 +67,6 @@ public class Enemy : MonoBehaviour
                     var pc = target.GetComponent<PlayerController>();
                     if (pc != null)
                     {
-                        Debug.Log($"Enemy proximity hit player: {gameObject.name}");
                         pc.TakeDamage(1);
                     }
                     else if (waveManager != null)
@@ -74,7 +83,6 @@ public class Enemy : MonoBehaviour
     public void TakeDamage(int dmg)
     {
         hp -= dmg;
-        Debug.Log($"Enemy took damage: -{dmg}, hp={hp}");
         // Visual feedback: flash red briefly
         var sr = GetComponent<SpriteRenderer>();
         if (sr != null)
@@ -105,13 +113,25 @@ public class Enemy : MonoBehaviour
 
     void Die()
     {
-        Debug.Log($"Enemy died: {gameObject.name}");
         // Notify wave manager
         if (waveManager != null)
         {
             waveManager.OnEnemyKilled(oreDrop, oxygenGain, oreId);
         }
         Destroy(gameObject);
+    }
+
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            var pc = other.GetComponent<PlayerController>();
+            if (pc != null) pc.TakeDamage(1);
+            else if (waveManager != null) waveManager.EndRun();
+            hasDamaged = true;
+            Destroy(gameObject);
+        }
     }
 
     void OnCollisionEnter2D(Collision2D collision)

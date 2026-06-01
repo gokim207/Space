@@ -12,8 +12,12 @@ public class WaveManager : MonoBehaviour
     public Transform firePoint;
     public float fireInterval = 1.5f;
     private float baseFireInterval = 1f;
+    private float baseProjectileSpeed = 10f;
+    private float baseProjectileLifeTime = 2f;
     private float fireTimer;
     public float fireRange = 30f; // targeting range
+    private float baseFireRange = 30f;
+    public float referenceOrbitRadius = 5f;
     public bool requireTargetInView = true;
     public float viewportMargin = 0.02f; // allow slight margin outside [0,1]
     // Wave system
@@ -62,12 +66,6 @@ public class WaveManager : MonoBehaviour
         {
             waveTimer = 0f;
             AdvanceWave();
-        }
-        // Log remaining time every 10 seconds
-        int secondsLeft = Mathf.CeilToInt(waveDuration - waveTimer);
-        if (secondsLeft % 10 == 0 && secondsLeft != 0 && Mathf.Abs((waveDuration - waveTimer) - secondsLeft) < 0.02f)
-        {
-            Debug.Log($"Wave {currentWave}: {secondsLeft}s 남음");
         }
         RefreshWaveUI();
     }
@@ -167,11 +165,46 @@ public class WaveManager : MonoBehaviour
             projectilePrefab = temp;
             Debug.Log("임시 Projectile prefab을 생성했습니다 (ProjectilePrefab_Temp)");
         }
+        EnsureProjectilePrefabUsable();
         ApplyProjectileStats();
         // TODO: 웨이브, 산소 등 초기화
-        Debug.Log("게임 시작!");
-        Debug.Log($"Wave {currentWave} 시작");
         if (spawner != null) spawner.OnWaveStarted(currentWave);
+    }
+
+    void EnsureProjectilePrefabUsable()
+    {
+        if (projectilePrefab == null) return;
+        var sr = projectilePrefab.GetComponent<SpriteRenderer>();
+        if (sr == null)
+        {
+            sr = projectilePrefab.AddComponent<SpriteRenderer>();
+            sr.sprite = CreateColorSprite(Color.yellow);
+            sr.color = Color.yellow;
+        }
+        var col = projectilePrefab.GetComponent<Collider2D>();
+        if (col == null)
+        {
+            var circle = projectilePrefab.AddComponent<CircleCollider2D>();
+            circle.isTrigger = true;
+        }
+        else
+        {
+            col.isTrigger = true;
+        }
+        var rb = projectilePrefab.GetComponent<Rigidbody2D>();
+        if (rb == null)
+        {
+            rb = projectilePrefab.AddComponent<Rigidbody2D>();
+        }
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        rb.gravityScale = 0f;
+        if (projectilePrefab.GetComponent<Projectile>() == null)
+        {
+            var proj = projectilePrefab.AddComponent<Projectile>();
+            proj.speed = 10f;
+            proj.lifeTime = 2f;
+            proj.damage = 1;
+        }
     }
 
     Sprite CreateColorSprite(Color c)
@@ -188,7 +221,6 @@ public class WaveManager : MonoBehaviour
     {
         CurrentState = GameState.Upgrade;
         // TODO: 업그레이드 씬 전환 등 처리
-        Debug.Log("런 종료, 업그레이드로 전환");
         if (spawner != null) spawner.enabled = false;
         var flow = FindObjectOfType<GameFlowManager>();
         if (flow != null)
@@ -199,7 +231,6 @@ public class WaveManager : MonoBehaviour
     {
         currentWave++;
         ApplyWaveConfig(currentWave);
-        Debug.Log($"웨이브 진행: {currentWave}");
         if (spawner != null) spawner.OnWaveStarted(currentWave);
         var waveDef = GameData.GetWave(currentWave);
         if (waveDef != null && waveDef.isBossWave)
@@ -211,7 +242,6 @@ public class WaveManager : MonoBehaviour
 
     void SpawnBoss()
     {
-        Debug.Log("보스 등장!");
         // For now, pause spawner
         if (spawner != null) spawner.enabled = false;
         // Actual boss prefab logic can be added later
@@ -259,7 +289,6 @@ public class WaveManager : MonoBehaviour
 
     System.Collections.IEnumerator EndRunSequenceCoroutine(PlayerController player)
     {
-        Debug.Log("End run sequence started: freezing game...");
         // stop spawner
         if (spawner != null) spawner.enabled = false;
         // stop existing enemies (disable their Update movement by disabling script)
@@ -285,7 +314,6 @@ public class WaveManager : MonoBehaviour
         }
         // short pause so player sees impact, then finish
         yield return new WaitForSecondsRealtime(0.5f);
-        Debug.Log("End run sequence finished.");
         var flow = FindObjectOfType<GameFlowManager>();
         if (flow != null) flow.ShowEnd();
     }
@@ -358,10 +386,14 @@ public class WaveManager : MonoBehaviour
     void ApplyWeaponConfig()
     {
         var w = GameData.GetWeapon(weaponId);
-        if (w == null) return;
-        if (w.fireInterval > 0f) fireInterval = w.fireInterval;
+        if (w != null)
+        {
+            if (w.fireInterval > 0f) fireInterval = w.fireInterval;
+            if (w.detectRange > 0f) baseFireRange = w.detectRange;
+            if (w.bulletSpeed > 0f) baseProjectileSpeed = w.bulletSpeed;
+        }
         baseFireInterval = fireInterval;
-        if (w.detectRange > 0f) fireRange = w.detectRange;
+        fireRange = GetScaledRange(baseFireRange);
     }
 
     void ApplyProjectileStats()
@@ -372,23 +404,45 @@ public class WaveManager : MonoBehaviour
         if (proj == null) return;
         if (w != null)
         {
-            if (w.bulletSpeed > 0f) proj.speed = w.bulletSpeed;
+            if (w.bulletSpeed > 0f) baseProjectileSpeed = w.bulletSpeed;
             if (w.damage > 0) proj.damage = w.damage;
         }
         var pdef = GameData.GetProjectile(projectileId);
         if (pdef != null)
         {
-            if (pdef.speed > 0f) proj.speed = pdef.speed;
-            if (pdef.lifeTime > 0f) proj.lifeTime = pdef.lifeTime;
+            if (pdef.speed > 0f) baseProjectileSpeed = pdef.speed;
+            if (pdef.lifeTime > 0f) baseProjectileLifeTime = pdef.lifeTime;
             if (pdef.damageMult > 0f) proj.damageMultiplier = pdef.damageMult;
         }
+        proj.speed = baseProjectileSpeed * GetWorldScale();
+        proj.lifeTime = Mathf.Max(baseProjectileLifeTime, fireRange / Mathf.Max(1f, proj.speed) + 0.25f);
+    }
+
+    float GetScaledRange(float designRange)
+    {
+        return Mathf.Max(designRange * GetWorldScale(), designRange);
+    }
+
+    float GetWorldScale()
+    {
+        var player = firePoint != null && firePoint.parent != null
+            ? firePoint.parent
+            : FindObjectOfType<PlayerController>()?.transform;
+        var planet = GameObject.Find("Planet")?.transform;
+        if (player != null && planet != null)
+        {
+            float orbitRadius = Vector3.Distance(player.position, planet.position);
+            if (orbitRadius > 0.01f)
+                return Mathf.Max(1f, orbitRadius / Mathf.Max(0.01f, referenceOrbitRadius));
+        }
+        return 1f;
     }
 
     Transform FindNearestEnemy(Vector3 from, float range)
     {
         Enemy[] enemies = FindObjectsOfType<Enemy>();
         Transform best = null;
-        float bestDist = range;
+        float bestDist = Mathf.Max(range, fireRange);
 
         Camera cam = Camera.main;
         // First pass: prefer enemies inside camera viewport if requested

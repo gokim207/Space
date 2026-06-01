@@ -10,7 +10,7 @@ public class Projectile : MonoBehaviour
 
     void Update()
     {
-        transform.Translate(Vector2.right * speed * Time.deltaTime);
+        transform.position += transform.right * speed * Time.deltaTime;
         timer += Time.deltaTime;
         if (timer >= lifeTime)
             Destroy(gameObject);
@@ -21,7 +21,6 @@ public class Projectile : MonoBehaviour
         var enemy = other.GetComponent<Enemy>();
         if (enemy != null)
         {
-            Debug.Log($"Projectile hit enemy: {enemy.gameObject.name}");
             enemy.TakeDamage(damage);
             Destroy(gameObject);
             return;
