@@ -11,6 +11,7 @@ public class EnemySpawner : MonoBehaviour
     private float planetSurfaceRadius = 0f;
     public WaveManager waveManager;
     public float minDistanceFromPlayer = 1.5f;
+    public float minSpawnBlocksFromPlayer = 5f;
     public float minSpawnAngleFromPlayer = 35f;
     public int spawnPositionMaxAttempts = 20;
     public int baseHP = 2;
@@ -285,21 +286,56 @@ public class EnemySpawner : MonoBehaviour
             }
 
             angDeg = ResolveSafeSpawnAngle(angDeg);
-            Vector3 pos = planetCenter.position + new Vector3(Mathf.Cos(angDeg * Mathf.Deg2Rad), Mathf.Sin(angDeg * Mathf.Deg2Rad), 0f) * dist;
-            var playerT = GetPlayerTransform();
-            float minWorldDistance = Mathf.Max(minDistanceFromPlayer, planetSurfaceRadius * 0.35f);
-            if (playerT != null && Vector3.Distance(pos, playerT.position) < minWorldDistance)
-            {
-                Vector3 dir = (pos - playerT.position).normalized;
-                if (dir.sqrMagnitude < 0.0001f)
-                    dir = (pos - planetCenter.position).normalized;
-                pos = planetCenter.position + dir * dist;
-            }
+            Vector3 pos = BuildSafeSpawnPosition(angDeg, dist);
             SpawnEnemy(pos);
         }
     }
 
+    Vector3 BuildSafeSpawnPosition(float preferredAngle, float dist)
+    {
+        var playerT = GetPlayerTransform();
+        float minWorldDistance = GetMinSpawnDistanceFromPlayer();
+        float angle = preferredAngle;
+
+        for (int attempt = 0; attempt < Mathf.Max(1, spawnPositionMaxAttempts); attempt++)
+        {
+            angle = ResolveSafeSpawnAngle(angle, dist);
+            Vector3 pos = planetCenter.position + AngleToDir(angle) * dist;
+            if (playerT == null || Vector3.Distance(pos, playerT.position) >= minWorldDistance)
+                return pos;
+
+            angle = Random.Range(0f, 360f);
+        }
+
+        // Final fallback: place on the opposite side of the planet from the player.
+        if (playerT != null && planetCenter != null)
+        {
+            Vector3 away = (planetCenter.position - playerT.position).normalized;
+            if (away.sqrMagnitude > 0.0001f)
+                return planetCenter.position + away * dist;
+        }
+
+        return planetCenter.position + AngleToDir(preferredAngle) * dist;
+    }
+
+    Vector3 AngleToDir(float angleDeg)
+    {
+        float rad = angleDeg * Mathf.Deg2Rad;
+        return new Vector3(Mathf.Cos(rad), Mathf.Sin(rad), 0f);
+    }
+
+    float GetMinSpawnDistanceFromPlayer()
+    {
+        return Mathf.Max(0f, minDistanceFromPlayer, minSpawnBlocksFromPlayer);
+    }
+
     float ResolveSafeSpawnAngle(float preferredAngle)
+    {
+        float spawnRadius = planetSurfaceRadius + Mathf.Max(0.1f, spawnOffset);
+        return ResolveSafeSpawnAngle(preferredAngle, spawnRadius);
+    }
+
+    float ResolveSafeSpawnAngle(float preferredAngle, float spawnRadius)
     {
         var playerT = GetPlayerTransform();
         if (playerT == null || planetCenter == null) return preferredAngle;
@@ -308,17 +344,25 @@ public class EnemySpawner : MonoBehaviour
         if (playerDir.sqrMagnitude < 0.0001f) return preferredAngle;
 
         float playerAngle = Mathf.Atan2(playerDir.y, playerDir.x) * Mathf.Rad2Deg;
+        float minAngleByDistance = 0f;
+        float clearance = GetMinSpawnDistanceFromPlayer();
+        if (spawnRadius > 0.001f && clearance > 0f)
+        {
+            float chordRatio = Mathf.Clamp(clearance / (2f * spawnRadius), 0f, 1f);
+            minAngleByDistance = Mathf.Asin(chordRatio) * 2f * Mathf.Rad2Deg;
+        }
+        float requiredAngle = Mathf.Max(minSpawnAngleFromPlayer, minAngleByDistance);
         float angle = preferredAngle;
         for (int attempt = 0; attempt < Mathf.Max(1, spawnPositionMaxAttempts); attempt++)
         {
             float delta = Mathf.Abs(Mathf.DeltaAngle(angle, playerAngle));
-            if (delta >= minSpawnAngleFromPlayer)
+            if (delta >= requiredAngle)
                 return angle;
             angle = Random.Range(0f, 360f);
         }
 
         float side = Random.value < 0.5f ? -1f : 1f;
-        return playerAngle + side * minSpawnAngleFromPlayer;
+        return playerAngle + side * requiredAngle;
     }
 
     GameData.EnemySpawnDef ResolveSpawnDef()

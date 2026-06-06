@@ -24,6 +24,9 @@ public class PlayerController : MonoBehaviour
     [Header("Directional Sprites")]
     public Sprite leftSprite;
     public Sprite rightSprite;
+    public Sprite[] leftWalkSprites;
+    public Sprite[] rightWalkSprites;
+    public float walkFrameRate = 8f;
     private float fixedPlayerY = 0f;
     public float surfacePadding = 0.0f;
 
@@ -31,10 +34,13 @@ public class PlayerController : MonoBehaviour
     private bool warnedWaveManagerMissing = false;
     private SpriteRenderer spriteRenderer;
     private bool facingRight = true;
+    private float walkFrameTimer = 0f;
+    private int currentWalkFrame = -1;
 
     void Start()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
+        LoadDirectionalSpritesFromResources();
         ApplyPlayerConfig();
         try
         {
@@ -243,12 +249,70 @@ public class PlayerController : MonoBehaviour
 
     void UpdateFacing(float move)
     {
+        bool isMoving = Mathf.Abs(move) > 0.01f;
         if (move > 0.01f)
             facingRight = true;
         else if (move < -0.01f)
             facingRight = false;
 
-        ApplyFacingSprite();
+        ApplyMovementSprite(isMoving);
+    }
+
+    void LoadDirectionalSpritesFromResources()
+    {
+        if (leftSprite == null) leftSprite = LoadFirstSprite("character/left");
+        if (rightSprite == null) rightSprite = LoadFirstSprite("character/right");
+        if (leftWalkSprites == null || leftWalkSprites.Length == 0)
+            leftWalkSprites = LoadSpriteFrames("animate/left_walk");
+        if (rightWalkSprites == null || rightWalkSprites.Length == 0)
+            rightWalkSprites = LoadSpriteFrames("animate/right_walk");
+    }
+
+    Sprite LoadFirstSprite(string resourcePath)
+    {
+        Sprite sprite = Resources.Load<Sprite>(resourcePath);
+        if (sprite != null) return sprite;
+
+        Sprite[] frames = LoadSpriteFrames(resourcePath);
+        return frames != null && frames.Length > 0 ? frames[0] : null;
+    }
+
+    Sprite[] LoadSpriteFrames(string resourcePath)
+    {
+        Sprite[] frames = Resources.LoadAll<Sprite>(resourcePath);
+        if (frames == null || frames.Length == 0) return frames;
+        System.Array.Sort(frames, (a, b) => string.CompareOrdinal(a.name, b.name));
+        return frames;
+    }
+
+    void ApplyMovementSprite(bool isMoving)
+    {
+        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null) spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        if (spriteRenderer == null) return;
+
+        if (!isMoving)
+        {
+            walkFrameTimer = 0f;
+            currentWalkFrame = -1;
+            ApplyFacingSprite();
+            return;
+        }
+
+        Sprite[] frames = facingRight ? rightWalkSprites : leftWalkSprites;
+        if (frames == null || frames.Length == 0)
+        {
+            ApplyFacingSprite();
+            return;
+        }
+
+        walkFrameTimer += Time.deltaTime;
+        int nextFrame = Mathf.FloorToInt(walkFrameTimer * Mathf.Max(1f, walkFrameRate)) % frames.Length;
+        if (nextFrame != currentWalkFrame || spriteRenderer.sprite != frames[nextFrame])
+        {
+            currentWalkFrame = nextFrame;
+            spriteRenderer.sprite = frames[nextFrame];
+        }
     }
 
     void ApplyFacingSprite(bool force = false)
