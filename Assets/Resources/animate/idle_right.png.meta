@@ -1,16 +1,16 @@
 fileFormatVersion: 2
-guid: 127cce601b7a54be0abffcc7f9fb32b0
+guid: 93f1ea5be855a4ea2909eb83952fae05
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 556052574796523437
-    second: right_walk_0
+      213: 1826435285958538685
+    second: idle_right_0
   - first:
-      213: 8186482895003537430
-    second: right_walk_1
+      213: 6179533113006291798
+    second: idle_right_1
   - first:
-      213: -1921252550937280183
-    second: right_walk_2
+      213: 9140360626043412854
+    second: idle_right_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -57,7 +57,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 68
+  spritePixelsToUnits: 100
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -119,67 +119,67 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: right_walk_0
+      name: idle_right_0
       rect:
         serializedVersion: 2
-        x: 125
-        y: 137
-        width: 169
-        height: 237
+        x: 49
+        y: 99
+        width: 140
+        height: 211
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: da72035eede77b700800000000000000
-      internalID: 556052574796523437
+      spriteID: db53cc8373dc85910800000000000000
+      internalID: 1826435285958538685
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: right_walk_1
+      name: idle_right_1
       rect:
         serializedVersion: 2
-        x: 442
-        y: 135
-        width: 165
-        height: 242
+        x: 240
+        y: 99
+        width: 141
+        height: 211
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6105f74b1da3c9170800000000000000
-      internalID: 8186482895003537430
+      spriteID: 65bf08e20ac12c550800000000000000
+      internalID: 6179533113006291798
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: right_walk_2
+      name: idle_right_2
       rect:
         serializedVersion: 2
-        x: 745
-        y: 137
-        width: 172
-        height: 237
+        x: 431
+        y: 99
+        width: 141
+        height: 210
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9410291fbf65655e0800000000000000
-      internalID: -1921252550937280183
+      spriteID: 671e84acf8519de70800000000000000
+      internalID: 9140360626043412854
       vertices: []
       indices: 
       edges: []
@@ -188,7 +188,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 0d88eab36e44c4a329dde9bedf1377bd
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -196,13 +196,11 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries:
-      - key: SpriteEditor.SliceSettings
-        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
+      entries: []
     nameFileIdTable:
-      right_walk_0: 556052574796523437
-      right_walk_1: 8186482895003537430
-      right_walk_2: -1921252550937280183
+      idle_right_0: 1826435285958538685
+      idle_right_1: 6179533113006291798
+      idle_right_2: 9140360626043412854
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -419,8 +419,8 @@ Transform:
   m_GameObject: {fileID: 169044372}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1283, y: 1099, z: 0}
-  m_LocalScale: {x: 33.97993, y: 33.724705, z: 0.6658108}
+  m_LocalPosition: {x: 1283, y: 1093.5, z: 0}
+  m_LocalScale: {x: 33, y: 33, z: 0.6658108}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -526,6 +526,9 @@ MonoBehaviour:
   playerId: default
   leftSprite: {fileID: -2208510542369132325, guid: 2e0ab5d12949f4a96832a327903e32b9, type: 3}
   rightSprite: {fileID: -4345969612696422427, guid: 1cfa6cc65a3084aceb4437fa84209d79, type: 3}
+  leftWalkSprites: []
+  rightWalkSprites: []
+  walkFrameRate: 6
   surfacePadding: 0
 --- !u!1 &203224373
 GameObject:
@@ -591,8 +594,8 @@ MonoBehaviour:
   oreId: stone
   moveSpeed: 1
   contactRadius: 0.5
-  target: {fileID: 0}
-  waveManager: {fileID: 0}
+  target: {fileID: 169044374}
+  waveManager: {fileID: 576928461}
 --- !u!212 &203224376
 SpriteRenderer:
   serializedVersion: 2
@@ -662,7 +665,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 2503.4285, y: -298.29407, z: 0}
-  m_LocalScale: {x: 51.03541, y: 50.652084, z: 1}
+  m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1474,6 +1477,66 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &1361992042
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1361992044}
+  - component: {fileID: 1361992043}
+  m_Layer: 0
+  m_Name: EnemySpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1361992043
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1361992042}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04c4173a38c61406a9f6c63ad18bd878, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemySpawner
+  enemyPrefab: {fileID: 0}
+  planetCenter: {fileID: 0}
+  spawnInterval: 2
+  spawnOffset: 3
+  waveManager: {fileID: 0}
+  minDistanceFromPlayer: 1.5
+  minSpawnBlocksFromPlayer: 5
+  minSpawnAngleFromPlayer: 35
+  spawnPositionMaxAttempts: 20
+  baseHP: 2
+  hpPerWave: 1
+  baseMoveSpeed: 1
+  speedPerWave: 0.05
+  enemyScaleMultiplier: 3.5
+  spawnId: default
+  referencePlanetRadius: 5
+--- !u!4 &1361992044
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1361992042}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1466364745
 GameObject:
   m_ObjectHideFlags: 0
@@ -2468,3 +2531,4 @@ SceneRoots:
   - {fileID: 2061256649}
   - {fileID: 1302412634}
   - {fileID: 1802849870}
+  - {fileID: 1361992044}

@@ -18,6 +18,7 @@ public class EnemySpawner : MonoBehaviour
     public int hpPerWave = 1;
     public float baseMoveSpeed = 1.0f;
     public float speedPerWave = 0.05f;
+    public float enemyScaleMultiplier = 1.5f;
     public string spawnId = "default";
     public float referencePlanetRadius = 5f;
     bool warnedWaveManagerMissing = false;
@@ -252,10 +253,8 @@ public class EnemySpawner : MonoBehaviour
             }
             // Ensure transform is at z=0 and match player's scale if available
             go.transform.position = new Vector3(pos.x, pos.y, 0f);
-            if (playerT != null)
-                go.transform.localScale = playerT.localScale;
-            else
-                go.transform.localScale = Vector3.one;
+            Vector3 baseScale = playerT != null ? playerT.localScale : Vector3.one;
+            go.transform.localScale = baseScale * Mathf.Max(0.01f, enemyScaleMultiplier);
         }
     }
 

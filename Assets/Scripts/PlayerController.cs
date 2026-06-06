@@ -24,8 +24,11 @@ public class PlayerController : MonoBehaviour
     [Header("Directional Sprites")]
     public Sprite leftSprite;
     public Sprite rightSprite;
+    public Sprite[] leftIdleSprites;
+    public Sprite[] rightIdleSprites;
     public Sprite[] leftWalkSprites;
     public Sprite[] rightWalkSprites;
+    public float idleFrameRate = 4f;
     public float walkFrameRate = 8f;
     private float fixedPlayerY = 0f;
     public float surfacePadding = 0.0f;
@@ -34,6 +37,8 @@ public class PlayerController : MonoBehaviour
     private bool warnedWaveManagerMissing = false;
     private SpriteRenderer spriteRenderer;
     private bool facingRight = true;
+    private float idleFrameTimer = 0f;
+    private int currentIdleFrame = -1;
     private float walkFrameTimer = 0f;
     private int currentWalkFrame = -1;
 
@@ -262,6 +267,10 @@ public class PlayerController : MonoBehaviour
     {
         if (leftSprite == null) leftSprite = LoadFirstSprite("character/left");
         if (rightSprite == null) rightSprite = LoadFirstSprite("character/right");
+        if (leftIdleSprites == null || leftIdleSprites.Length == 0)
+            leftIdleSprites = LoadSpriteFrames("animate/idle_left");
+        if (rightIdleSprites == null || rightIdleSprites.Length == 0)
+            rightIdleSprites = LoadSpriteFrames("animate/idle_right");
         if (leftWalkSprites == null || leftWalkSprites.Length == 0)
             leftWalkSprites = LoadSpriteFrames("animate/left_walk");
         if (rightWalkSprites == null || rightWalkSprites.Length == 0)
@@ -295,10 +304,12 @@ public class PlayerController : MonoBehaviour
         {
             walkFrameTimer = 0f;
             currentWalkFrame = -1;
-            ApplyFacingSprite();
+            ApplyIdleSprite();
             return;
         }
 
+        idleFrameTimer = 0f;
+        currentIdleFrame = -1;
         Sprite[] frames = facingRight ? rightWalkSprites : leftWalkSprites;
         if (frames == null || frames.Length == 0)
         {
@@ -311,6 +322,28 @@ public class PlayerController : MonoBehaviour
         if (nextFrame != currentWalkFrame || spriteRenderer.sprite != frames[nextFrame])
         {
             currentWalkFrame = nextFrame;
+            spriteRenderer.sprite = frames[nextFrame];
+        }
+    }
+
+    void ApplyIdleSprite()
+    {
+        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null) spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        if (spriteRenderer == null) return;
+
+        Sprite[] frames = facingRight ? rightIdleSprites : leftIdleSprites;
+        if (frames == null || frames.Length == 0)
+        {
+            ApplyFacingSprite();
+            return;
+        }
+
+        idleFrameTimer += Time.deltaTime;
+        int nextFrame = Mathf.FloorToInt(idleFrameTimer * Mathf.Max(1f, idleFrameRate)) % frames.Length;
+        if (nextFrame != currentIdleFrame || spriteRenderer.sprite != frames[nextFrame])
+        {
+            currentIdleFrame = nextFrame;
             spriteRenderer.sprite = frames[nextFrame];
         }
     }
