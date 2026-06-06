@@ -1044,8 +1044,8 @@ public class GameFlowManager : MonoBehaviour
             // Reset forge state only when entering UpgradeScene (not when toggling panels)
             forgeReady = true;
             forgeCooldown = 0f;
-            // read persisted ore count if WaveManager isn't in this scene
-            if (CurrentSlot >= 1) LoadSlot(CurrentSlot);
+            // Slot data is loaded only when selecting a file from TitleScene.
+            // Re-loading here would wipe in-memory upgrade changes when returning from exploration.
             ShowForge();
             // Hard-force forge as the default view on load
             SetActiveSafe(forgePanel, true);

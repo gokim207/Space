@@ -36,6 +36,9 @@ public class SkillTreeManager : MonoBehaviour
     private const float dragThreshold = 6f;
     private readonly List<LinkLine> links = new List<LinkLine>();
     private bool dataInitialized = false;
+    private static readonly Dictionary<string, int> runtimeLevels = new Dictionary<string, int>();
+    private static int runtimeSlot = -1;
+    private static bool hasRuntimeLevels = false;
 
     class LinkLine
     {
@@ -239,10 +242,13 @@ public class SkillTreeManager : MonoBehaviour
         int slot = GameFlowManager.CurrentSlot;
         foreach (var n in nodes.Values)
         {
-            if (slot >= 1)
+            if (slot >= 1 && hasRuntimeLevels && runtimeSlot == slot && runtimeLevels.TryGetValue(n.id, out var runtimeLevel))
+                n.level = runtimeLevel;
+            else if (slot >= 1)
                 n.level = PlayerPrefs.GetInt($"slot_{slot}_skill_{n.id}", 0);
             else
                 n.level = 0;
+            CacheRuntimeLevel(slot, n.id, n.level);
         }
         ApplySkillEffects();
     }
@@ -458,6 +464,7 @@ public class SkillTreeManager : MonoBehaviour
         if (flow == null || !flow.SpendMoney(cost)) return;
 
         n.level += 1;
+        CacheRuntimeLevel(GameFlowManager.CurrentSlot, n.id, n.level);
         ApplySkillEffects();
         RefreshUnlocks();
         RefreshVisuals();
@@ -468,50 +475,99 @@ public class SkillTreeManager : MonoBehaviour
     {
         if (slot < 1) return;
         var mgr = FindManager();
-        if (mgr == null) return;
-        foreach (var n in mgr.nodes.Values)
+        if (mgr != null)
         {
-            PlayerPrefs.SetInt($"slot_{slot}_skill_{n.id}", n.level);
+            foreach (var n in mgr.nodes.Values)
+            {
+                CacheRuntimeLevel(slot, n.id, n.level);
+                PlayerPrefs.SetInt($"slot_{slot}_skill_{n.id}", n.level);
+            }
+            return;
         }
+
+        if (hasRuntimeLevels && runtimeSlot == slot)
+        {
+            foreach (var kv in runtimeLevels)
+                PlayerPrefs.SetInt($"slot_{slot}_skill_{kv.Key}", kv.Value);
+            return;
+        }
+
+        foreach (var id in GetSkillIdsFromCsv())
+            PlayerPrefs.SetInt($"slot_{slot}_skill_{id}", PlayerPrefs.GetInt($"slot_{slot}_skill_{id}", 0));
     }
 
     public static void LoadSkills(int slot)
     {
         if (slot < 1) return;
+        runtimeSlot = slot;
+        hasRuntimeLevels = true;
+        runtimeLevels.Clear();
+
         var mgr = FindManager();
-        if (mgr == null) return;
-        foreach (var n in mgr.nodes.Values)
+        if (mgr != null)
         {
-            n.level = PlayerPrefs.GetInt($"slot_{slot}_skill_{n.id}", 0);
+            foreach (var n in mgr.nodes.Values)
+            {
+                n.level = PlayerPrefs.GetInt($"slot_{slot}_skill_{n.id}", 0);
+                runtimeLevels[n.id] = n.level;
+            }
+            mgr.ApplySkillEffects();
+            mgr.RefreshUnlocks();
+            mgr.RefreshVisuals();
+            return;
         }
-        mgr.ApplySkillEffects();
-        mgr.RefreshUnlocks();
-        mgr.RefreshVisuals();
+
+        foreach (var id in GetSkillIdsFromCsv())
+            runtimeLevels[id] = PlayerPrefs.GetInt($"slot_{slot}_skill_{id}", 0);
     }
 
     public static void ResetAllSkills()
     {
+        int slot = GameFlowManager.CurrentSlot;
+        runtimeSlot = slot;
+        hasRuntimeLevels = true;
+        runtimeLevels.Clear();
+
         var mgr = FindManager();
-        if (mgr == null) return;
-        foreach (var n in mgr.nodes.Values)
+        if (mgr != null)
         {
-            n.level = 0;
+            foreach (var n in mgr.nodes.Values)
+            {
+                n.level = 0;
+                CacheRuntimeLevel(slot, n.id, 0);
+            }
+            mgr.ApplySkillEffects();
+            mgr.RefreshUnlocks();
+            mgr.RefreshVisuals();
+            return;
         }
-        mgr.ApplySkillEffects();
-        mgr.RefreshUnlocks();
-        mgr.RefreshVisuals();
+
+        foreach (var id in GetSkillIdsFromCsv())
+            runtimeLevels[id] = 0;
+        SkillEffects.ApplyAllFromTable(GetSkillLevel);
     }
 
     public static int GetSkillLevel(string id)
     {
         if (string.IsNullOrEmpty(id)) return 0;
+        int slot = GameFlowManager.CurrentSlot;
+        if (slot >= 1 && hasRuntimeLevels && runtimeSlot == slot && runtimeLevels.TryGetValue(id, out var runtimeLevel))
+            return runtimeLevel;
+
         var mgr = FindManager();
         if (mgr != null && mgr.nodes.TryGetValue(id, out var node))
             return node.level;
 
-        int slot = GameFlowManager.CurrentSlot;
         if (slot < 1) return 0;
         return PlayerPrefs.GetInt($"slot_{slot}_skill_{id}", 0);
+    }
+
+    static void CacheRuntimeLevel(int slot, string id, int level)
+    {
+        if (slot < 1 || string.IsNullOrEmpty(id)) return;
+        runtimeSlot = slot;
+        hasRuntimeLevels = true;
+        runtimeLevels[id] = level;
     }
 
     static SkillTreeManager FindManager()

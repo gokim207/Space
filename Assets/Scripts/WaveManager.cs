@@ -18,8 +18,10 @@ public class WaveManager : MonoBehaviour
     public float fireRange = 30f; // targeting range
     private float baseFireRange = 30f;
     public float referenceOrbitRadius = 5f;
+    public float runtimeProjectileVisualScale = 1.5f;
     public bool requireTargetInView = true;
     public float viewportMargin = 0.02f; // allow slight margin outside [0,1]
+    private bool usingRuntimeProjectilePrefab = false;
     // Wave system
     public int currentWave = 1;
     public float waveDuration = 40f;
@@ -90,18 +92,15 @@ public class WaveManager : MonoBehaviour
             if (spawner != null)
             {
                 spawner.waveManager = this;
-                Debug.Log("WaveManager: found EnemySpawner in scene and assigned WaveManager.");
             }
             else
             {
-                Debug.LogWarning("WaveManager: No EnemySpawner found in scene. Creating one at runtime.");
                 var go = new GameObject("EnemySpawner_Auto");
                 spawner = go.AddComponent<EnemySpawner>();
                 spawner.waveManager = this;
                 // try assign planetCenter if there's a Planet object
                 var p = GameObject.Find("Planet");
                 if (p != null) spawner.planetCenter = p.transform;
-                Debug.Log("WaveManager: EnemySpawner_Auto created and wired.");
             }
         }
         if (oxygenSystem == null) oxygenSystem = FindObjectOfType<OxygenSystem>();
@@ -110,7 +109,6 @@ public class WaveManager : MonoBehaviour
             var go = new GameObject("OxygenSystem_Auto");
             oxygenSystem = go.AddComponent<OxygenSystem>();
             oxygenSystem.waveManager = this;
-            Debug.Log("WaveManager: OxygenSystem_Auto created and wired.");
         }
         // Runtime: create a simple firePoint if none. Prefer attaching to Player so firing originates from player.
         if (firePoint == null)
@@ -137,7 +135,6 @@ public class WaveManager : MonoBehaviour
                 fpgo.transform.position = Camera.main != null ? Camera.main.transform.position + Vector3.up * 2f : Vector3.up * 5f;
             }
             firePoint = fpgo.transform;
-            Debug.Log("임시 FirePoint를 생성했습니다 (FirePoint_Temp)");
         }
 
         // Runtime: create a simple projectile prefab if none assigned
@@ -163,7 +160,7 @@ public class WaveManager : MonoBehaviour
             proj.speed = 4f;
             temp.SetActive(false);
             projectilePrefab = temp;
-            Debug.Log("임시 Projectile prefab을 생성했습니다 (ProjectilePrefab_Temp)");
+            usingRuntimeProjectilePrefab = true;
         }
         EnsureProjectilePrefabUsable();
         ApplyProjectileStats();
@@ -372,7 +369,10 @@ public class WaveManager : MonoBehaviour
                 proj.damage = Mathf.Max(1, proj.damage + SkillEffects.DamageBonus);
                 proj.damage = Mathf.Max(1, Mathf.RoundToInt(proj.damage * proj.damageMultiplier));
             }
-            pgo.transform.localScale = Vector3.one;
+            if (usingRuntimeProjectilePrefab || projectilePrefab.name.Contains("_Temp"))
+                pgo.transform.localScale = Vector3.one * Mathf.Max(1f, GetWorldScale() * runtimeProjectileVisualScale);
+            else
+                pgo.transform.localScale = projectilePrefab.transform.localScale;
             var psr = pgo.GetComponent<SpriteRenderer>();
             if (psr != null)
             {

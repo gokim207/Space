@@ -76,14 +76,12 @@ public class PlayerController : MonoBehaviour
             waveManager = FindObjectOfType<WaveManager>();
             if (waveManager != null)
             {
-                Debug.Log("WaveManager를 자동으로 할당했습니다: " + waveManager.name);
             }
             else
             {
                 // 없으면 자동 생성
                 var go = new GameObject("WaveManager");
                 waveManager = go.AddComponent<WaveManager>();
-                Debug.Log("씬에 WaveManager가 없어 새로 생성하고 자동 할당했습니다.");
             }
         }
 
@@ -168,7 +166,6 @@ public class PlayerController : MonoBehaviour
             transform.up = (transform.position - planetCenter.position).normalized;
         ApplyFacingSprite(force: true);
         UpdateCameraPosition();
-        Debug.Log($"PlayerController 초기화 완료: angle={angle}, radius={radius}");
     }
 
     void ApplyPlayerConfig()
@@ -320,7 +317,6 @@ public class PlayerController : MonoBehaviour
     public void TakeDamage(int dmg)
     {
         hp -= dmg;
-        Debug.Log($"Player took damage: -{dmg}, hp={hp}");
         if (hp <= 0)
         {
             // trigger end run sequence via WaveManager
