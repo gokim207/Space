@@ -526,8 +526,11 @@ MonoBehaviour:
   playerId: default
   leftSprite: {fileID: -2208510542369132325, guid: 2e0ab5d12949f4a96832a327903e32b9, type: 3}
   rightSprite: {fileID: -4345969612696422427, guid: 1cfa6cc65a3084aceb4437fa84209d79, type: 3}
+  leftIdleSprites: []
+  rightIdleSprites: []
   leftWalkSprites: []
   rightWalkSprites: []
+  idleFrameRate: 4
   walkFrameRate: 6
   surfacePadding: 0
 --- !u!1 &203224373
@@ -1507,10 +1510,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemySpawner
   enemyPrefab: {fileID: 0}
-  planetCenter: {fileID: 0}
-  spawnInterval: 2
-  spawnOffset: 3
-  waveManager: {fileID: 0}
+  planetCenter: {fileID: 273079734}
+  spawnInterval: 3
+  spawnOffset: 5
+  waveManager: {fileID: 576928461}
   minDistanceFromPlayer: 1.5
   minSpawnBlocksFromPlayer: 5
   minSpawnAngleFromPlayer: 35
@@ -1519,7 +1522,7 @@ MonoBehaviour:
   hpPerWave: 1
   baseMoveSpeed: 1
   speedPerWave: 0.05
-  enemyScaleMultiplier: 3.5
+  enemyScaleMultiplier: 10
   spawnId: default
   referencePlanetRadius: 5
 --- !u!4 &1361992044
