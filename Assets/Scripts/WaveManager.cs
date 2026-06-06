@@ -19,6 +19,7 @@ public class WaveManager : MonoBehaviour
     private float baseFireRange = 30f;
     public float referenceOrbitRadius = 5f;
     public float runtimeProjectileVisualScale = 1.5f;
+    public Vector2 firePointLocalOffset = new Vector2(0f, 0.08f);
     public bool requireTargetInView = true;
     public float viewportMargin = 0.02f; // allow slight margin outside [0,1]
     private bool usingRuntimeProjectilePrefab = false;
@@ -126,8 +127,8 @@ public class WaveManager : MonoBehaviour
             if (playerT != null)
             {
                 fpgo.transform.SetParent(playerT, false);
-                // place slightly ahead of player along its up vector
-                fpgo.transform.localPosition = Vector3.up * 0.6f;
+                // Keep the shot origin around the character body instead of above the head.
+                fpgo.transform.localPosition = new Vector3(firePointLocalOffset.x, firePointLocalOffset.y, 0f);
                 fpgo.transform.localRotation = Quaternion.identity;
             }
             else

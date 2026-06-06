@@ -465,35 +465,60 @@ public class SkillTreeManager : MonoBehaviour
 
         n.level += 1;
         CacheRuntimeLevel(GameFlowManager.CurrentSlot, n.id, n.level);
+        PersistSkillLevel(GameFlowManager.CurrentSlot, n.id, n.level);
         ApplySkillEffects();
         RefreshUnlocks();
         RefreshVisuals();
+        flow.SaveCurrentSlot();
         ShowTooltip(n);
     }
 
     public static void SaveSkills(int slot)
     {
         if (slot < 1) return;
-        var mgr = FindManager();
-        if (mgr != null)
-        {
-            foreach (var n in mgr.nodes.Values)
-            {
-                CacheRuntimeLevel(slot, n.id, n.level);
-                PlayerPrefs.SetInt($"slot_{slot}_skill_{n.id}", n.level);
-            }
-            return;
-        }
+        var saved = new Dictionary<string, int>();
+        var ids = GetSkillIdsFromCsv();
+
+        // Start from already persisted data so a stale/empty scene manager cannot
+        // accidentally lower purchased skills during a scene transition.
+        foreach (var id in ids)
+            saved[id] = PlayerPrefs.GetInt($"slot_{slot}_skill_{id}", 0);
 
         if (hasRuntimeLevels && runtimeSlot == slot)
         {
             foreach (var kv in runtimeLevels)
-                PlayerPrefs.SetInt($"slot_{slot}_skill_{kv.Key}", kv.Value);
-            return;
+                saved[kv.Key] = kv.Value;
         }
 
-        foreach (var id in GetSkillIdsFromCsv())
-            PlayerPrefs.SetInt($"slot_{slot}_skill_{id}", PlayerPrefs.GetInt($"slot_{slot}_skill_{id}", 0));
+        var mgr = FindManager();
+        if (mgr != null)
+        {
+            if (mgr.nodes.Count == 0)
+                mgr.InitDataOnly();
+
+            foreach (var n in mgr.nodes.Values)
+            {
+                if (saved.TryGetValue(n.id, out var runtimeLevel))
+                    saved[n.id] = Mathf.Max(runtimeLevel, n.level);
+                else
+                    saved[n.id] = n.level;
+            }
+        }
+
+        foreach (var id in ids)
+        {
+            int level = saved.TryGetValue(id, out var savedLevel)
+                ? savedLevel
+                : PlayerPrefs.GetInt($"slot_{slot}_skill_{id}", 0);
+            saved[id] = level;
+            PlayerPrefs.SetInt($"slot_{slot}_skill_{id}", level);
+        }
+
+        runtimeSlot = slot;
+        hasRuntimeLevels = true;
+        runtimeLevels.Clear();
+        foreach (var kv in saved)
+            runtimeLevels[kv.Key] = kv.Value;
     }
 
     public static void LoadSkills(int slot)
@@ -587,6 +612,9 @@ public class SkillTreeManager : MonoBehaviour
             Debug.LogWarning("SkillTreeManager not found. Cannot buy skill.");
             return false;
         }
+        if (mgr.nodes.Count == 0)
+            mgr.InitDataOnly();
+
         if (!mgr.nodes.TryGetValue(id, out var node))
         {
             var alt = id + "1";
@@ -602,7 +630,17 @@ public class SkillTreeManager : MonoBehaviour
         if (node == null) return false;
         int before = node.level;
         mgr.TryBuy(node);
-        return node.level > before;
+        bool bought = node.level > before;
+        if (bought)
+            CacheRuntimeLevel(GameFlowManager.CurrentSlot, node.id, node.level);
+        return bought;
+    }
+
+    static void PersistSkillLevel(int slot, string id, int level)
+    {
+        if (slot < 1 || string.IsNullOrEmpty(id)) return;
+        PlayerPrefs.SetInt($"slot_{slot}_skill_{id}", level);
+        PlayerPrefs.Save();
     }
 
     void Update()

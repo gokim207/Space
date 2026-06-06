@@ -1041,11 +1041,12 @@ public class GameFlowManager : MonoBehaviour
             EnsureSceneCanvasActive(scene);
             ForceBindUpgradeSceneByName();
             BindUpgradeSceneButtons();
+            if (CurrentSlot >= 1)
+                LoadSlot(CurrentSlot);
             // Reset forge state only when entering UpgradeScene (not when toggling panels)
             forgeReady = true;
             forgeCooldown = 0f;
-            // Slot data is loaded only when selecting a file from TitleScene.
-            // Re-loading here would wipe in-memory upgrade changes when returning from exploration.
+            // Upgrade changes are saved on interaction, so scene re-entry can safely reload the active slot.
             ShowForge();
             // Hard-force forge as the default view on load
             SetActiveSafe(forgePanel, true);
@@ -1449,6 +1450,12 @@ public class GameFlowManager : MonoBehaviour
         if (amount <= 0f) return;
         money += amount;
         UpdateMoneyLabels();
+    }
+
+    public void SaveCurrentSlot()
+    {
+        if (CurrentSlot >= 1)
+            SaveSlot(CurrentSlot);
     }
 
     void SyncEndResults()
