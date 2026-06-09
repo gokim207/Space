@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 
@@ -72,9 +73,16 @@ public class GameFlowManager : MonoBehaviour
     };
     private Button[] slotButtons = new Button[3];
     private Text[] slotTexts = new Text[3];
+    private GameObject[] slotDetails = new GameObject[3];
+    private TMP_Text[] slotPlaytimeContents = new TMP_Text[3];
+    private TMP_Text[] slotUpdatedContents = new TMP_Text[3];
+    private GameObject[] slotEmptyLabels = new GameObject[3];
     private float playtimeSeconds = 0f;
     private bool forgeReady = true;
     private float forgeCooldown = 0f;
+    private bool fallbackEndButtonClickHandled = false;
+    private bool suppressRunStartUntilMouseReleased = false;
+    private float suppressRunStartUntilTime = 0f;
 
     [Header("Scene UI (Optional)")]
     public Canvas sceneCanvas;
@@ -330,6 +338,7 @@ public class GameFlowManager : MonoBehaviour
         {
             sceneBtnStartRun.onClick.RemoveAllListeners();
             sceneBtnStartRun.onClick.AddListener(() => GoToRunScene());
+            sceneBtnStartRun.interactable = !IsRunStartSuppressed();
         }
         if (sceneBtnForgeAction != null)
         {
@@ -409,6 +418,8 @@ public class GameFlowManager : MonoBehaviour
                 if (legacy != null)
                     slotTexts[i] = legacy;
             }
+
+            BindSlotDetail(i, btn.gameObject);
         }
     }
 
@@ -510,6 +521,14 @@ public class GameFlowManager : MonoBehaviour
             if (go == null) continue;
             var btn = go.GetComponent<Button>();
             if (btn == null) btn = go.AddComponent<Button>();
+            btn.interactable = true;
+            var image = go.GetComponent<Image>();
+            if (image != null)
+            {
+                image.raycastTarget = true;
+                if (btn.targetGraphic == null)
+                    btn.targetGraphic = image;
+            }
             btn.onClick.RemoveAllListeners();
             btn.onClick.AddListener(() => handler());
         }
@@ -852,6 +871,9 @@ public class GameFlowManager : MonoBehaviour
     {
         CurrentPhase = GamePhase.End;
         Time.timeScale = 0f;
+        fallbackEndButtonClickHandled = false;
+        ForceBindRunSceneByName();
+        BindRunSceneButtons();
         SetActiveSafe(runHud, true);
         SetActiveSafe(endPanel, true);
         SetActiveSafe(forgePanel, false);
@@ -986,7 +1008,8 @@ public class GameFlowManager : MonoBehaviour
         EnsureSlotSelectFallbackUI();
         slotMode = mode;
         CurrentPhase = GamePhase.SlotSelect;
-        SetActiveSafe(titlePanel, false);
+        // 파일 선택은 타이틀 위에 뜨는 팝업 성격이므로 타이틀 패널은 유지한다.
+        SetActiveSafe(titlePanel, true);
         SetActiveSafe(slotPanel, true);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         RefreshSlotUI();
@@ -1016,6 +1039,17 @@ public class GameFlowManager : MonoBehaviour
         }
         if (waveManager != null && CurrentPhase == GamePhase.End)
             SyncEndResultTexts();
+        if (CurrentPhase == GamePhase.End)
+            HandleEndPanelFallbackClick();
+        if (suppressRunStartUntilMouseReleased &&
+            Time.unscaledTime >= suppressRunStartUntilTime &&
+            (Mouse.current == null || !Mouse.current.leftButton.isPressed))
+        {
+            suppressRunStartUntilMouseReleased = false;
+            SetRunStartInteractable(true);
+        }
+        if (CurrentPhase == GamePhase.SlotSelect && IsCancelPressed())
+            ShowTitle();
         if (CurrentPhase == GamePhase.SkillTree)
         {
             UpdateMoneyLabels();
@@ -1064,6 +1098,8 @@ public class GameFlowManager : MonoBehaviour
         }
         else
         {
+            ForceBindRunSceneByName();
+            BindRunSceneButtons();
             ShowRun();
         }
     }
@@ -1095,6 +1131,142 @@ public class GameFlowManager : MonoBehaviour
         BindAllButtonsByName(scene, () => GoToRunScene(), "btnStart", "BtnStart");
 
         upgradeSceneBound = true;
+    }
+
+    void BindRunSceneButtons()
+    {
+        var scene = SceneManager.GetActiveScene();
+        if (scene.name != "RunScene") return;
+
+        DisableResultPanelBlockerRaycasts();
+        BindButton(sceneBtnAgain, () =>
+        {
+            RestartRun();
+        }, "againButton");
+        BindButton(sceneBtnEndUpgrade, () =>
+        {
+            GoToUpgradeScene();
+        }, "upgradeButton");
+        BindAllButtonsByName(scene, () =>
+        {
+            RestartRun();
+        }, "againButton", "AgainButton");
+        BindAllButtonsByName(scene, () =>
+        {
+            GoToUpgradeScene();
+        }, "upgradeButton", "UpgradeButton");
+    }
+
+    void HandleEndPanelFallbackClick()
+    {
+        if (fallbackEndButtonClickHandled) return;
+        if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
+
+        Vector2 mousePosition = Mouse.current.position.ReadValue();
+        if (IsScreenPointInside(sceneBtnAgain, mousePosition))
+        {
+            fallbackEndButtonClickHandled = true;
+            RestartRun();
+            return;
+        }
+
+        if (IsScreenPointInside(sceneBtnEndUpgrade, mousePosition))
+        {
+            fallbackEndButtonClickHandled = true;
+            GoToUpgradeScene();
+        }
+    }
+
+    bool IsScreenPointInside(Button button, Vector2 screenPoint)
+    {
+        if (button == null || !button.gameObject.activeInHierarchy || !button.interactable) return false;
+        var rect = button.transform as RectTransform;
+        if (rect == null) return false;
+
+        Canvas buttonCanvas = button.GetComponentInParent<Canvas>();
+        Camera eventCamera = null;
+        if (buttonCanvas != null && buttonCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            eventCamera = buttonCanvas.worldCamera != null ? buttonCanvas.worldCamera : Camera.main;
+
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, screenPoint, eventCamera);
+    }
+
+    void BindButton(Button btn, System.Action handler, string debugName = "")
+    {
+        if (btn == null || handler == null)
+        {
+            return;
+        }
+        btn.transform.SetAsLastSibling();
+        btn.interactable = true;
+        var image = btn.GetComponent<Image>();
+        if (image != null)
+        {
+            image.raycastTarget = true;
+            if (btn.targetGraphic == null)
+                btn.targetGraphic = image;
+        }
+        var childGraphics = btn.GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < childGraphics.Length; i++)
+        {
+            var g = childGraphics[i];
+            if (g == null || g.gameObject == btn.gameObject) continue;
+            g.raycastTarget = false;
+        }
+        btn.onClick.RemoveAllListeners();
+        btn.onClick.AddListener(() => handler());
+    }
+
+    void DisableResultPanelBlockerRaycasts()
+    {
+        DisableNonButtonGraphicRaycasts(endPanel);
+    }
+
+    void DisableNonButtonGraphicRaycasts(GameObject root)
+    {
+        if (root == null) return;
+
+        var graphics = root.GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            var graphic = graphics[i];
+            if (graphic == null) continue;
+
+            var button = graphic.GetComponent<Button>();
+            if (button != null)
+            {
+                graphic.raycastTarget = true;
+                continue;
+            }
+
+            graphic.raycastTarget = false;
+        }
+    }
+
+    void ForceBindRunSceneByName()
+    {
+        var scene = SceneManager.GetActiveScene();
+        if (scene.name != "RunScene") return;
+
+        sceneCanvas = FindCanvasInScene(scene);
+        sceneRunHud = FindInScene(scene, "runPanel", "runHud", "RunPanel", "RunHUD");
+        sceneEndPanel = FindInScene(scene, "endPanel", "EndPanel");
+        sceneBtnAgain = FindButton(scene, "againButton", "AgainButton");
+        sceneBtnEndUpgrade = FindButton(scene, "upgradeButton", "UpgradeButton");
+
+        if (sceneEndPanel != null)
+        {
+            sceneEndResultText = FindTmpInDescendants(sceneEndPanel, "resultText", "ResultText", "resultLabel");
+            sceneEndStoneText = FindTmpInDescendants(sceneEndPanel, "stoneText", "StoneText");
+            sceneEndCopperText = FindTmpInDescendants(sceneEndPanel, "copperText", "CopperText");
+        }
+
+        canvas = sceneCanvas != null ? sceneCanvas : canvas;
+        runHud = sceneRunHud;
+        endPanel = sceneEndPanel;
+        if (sceneEndResultText != null) endReasonLabelTMP = sceneEndResultText;
+        if (sceneEndStoneText != null) endStoneResultTMP = sceneEndStoneText;
+        if (sceneEndCopperText != null) endCopperResultTMP = sceneEndCopperText;
     }
 
     void ForceBindUpgradeSceneByName()
@@ -1331,6 +1503,28 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+
+
+    bool IsCancelPressed()
+    {
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            return true;
+        if (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame)
+            return true;
+        return false;
+    }
+
+    bool IsRunStartSuppressed()
+    {
+        return suppressRunStartUntilMouseReleased || Time.unscaledTime < suppressRunStartUntilTime;
+    }
+
+    void SetRunStartInteractable(bool interactable)
+    {
+        if (sceneBtnStartRun != null)
+            sceneBtnStartRun.interactable = interactable;
+    }
+
     void RestartRun()
     {
         Time.timeScale = 1f;
@@ -1341,6 +1535,10 @@ public class GameFlowManager : MonoBehaviour
     void GoToUpgradeScene()
     {
         Time.timeScale = 1f;
+        suppressRunStartUntilMouseReleased = true;
+        suppressRunStartUntilTime = Time.unscaledTime + 0.35f;
+        SetRunStartInteractable(false);
+        CurrentPhase = GamePhase.Forge;
         SyncEndResults();
         SyncForgeData();
         SceneManager.LoadScene("UpgradeScene");
@@ -1348,6 +1546,8 @@ public class GameFlowManager : MonoBehaviour
 
     void GoToRunScene()
     {
+        if (IsRunStartSuppressed())
+            return;
         Time.timeScale = 1f;
         if (CurrentSlot >= 1) SaveSlot(CurrentSlot);
         SceneManager.LoadScene("RunScene");
@@ -1556,6 +1756,7 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.SetInt($"slot_{slot}_stone", stone);
         PlayerPrefs.SetInt($"slot_{slot}_copper", copper);
         PlayerPrefs.SetFloat($"slot_{slot}_time", playtimeSeconds);
+        PlayerPrefs.SetString($"slot_{slot}_updated", System.DateTime.Now.Ticks.ToString());
         PlayerPrefs.SetInt($"slot_{slot}_exists", 1);
         SkillTreeManager.SaveSkills(slot);
         PlayerPrefs.Save();
@@ -1584,6 +1785,7 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.DeleteKey($"slot_{slot}_stone");
         PlayerPrefs.DeleteKey($"slot_{slot}_copper");
         PlayerPrefs.DeleteKey($"slot_{slot}_time");
+        PlayerPrefs.DeleteKey($"slot_{slot}_updated");
         PlayerPrefs.DeleteKey($"slot_{slot}_exists");
         var ids = SkillTreeManager.GetSkillIdsFromCsv();
         if (ids.Count == 0)
@@ -1640,25 +1842,72 @@ public class GameFlowManager : MonoBehaviour
         {
             int slot = i + 1;
             bool exists = HasSlot(slot);
-            float m = PlayerPrefs.GetFloat($"slot_{slot}_money", 0f);
             float t = PlayerPrefs.GetFloat($"slot_{slot}_time", 0f);
-            string time = FormatTime(t);
+            string playtime = FormatPlaytime(t);
+            string updated = FormatUpdatedTime(slot);
+
+            RefreshSlotDetailBinding(i);
+            SetActiveSafe(slotDetails[i], exists);
+            SetActiveSafe(slotEmptyLabels[i], !exists);
+            if (slotPlaytimeContents[i] != null)
+                slotPlaytimeContents[i].text = playtime;
+            if (slotUpdatedContents[i] != null)
+                slotUpdatedContents[i].text = updated;
+
             if (slotTexts[i] != null)
             {
                 slotTexts[i].text = exists
-                    ? $"파일 {slot}\n돈: {m:0.0}$\n플레이타임: {time}"
+                    ? $"파일 {slot}\n플레이타임: {playtime}\n마지막 저장: {updated}"
                     : $"파일 {slot}\n(빈 슬롯)";
             }
         }
         if (slotStatusLabel != null) slotStatusLabel.text = "";
     }
 
+    void RefreshSlotDetailBinding(int index)
+    {
+        if (index < 0 || index >= slotButtons.Length) return;
+        if (slotButtons[index] == null) return;
+        BindSlotDetail(index, slotButtons[index].gameObject);
+    }
+
+    void BindSlotDetail(int index, GameObject fileRoot)
+    {
+        if (index < 0 || index >= slotDetails.Length || fileRoot == null) return;
+        if (slotDetails[index] == null)
+            slotDetails[index] = FindChildGameObject(fileRoot, "detail", "Detail");
+        var searchRoot = slotDetails[index] != null ? slotDetails[index] : fileRoot;
+        if (slotPlaytimeContents[index] == null)
+            slotPlaytimeContents[index] = FindTmpInDescendants(searchRoot, "playtimeContent", "PlaytimeContent");
+        if (slotUpdatedContents[index] == null)
+            slotUpdatedContents[index] = FindTmpInDescendants(searchRoot, "updatedContent", "UpdatedContent");
+        if (slotEmptyLabels[index] == null)
+            slotEmptyLabels[index] = FindChildGameObject(fileRoot, "isSaved", "IsSaved", "emptyText", "EmptyText");
+    }
+
+    string FormatPlaytime(float seconds)
+    {
+        int total = Mathf.Max(0, Mathf.FloorToInt(seconds));
+        int h = total / 3600;
+        int m = (total % 3600) / 60;
+        int s = total % 60;
+        return $"{h:00} : {m:00} : {s:00}";
+    }
+
+    string FormatUpdatedTime(int slot)
+    {
+        string raw = PlayerPrefs.GetString($"slot_{slot}_updated", "");
+        if (long.TryParse(raw, out long ticks) && ticks > 0)
+        {
+            var dt = new System.DateTime(ticks);
+            return dt.ToString("yy / MM / dd HH : mm");
+        }
+        return "00 / 00 / 00 00 : 00";
+    }
+
     string FormatTime(float seconds)
     {
-        int s = Mathf.FloorToInt(seconds);
-        int m = s / 60;
-        int r = s % 60;
-        return $"{m:00}:{r:00}";
+        return FormatPlaytime(seconds);
     }
 
     public void SetEndReason(string reason)
