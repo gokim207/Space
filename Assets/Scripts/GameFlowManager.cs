@@ -261,6 +261,12 @@ public class GameFlowManager : MonoBehaviour
             sceneRunOxygenText = sceneRunOxygenText != null ? sceneRunOxygenText : FindTmpText(activeScene, "oxygenText", "oxygenLabel", "OxygenText", "OxygenLabel");
             sceneRunWaveText = sceneRunWaveText != null ? sceneRunWaveText : FindTmpText(activeScene, "waveText", "waveLabel", "WaveText", "WaveLabel");
             sceneRunTimeText = sceneRunTimeText != null ? sceneRunTimeText : FindTmpText(activeScene, "timeText", "timeLabel", "TimeText", "TimeLabel");
+            if (sceneEndPanel != null)
+            {
+                sceneEndResultText = sceneEndResultText != null ? sceneEndResultText : FindTmpInDescendants(sceneEndPanel, "resultText", "ResultText", "resultLabel");
+                sceneEndStoneText = sceneEndStoneText != null ? sceneEndStoneText : FindTmpInDescendants(sceneEndPanel, "stoneText", "StoneText");
+                sceneEndCopperText = sceneEndCopperText != null ? sceneEndCopperText : FindTmpInDescendants(sceneEndPanel, "copperText", "CopperText");
+            }
             sceneEndResultText = sceneEndResultText != null ? sceneEndResultText : FindTmpText(activeScene, "resultText", "endReasonText", "EndReasonText", "resultLabel", "ResultText");
             sceneEndStoneText = sceneEndStoneText != null ? sceneEndStoneText : FindTmpText(activeScene, "stoneText", "StoneText");
             sceneEndCopperText = sceneEndCopperText != null ? sceneEndCopperText : FindTmpText(activeScene, "copperText", "CopperText");
@@ -1475,23 +1481,35 @@ public class GameFlowManager : MonoBehaviour
     {
         bool showCopper = IsMineralUnlocked("copper");
 
+        if (endReasonLabel != null)
+            endReasonLabel.gameObject.SetActive(false);
+        if (endReasonLabelTMP != null)
+        {
+            endReasonLabelTMP.text = "탐험 결과";
+            SetActiveSafe(endReasonLabelTMP.gameObject, true);
+        }
+
         if (oreResultLabel != null)
         {
             if (showCopper)
-                oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})\n구리 : +{runCopperGained} (총 {copper})";
+                oreResultLabel.text = $"돌 : {runStoneGained}개\n구리 : {runCopperGained}개";
             else
-                oreResultLabel.text = $"돌 : +{runStoneGained} (총 {stone})";
+                oreResultLabel.text = $"돌 : {runStoneGained}개";
         }
 
         if (endStoneResultTMP != null)
-            endStoneResultTMP.text = $"돌 : +{runStoneGained} (총 {stone})";
+        {
+            endStoneResultTMP.text = $"돌 : {runStoneGained}개";
+            SetActiveSafe(endStoneResultTMP.gameObject, true);
+        }
+        SetEndOreVisualActive("stone", true);
 
         if (endCopperResultTMP != null)
         {
-            endCopperResultTMP.text = $"구리 : +{runCopperGained} (총 {copper})";
-            var copperGo = endCopperResultTMP.transform.parent != null ? endCopperResultTMP.transform.parent.gameObject : endCopperResultTMP.gameObject;
-            SetActiveSafe(copperGo, showCopper);
+            endCopperResultTMP.text = $"구리 : {runCopperGained}개";
+            SetActiveSafe(endCopperResultTMP.gameObject, showCopper);
         }
+        SetEndOreVisualActive("copper", showCopper);
     }
 
     void SelectSlot(int slot)
@@ -1646,9 +1664,35 @@ public class GameFlowManager : MonoBehaviour
     public void SetEndReason(string reason)
     {
         if (endReasonLabel != null)
-            endReasonLabel.text = $"사유 : {reason}";
+            endReasonLabel.gameObject.SetActive(false);
         if (endReasonLabelTMP != null)
-            endReasonLabelTMP.text = reason;
+            endReasonLabelTMP.text = "탐험 결과";
+    }
+
+    void SetEndOreVisualActive(string oreId, bool active)
+    {
+        if (endPanel == null) return;
+        string oreObjectName = oreId == "copper" ? "copperOre" : "stoneOre";
+        string iconName = oreId == "copper" ? "copperIcon" : "stoneIcon";
+        var visual = FindChildGameObject(endPanel, oreObjectName, iconName);
+        SetActiveSafe(visual, active);
+    }
+
+    GameObject FindChildGameObject(GameObject root, params string[] names)
+    {
+        if (root == null) return null;
+        var all = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            var t = all[i];
+            if (t == null) continue;
+            for (int n = 0; n < names.Length; n++)
+            {
+                if (t.name == names[n])
+                    return t.gameObject;
+            }
+        }
+        return null;
     }
 
     float RollForgeMultiplier()
