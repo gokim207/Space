@@ -1017,6 +1017,12 @@ public class GameFlowManager : MonoBehaviour
 
     void Update()
     {
+        if (SceneManager.GetActiveScene().name == "UpgradeScene" && CurrentPhase != GamePhase.SlotSelect && IsCancelPressed())
+        {
+            BaseSceneNavigation.ReturnToBaseScene();
+            return;
+        }
+
         if (oxygenSystem == null) oxygenSystem = FindObjectOfType<OxygenSystem>();
         if (waveManager == null) waveManager = FindObjectOfType<WaveManager>();
         if (oxygenSystem != null && CurrentPhase == GamePhase.Run)
