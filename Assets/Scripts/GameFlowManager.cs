@@ -552,6 +552,16 @@ public class GameFlowManager : MonoBehaviour
     void EnsureUI()
     {
         var sceneName = SceneManager.GetActiveScene().name;
+        if (BaseSceneNavigation.IsBaseSceneName(sceneName))
+        {
+            DestroyAutoUIHierarchy();
+            runHud = null;
+            sceneRunHud = null;
+            endPanel = null;
+            sceneEndPanel = null;
+            return;
+        }
+
         bool useSceneOnly =
             sceneName == "UpgradeScene" ||
             sceneName == "RunScene" ||
@@ -1102,12 +1112,36 @@ public class GameFlowManager : MonoBehaviour
         {
             ShowTitle();
         }
+        else if (BaseSceneNavigation.IsBaseSceneName(scene.name))
+        {
+            CurrentPhase = GamePhase.Title;
+            HideRunSceneUI();
+        }
         else
         {
             ForceBindRunSceneByName();
             BindRunSceneButtons();
             ShowRun();
         }
+    }
+
+
+    void HideRunSceneUI()
+    {
+        SetActiveSafe(runHud, false);
+        SetActiveSafe(sceneRunHud, false);
+        SetActiveSafe(endPanel, false);
+        SetActiveSafe(sceneEndPanel, false);
+
+        oxygenLabel = null;
+        oxygenLabelTMP = null;
+        waveLabel = null;
+        waveLabelTMP = null;
+        timeLabel = null;
+        timeLabelTMP = null;
+        sceneRunOxygenText = null;
+        sceneRunWaveText = null;
+        sceneRunTimeText = null;
     }
 
     void EnsureSceneCanvasActive(Scene scene)

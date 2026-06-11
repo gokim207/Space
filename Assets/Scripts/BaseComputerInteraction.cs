@@ -1,21 +1,26 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class BaseComputerInteraction : MonoBehaviour
 {
     public string upgradeSceneName = "UpgradeScene";
     public string playerName = "Player";
     public string[] targetNameHints = { "computer", "컴퓨터", "terminal", "hit", "hitbox", "upgrade" };
+    public string keyPromptName = "Key";
 
     private BasePlayerController player;
     private RectTransform playerRect;
     private RectTransform targetRect;
+    private GameObject keyPrompt;
     private float nextSearchTime;
+    private bool isPlayerOverTarget;
 
     void Awake()
     {
         FindTargets(true);
+        SetKeyPrompt(false);
     }
 
     void Update()
@@ -23,13 +28,13 @@ public class BaseComputerInteraction : MonoBehaviour
         if (Time.unscaledTime >= nextSearchTime)
             FindTargets(false);
 
+        isPlayerOverTarget = player != null && targetRect != null && IsOverlapping(playerRect, targetRect);
+        SetKeyPrompt(isPlayerOverTarget);
+
         if (!IsEnterPressed())
             return;
 
-        if (player == null || targetRect == null)
-            return;
-
-        if (!IsOverlapping(playerRect, targetRect))
+        if (!isPlayerOverTarget)
             return;
 
         player.SaveReturnPoint();
@@ -53,10 +58,21 @@ public class BaseComputerInteraction : MonoBehaviour
             }
         }
 
+        if (force || keyPrompt == null)
+            keyPrompt = FindByName(keyPromptName);
+
         if (!force && targetRect != null && targetRect.gameObject.activeInHierarchy)
             return;
 
         targetRect = FindInteractionRect();
+    }
+
+    void SetKeyPrompt(bool visible)
+    {
+        if (keyPrompt == null)
+            return;
+        if (keyPrompt.activeSelf != visible)
+            keyPrompt.SetActive(visible);
     }
 
     bool IsEnterPressed()
