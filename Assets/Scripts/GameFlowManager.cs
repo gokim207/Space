@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 
 public class GameFlowManager : MonoBehaviour
 {
-    public enum GamePhase { Run, End, Forge, SkillTree, Title, SlotSelect }
+    public enum GamePhase { Run, End, Forge, SkillTree, Weapon, Title, SlotSelect }
     public GamePhase CurrentPhase { get; private set; } = GamePhase.Run;
 
     private Canvas canvas;
@@ -16,6 +16,7 @@ public class GameFlowManager : MonoBehaviour
     private GameObject endPanel;
     private GameObject forgePanel;
     private GameObject skillPanel;
+    private GameObject weaponPanel;
     private GameObject titlePanel;
     private GameObject slotPanel;
     private Text oxygenLabel;
@@ -44,6 +45,7 @@ public class GameFlowManager : MonoBehaviour
     private Text oddsLabel;
     private TMP_Text moneyLabelTMP;
     private TMP_Text skillMoneyLabelTMP;
+    private TMP_Text weaponMoneyLabelTMP;
     private TMP_Text oxygenLabelTMP;
     private TMP_Text waveLabelTMP;
     private TMP_Text timeLabelTMP;
@@ -88,6 +90,7 @@ public class GameFlowManager : MonoBehaviour
     public Canvas sceneCanvas;
     public GameObject sceneForgePanel;
     public GameObject sceneSkillPanel;
+    public GameObject sceneWeaponPanel;
     public GameObject sceneRunHud;
     public GameObject sceneEndPanel;
     public GameObject sceneTitlePanel;
@@ -106,6 +109,7 @@ public class GameFlowManager : MonoBehaviour
     public TMP_Text sceneEndCopperText;
     public Button sceneBtnForgeTab;
     public Button sceneBtnSkillTab;
+    public Button sceneBtnWeaponTab;
     public Button sceneBtnStartRun;
     public Button sceneBtnForgeAction;
     public Button sceneBtnAgain;
@@ -245,7 +249,7 @@ public class GameFlowManager : MonoBehaviour
     {
         // If any scene UI reference is provided, use scene UI instead of building.
         bool hasSceneUI =
-            sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
+            sceneForgePanel != null || sceneSkillPanel != null || sceneWeaponPanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
             sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null ||
             sceneTitlePanel != null || sceneBtnTitleStart != null || sceneBtnTitleContinue != null || sceneBtnTitleLeave != null;
         if (!hasSceneUI)
@@ -255,6 +259,7 @@ public class GameFlowManager : MonoBehaviour
             sceneCanvas = sceneCanvas != null ? sceneCanvas : FindCanvasInScene(activeScene);
             sceneForgePanel = sceneForgePanel != null ? sceneForgePanel : FindInScene(activeScene, "forgePanel", "ForgePanel");
             sceneSkillPanel = sceneSkillPanel != null ? sceneSkillPanel : FindInScene(activeScene, "skillPanel", "SkillPanel");
+            sceneWeaponPanel = sceneWeaponPanel != null ? sceneWeaponPanel : FindInScene(activeScene, "weaponPanel", "WeaponPanel");
             sceneRunHud = sceneRunHud != null ? sceneRunHud : FindInScene(activeScene, "runPanel", "runHud", "RunPanel", "RunHUD");
             sceneEndPanel = sceneEndPanel != null ? sceneEndPanel : FindInScene(activeScene, "endPanel", "EndPanel");
             sceneTitlePanel = sceneTitlePanel != null ? sceneTitlePanel : FindInScene(activeScene, "titlePanel", "TitlePanel");
@@ -281,6 +286,7 @@ public class GameFlowManager : MonoBehaviour
 
             sceneBtnForgeTab = sceneBtnForgeTab != null ? sceneBtnForgeTab : FindButton(activeScene, "btnForge", "BtnForge");
             sceneBtnSkillTab = sceneBtnSkillTab != null ? sceneBtnSkillTab : FindButton(activeScene, "btnSkill", "BtnSkill");
+            sceneBtnWeaponTab = sceneBtnWeaponTab != null ? sceneBtnWeaponTab : FindButton(activeScene, "btnWeapon", "BtnWeapon", "weaponBtn", "WeaponBtn");
             sceneBtnStartRun = sceneBtnStartRun != null ? sceneBtnStartRun : FindButton(activeScene, "btnStart", "BtnStart");
             sceneBtnForgeAction = sceneBtnForgeAction != null ? sceneBtnForgeAction : FindButton(activeScene, "btnForgeStart", "BtnForgeStart");
             sceneBtnAgain = sceneBtnAgain != null ? sceneBtnAgain : FindButton(activeScene, "againButton", "AgainButton");
@@ -293,7 +299,7 @@ public class GameFlowManager : MonoBehaviour
             sceneCopperIcon = sceneCopperIcon != null ? sceneCopperIcon : FindImage(activeScene, "copperIcon", "CopperIcon");
 
             hasSceneUI =
-                sceneForgePanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
+                sceneForgePanel != null || sceneSkillPanel != null || sceneWeaponPanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
                 sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null ||
                 sceneTitlePanel != null || sceneBtnTitleStart != null || sceneBtnTitleContinue != null || sceneBtnTitleLeave != null;
         }
@@ -305,6 +311,7 @@ public class GameFlowManager : MonoBehaviour
         endPanel = sceneEndPanel;
         forgePanel = sceneForgePanel;
         skillPanel = sceneSkillPanel;
+        weaponPanel = sceneWeaponPanel;
         titlePanel = sceneTitlePanel;
         slotPanel = sceneSlotPanel;
 
@@ -333,6 +340,11 @@ public class GameFlowManager : MonoBehaviour
         {
             sceneBtnSkillTab.onClick.RemoveAllListeners();
             sceneBtnSkillTab.onClick.AddListener(() => ShowSkillTree());
+        }
+        if (sceneBtnWeaponTab != null)
+        {
+            sceneBtnWeaponTab.onClick.RemoveAllListeners();
+            sceneBtnWeaponTab.onClick.AddListener(() => ShowWeapon());
         }
         if (sceneBtnStartRun != null)
         {
@@ -871,6 +883,7 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, false);
         SetActiveSafe(skillPanel, false);
+        SetActiveSafe(weaponPanel, false);
         SetActiveSafe(titlePanel, false);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
@@ -888,6 +901,7 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(endPanel, true);
         SetActiveSafe(forgePanel, false);
         SetActiveSafe(skillPanel, false);
+        SetActiveSafe(weaponPanel, false);
         SetActiveSafe(titlePanel, false);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
@@ -903,6 +917,7 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, true);
         SetActiveSafe(skillPanel, false);
+        SetActiveSafe(weaponPanel, false);
         SetActiveSafe(titlePanel, false);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
@@ -926,11 +941,37 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, false);
         SetActiveSafe(skillPanel, true);
+        SetActiveSafe(weaponPanel, false);
         SetActiveSafe(titlePanel, false);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         UpdateMoneyLabels();
         CenterSkillTreeOnDefault();
+    }
+
+    public void ShowWeapon()
+    {
+        CurrentPhase = GamePhase.Weapon;
+        Time.timeScale = 0f;
+        ForceBindUpgradeSceneByName();
+        EnsureWeaponPanelManager();
+        SetActiveSafe(runHud, false);
+        SetActiveSafe(endPanel, false);
+        SetActiveSafe(forgePanel, false);
+        SetActiveSafe(skillPanel, false);
+        SetActiveSafe(weaponPanel, true);
+        SetActiveSafe(titlePanel, false);
+        SetActiveSafe(slotPanel, false);
+        if (confirmPanel != null) confirmPanel.SetActive(false);
+        UpdateMoneyLabels();
+    }
+
+    void EnsureWeaponPanelManager()
+    {
+        if (weaponPanel == null) return;
+        var mgr = weaponPanel.GetComponent<WeaponPanelManager>();
+        if (mgr == null) mgr = weaponPanel.AddComponent<WeaponPanelManager>();
+        mgr.Init(weaponPanel);
     }
 
     void CenterSkillTreeOnDefault()
@@ -1008,6 +1049,7 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, false);
         SetActiveSafe(skillPanel, false);
+        SetActiveSafe(weaponPanel, false);
         SetActiveSafe(titlePanel, true);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
@@ -1021,6 +1063,7 @@ public class GameFlowManager : MonoBehaviour
         // 파일 선택은 타이틀 위에 뜨는 팝업 성격이므로 타이틀 패널은 유지한다.
         SetActiveSafe(titlePanel, true);
         SetActiveSafe(slotPanel, true);
+        SetActiveSafe(weaponPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         RefreshSlotUI();
     }
@@ -1066,7 +1109,7 @@ public class GameFlowManager : MonoBehaviour
         }
         if (CurrentPhase == GamePhase.SlotSelect && IsCancelPressed())
             ShowTitle();
-        if (CurrentPhase == GamePhase.SkillTree)
+        if (CurrentPhase == GamePhase.SkillTree || CurrentPhase == GamePhase.Weapon)
         {
             UpdateMoneyLabels();
         }
@@ -1080,7 +1123,7 @@ public class GameFlowManager : MonoBehaviour
         }
 
         // playtime tracking (unscaled)
-        if (CurrentPhase == GamePhase.Run || CurrentPhase == GamePhase.Forge || CurrentPhase == GamePhase.SkillTree)
+        if (CurrentPhase == GamePhase.Run || CurrentPhase == GamePhase.Forge || CurrentPhase == GamePhase.SkillTree || CurrentPhase == GamePhase.Weapon)
         {
             playtimeSeconds += Time.unscaledDeltaTime;
         }
@@ -1107,6 +1150,7 @@ public class GameFlowManager : MonoBehaviour
             // Hard-force forge as the default view on load
             SetActiveSafe(forgePanel, true);
             SetActiveSafe(skillPanel, false);
+            SetActiveSafe(weaponPanel, false);
         }
         else if (scene.name == "TitleScene")
         {
@@ -1167,6 +1211,7 @@ public class GameFlowManager : MonoBehaviour
 
         BindAllButtonsByName(scene, () => ShowForge(), "btnForge", "BtnForge");
         BindAllButtonsByName(scene, () => ShowSkillTree(), "btnSkill", "BtnSkill");
+        BindAllButtonsByName(scene, () => ShowWeapon(), "btnWeapon", "BtnWeapon", "weaponBtn", "WeaponBtn");
         BindAllButtonsByName(scene, () => TryForge(), "btnForgeStart", "BtnForgeStart");
         BindAllButtonsByName(scene, () => GoToRunScene(), "btnStart", "BtnStart");
 
@@ -1327,6 +1372,7 @@ public class GameFlowManager : MonoBehaviour
         // Panels
         if (NeedsRebind(sceneForgePanel)) sceneForgePanel = FindInScene(scene, "forgePanel");
         if (NeedsRebind(sceneSkillPanel)) sceneSkillPanel = FindInScene(scene, "skillPanel");
+        if (NeedsRebind(sceneWeaponPanel)) sceneWeaponPanel = FindInScene(scene, "weaponPanel");
         if (NeedsRebind(sceneRunHud)) sceneRunHud = FindInScene(scene, "runPanel", "runHud", "RunPanel", "RunHUD");
         if (NeedsRebind(sceneEndPanel)) sceneEndPanel = FindInScene(scene, "endPanel");
         if (NeedsRebind(sceneTitlePanel)) sceneTitlePanel = FindInScene(scene, "titlePanel");
@@ -1348,6 +1394,10 @@ public class GameFlowManager : MonoBehaviour
             skillMoneyLabelTMP = FindTmpInDescendants(skillPanel, "moneyText", "money", "moneyLabel");
         if (skillMoneyLabelTMP == null && skillPanel != null)
             skillMoneyLabelTMP = FindTmpInDescendants(skillPanel, "moneyBar");
+        if (weaponMoneyLabelTMP == null && weaponPanel != null)
+            weaponMoneyLabelTMP = FindTmpInDescendants(weaponPanel, "moneyText", "money", "moneyLabel");
+        if (weaponMoneyLabelTMP == null && weaponPanel != null)
+            weaponMoneyLabelTMP = FindTmpInDescendants(weaponPanel, "moneyBar");
         if (moneyLabel == null || moneyLabel.Equals(null) || moneyLabel.gameObject.scene != scene)
             moneyLabel = FindLegacyTextByName(scene, "moneyText", "money", "moneyLabel");
         if (moneyLabel == null || moneyLabel.Equals(null) || moneyLabel.gameObject.scene != scene)
@@ -1362,6 +1412,7 @@ public class GameFlowManager : MonoBehaviour
         // Apply to runtime fields
         if (sceneForgePanel != null) forgePanel = sceneForgePanel;
         if (sceneSkillPanel != null) skillPanel = sceneSkillPanel;
+        if (sceneWeaponPanel != null) weaponPanel = sceneWeaponPanel;
         if (sceneRunHud != null) runHud = sceneRunHud;
         if (sceneEndPanel != null) endPanel = sceneEndPanel;
         if (sceneTitlePanel != null) titlePanel = sceneTitlePanel;
@@ -1788,6 +1839,8 @@ public class GameFlowManager : MonoBehaviour
         copper = 0;
         playtimeSeconds = 0f;
         SkillTreeManager.ResetAllSkills();
+        if (CurrentSlot >= 1)
+            WeaponPanelManager.DeleteSlotWeaponData(CurrentSlot);
     }
 
     void SaveSlot(int slot)
@@ -1799,6 +1852,8 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.SetString($"slot_{slot}_updated", System.DateTime.Now.Ticks.ToString());
         PlayerPrefs.SetInt($"slot_{slot}_exists", 1);
         SkillTreeManager.SaveSkills(slot);
+        if (string.IsNullOrEmpty(PlayerPrefs.GetString($"slot_{slot}_weapon_equipped", "")))
+            PlayerPrefs.SetString($"slot_{slot}_weapon_equipped", "starter_gun");
         PlayerPrefs.Save();
     }
 
@@ -1827,6 +1882,7 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.DeleteKey($"slot_{slot}_time");
         PlayerPrefs.DeleteKey($"slot_{slot}_updated");
         PlayerPrefs.DeleteKey($"slot_{slot}_exists");
+        WeaponPanelManager.DeleteSlotWeaponData(slot);
         var ids = SkillTreeManager.GetSkillIdsFromCsv();
         if (ids.Count == 0)
         {
@@ -2106,6 +2162,7 @@ public class GameFlowManager : MonoBehaviour
     {
         SetLabelText(moneyLabel, moneyLabelTMP, $"$ {money:0.0}");
         SetLabelText(skillMoneyLabel, skillMoneyLabelTMP, $"$ {money:0.0}");
+        if (weaponMoneyLabelTMP != null) weaponMoneyLabelTMP.text = $"$ {money:0.0}";
     }
 
     float GetMineralValue(string id, float fallback)

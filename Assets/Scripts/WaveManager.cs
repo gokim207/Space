@@ -14,6 +14,10 @@ public class WaveManager : MonoBehaviour
     private float baseFireInterval = 1f;
     private float baseProjectileSpeed = 10f;
     private float baseProjectileLifeTime = 2f;
+    private int baseProjectileDamage = 1;
+    private int baseProjectilePierceCount = 0;
+    private int baseProjectileCount = 1;
+    public float multiProjectileSpreadAngle = 12f;
     private float fireTimer;
     public float fireRange = 30f; // targeting range
     private float baseFireRange = 30f;
@@ -357,18 +361,33 @@ public class WaveManager : MonoBehaviour
                 firePoint.rotation = Quaternion.Euler(0f, 0f, ang);
             }
         }
-        var pgo = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation) as GameObject;
+        int projectileCount = Mathf.Max(1, baseProjectileCount);
+        float centerOffset = (projectileCount - 1) * 0.5f;
+        for (int i = 0; i < projectileCount; i++)
+        {
+            float angleOffset = (i - centerOffset) * multiProjectileSpreadAngle;
+            SpawnProjectile(angleOffset);
+        }
+    }
+
+    void SpawnProjectile(float angleOffset)
+    {
+        Quaternion shotRotation = firePoint.rotation * Quaternion.Euler(0f, 0f, angleOffset);
+        var pgo = Instantiate(projectilePrefab, firePoint.position, shotRotation) as GameObject;
         if (pgo != null)
         {
             // Ensure projectile's rotation matches firePoint so its local +X moves toward target
-            pgo.transform.rotation = firePoint.rotation;
+            pgo.transform.rotation = shotRotation;
             // Force visible settings
             pgo.transform.position = new Vector3(pgo.transform.position.x, pgo.transform.position.y, 0f);
             var proj = pgo.GetComponent<Projectile>();
             if (proj != null)
             {
-                proj.damage = Mathf.Max(1, proj.damage + SkillEffects.DamageBonus);
+                proj.damage = Mathf.Max(1, baseProjectileDamage + SkillEffects.DamageBonus);
                 proj.damage = Mathf.Max(1, Mathf.RoundToInt(proj.damage * proj.damageMultiplier));
+                proj.pierceCount = Mathf.Max(0, baseProjectilePierceCount);
+                proj.speed = baseProjectileSpeed * GetWorldScale();
+                proj.lifeTime = Mathf.Max(baseProjectileLifeTime, fireRange / Mathf.Max(1f, proj.speed) + 0.25f);
             }
             if (usingRuntimeProjectilePrefab || projectilePrefab.name.Contains("_Temp"))
                 pgo.transform.localScale = Vector3.one * Mathf.Max(1f, GetWorldScale() * runtimeProjectileVisualScale);
@@ -386,12 +405,16 @@ public class WaveManager : MonoBehaviour
 
     void ApplyWeaponConfig()
     {
+        weaponId = WeaponPanelManager.GetEquippedWeaponId();
         var w = GameData.GetWeapon(weaponId);
         if (w != null)
         {
             if (w.fireInterval > 0f) fireInterval = w.fireInterval;
             if (w.detectRange > 0f) baseFireRange = w.detectRange;
             if (w.bulletSpeed > 0f) baseProjectileSpeed = w.bulletSpeed;
+            if (w.damage > 0) baseProjectileDamage = w.damage;
+            baseProjectilePierceCount = Mathf.Max(0, w.pierceCount);
+            baseProjectileCount = Mathf.Max(1, w.projCount);
         }
         baseFireInterval = fireInterval;
         fireRange = GetScaledRange(baseFireRange);
@@ -406,15 +429,19 @@ public class WaveManager : MonoBehaviour
         if (w != null)
         {
             if (w.bulletSpeed > 0f) baseProjectileSpeed = w.bulletSpeed;
-            if (w.damage > 0) proj.damage = w.damage;
+            if (w.damage > 0) baseProjectileDamage = w.damage;
+            baseProjectilePierceCount = Mathf.Max(0, w.pierceCount);
+            baseProjectileCount = Mathf.Max(1, w.projCount);
         }
         var pdef = GameData.GetProjectile(projectileId);
         if (pdef != null)
         {
-            if (pdef.speed > 0f) baseProjectileSpeed = pdef.speed;
+            if ((w == null || w.bulletSpeed <= 0f) && pdef.speed > 0f) baseProjectileSpeed = pdef.speed;
             if (pdef.lifeTime > 0f) baseProjectileLifeTime = pdef.lifeTime;
             if (pdef.damageMult > 0f) proj.damageMultiplier = pdef.damageMult;
         }
+        proj.damage = baseProjectileDamage;
+        proj.pierceCount = baseProjectilePierceCount;
         proj.speed = baseProjectileSpeed * GetWorldScale();
         proj.lifeTime = Mathf.Max(baseProjectileLifeTime, fireRange / Mathf.Max(1f, proj.speed) + 0.25f);
     }

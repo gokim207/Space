@@ -66,12 +66,14 @@ public static class GameData
     public class WeaponDef
     {
         public string weaponId;
+        public string weaponName;
         public int damage;
         public float fireInterval;
         public float bulletSpeed;
         public float detectRange;
         public int pierceCount;
         public int projCount;
+        public string iconKey;
         public string desc;
     }
 
@@ -129,6 +131,7 @@ public static class GameData
     static List<ForgeEntry> forgeEntries = new List<ForgeEntry>();
     static Dictionary<string, EnemySpawnDef> enemySpawns = new Dictionary<string, EnemySpawnDef>();
     static Dictionary<string, WeaponDef> weapons = new Dictionary<string, WeaponDef>();
+    static List<WeaponDef> weaponList = new List<WeaponDef>();
     static Dictionary<string, ProjectileDef> projectiles = new Dictionary<string, ProjectileDef>();
     static Dictionary<string, OxygenDef> oxygenDefs = new Dictionary<string, OxygenDef>();
     static Dictionary<string, PlayerDef> players = new Dictionary<string, PlayerDef>();
@@ -207,6 +210,12 @@ public static class GameData
         if (string.IsNullOrEmpty(weaponId)) return null;
         weapons.TryGetValue(weaponId, out var w);
         return w;
+    }
+
+    public static List<WeaponDef> GetWeapons()
+    {
+        EnsureLoaded();
+        return weaponList;
     }
 
     public static ProjectileDef GetProjectile(string projectileId)
@@ -362,15 +371,20 @@ public static class GameData
         {
             var w = new WeaponDef();
             w.weaponId = table.Get(row, "weaponId");
+            w.weaponName = table.Get(row, "weaponName");
             w.damage = table.GetInt(row, "damage");
             w.fireInterval = table.GetFloat(row, "fireInterval");
             w.bulletSpeed = table.GetFloat(row, "bulletSpeed");
             w.detectRange = table.GetFloat(row, "detectRange");
             w.pierceCount = table.GetInt(row, "pierceCount");
             w.projCount = table.GetInt(row, "projCount");
+            w.iconKey = table.Get(row, "iconKey");
             w.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(w.weaponId))
+            {
                 weapons[w.weaponId] = w;
+                weaponList.Add(w);
+            }
         }
     }
 
