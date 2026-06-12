@@ -21,6 +21,7 @@ public class WeaponPanelManager : MonoBehaviour
     Button equipButton;
     Button nextButton;
     Button prevButton;
+    Transform weaponVisualRoot;
 
     readonly List<GameData.WeaponDef> weapons = new List<GameData.WeaponDef>();
     int currentIndex;
@@ -56,6 +57,7 @@ public class WeaponPanelManager : MonoBehaviour
         rangeText = FindTmp("ability1", "range", "detectRange");
         pierceText = FindTmp("ability2", "pierce", "pierceCount");
         projectileCountText = FindTmp("unlock1", "projCount", "projectileCount");
+        weaponVisualRoot = FindChildTransform("weapon", "weaponImage", "weaponPreview", "weaponRoot");
 
         purchaseButton = FindButton("purchaseBtn", "buyBtn", "btnPurchase");
         levelUpButton = FindButton("levelUpBtn", "upgradeBtn", "btnLevelUp");
@@ -105,6 +107,7 @@ public class WeaponPanelManager : MonoBehaviour
         SetText(rangeText, $"사거리 : {weapon.detectRange:0.##}");
         SetText(pierceText, $"관통 : {weapon.pierceCount}");
         SetText(projectileCountText, $"투사체 : {weapon.projCount}");
+        RefreshWeaponVisual(weapon);
 
         SetButtonVisible(purchaseButton, !owned);
         SetButtonVisible(levelUpButton, owned);
@@ -180,6 +183,12 @@ public class WeaponPanelManager : MonoBehaviour
 
     GameObject FindChild(params string[] names)
     {
+        var t = FindChildTransform(names);
+        return t != null ? t.gameObject : null;
+    }
+
+    Transform FindChildTransform(params string[] names)
+    {
         if (weaponPanel == null) return null;
         var all = weaponPanel.GetComponentsInChildren<Transform>(true);
         for (int i = 0; i < all.Length; i++)
@@ -187,10 +196,48 @@ public class WeaponPanelManager : MonoBehaviour
             for (int n = 0; n < names.Length; n++)
             {
                 if (all[i].name == names[n])
-                    return all[i].gameObject;
+                    return all[i];
             }
         }
         return null;
+    }
+
+    void RefreshWeaponVisual(GameData.WeaponDef weapon)
+    {
+        if (weaponVisualRoot == null || weapon == null) return;
+
+        bool foundMatch = false;
+        for (int i = 0; i < weaponVisualRoot.childCount; i++)
+        {
+            var child = weaponVisualRoot.GetChild(i);
+            bool isCurrent = IsWeaponVisualMatch(child.name, weapon);
+            child.gameObject.SetActive(isCurrent);
+            if (isCurrent) foundMatch = true;
+        }
+
+        // If there are no weapon-id children yet, keep the manually placed preview as-is.
+        if (!foundMatch && weaponVisualRoot.childCount == 0)
+            weaponVisualRoot.gameObject.SetActive(true);
+    }
+
+    bool IsWeaponVisualMatch(string objectName, GameData.WeaponDef weapon)
+    {
+        if (weapon == null || string.IsNullOrEmpty(objectName)) return false;
+        string normalizedObjectName = NormalizeVisualName(objectName);
+        string normalizedWeaponId = NormalizeVisualName(weapon.weaponId);
+        string normalizedIconKey = NormalizeVisualName(weapon.iconKey);
+
+        return normalizedObjectName == normalizedWeaponId ||
+               (!string.IsNullOrEmpty(normalizedIconKey) && normalizedObjectName == normalizedIconKey);
+    }
+
+    string NormalizeVisualName(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        int cloneIndex = value.IndexOf("(", System.StringComparison.Ordinal);
+        if (cloneIndex >= 0)
+            value = value.Substring(0, cloneIndex);
+        return value.Trim().ToLowerInvariant();
     }
 
     void BindButton(Button button, UnityEngine.Events.UnityAction action)

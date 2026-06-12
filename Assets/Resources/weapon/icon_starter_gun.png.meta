@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 1decf717f9a66461eaaf312786598721
+guid: 2e02fb5fef2d043e9b7cb0739107874c
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 8480029157148359676
-    second: Submachine_0
+      213: -4746795577630490478
+    second: icon_starter_gun_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Submachine_0
+      name: icon_starter_gun_0
       rect:
         serializedVersion: 2
-        x: 2
-        y: 17
-        width: 59
-        height: 29
+        x: 17
+        y: 19
+        width: 32
+        height: 22
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: cfb78ccd69d1fa570800000000000000
-      internalID: 8480029157148359676
+      spriteID: 29080fd529eff1eb0800000000000000
+      internalID: -4746795577630490478
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Submachine_0: 8480029157148359676
+      icon_starter_gun_0: -4746795577630490478
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
