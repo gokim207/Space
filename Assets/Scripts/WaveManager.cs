@@ -409,10 +409,11 @@ public class WaveManager : MonoBehaviour
         var w = GameData.GetWeapon(weaponId);
         if (w != null)
         {
-            if (w.fireInterval > 0f) fireInterval = w.fireInterval;
+            float upgradedFireInterval = WeaponPanelManager.GetEffectiveFireInterval(w);
+            if (upgradedFireInterval > 0f) fireInterval = upgradedFireInterval;
             if (w.detectRange > 0f) baseFireRange = w.detectRange;
             if (w.bulletSpeed > 0f) baseProjectileSpeed = w.bulletSpeed;
-            if (w.damage > 0) baseProjectileDamage = w.damage;
+            baseProjectileDamage = WeaponPanelManager.GetEffectiveDamage(w);
             baseProjectilePierceCount = Mathf.Max(0, w.pierceCount);
             baseProjectileCount = Mathf.Max(1, w.projCount);
         }
@@ -429,7 +430,7 @@ public class WaveManager : MonoBehaviour
         if (w != null)
         {
             if (w.bulletSpeed > 0f) baseProjectileSpeed = w.bulletSpeed;
-            if (w.damage > 0) baseProjectileDamage = w.damage;
+            baseProjectileDamage = WeaponPanelManager.GetEffectiveDamage(w);
             baseProjectilePierceCount = Mathf.Max(0, w.pierceCount);
             baseProjectileCount = Mathf.Max(1, w.projCount);
         }

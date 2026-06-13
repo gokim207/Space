@@ -1158,6 +1158,7 @@ public class GameFlowManager : MonoBehaviour
         }
         else if (BaseSceneNavigation.IsBaseSceneName(scene.name))
         {
+            Time.timeScale = 1f;
             CurrentPhase = GamePhase.Title;
             HideRunSceneUI();
         }
@@ -1866,6 +1867,7 @@ public class GameFlowManager : MonoBehaviour
             }
             ResetProgress();
             SaveSlot(slot);
+            Time.timeScale = 1f;
             SceneManager.LoadScene(BaseSceneNavigation.SceneToLoad);
         }
         else
@@ -1879,6 +1881,7 @@ public class GameFlowManager : MonoBehaviour
                 return;
             }
             LoadSlot(slot);
+            Time.timeScale = 1f;
             SceneManager.LoadScene(BaseSceneNavigation.SceneToLoad);
         }
     }

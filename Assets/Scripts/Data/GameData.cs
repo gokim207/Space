@@ -88,6 +88,20 @@ public static class GameData
         public int amount;
     }
 
+    public class WeaponUpgradeDef
+    {
+        public string weaponId;
+        public int level;
+        public int nextLevel;
+        public bool nextLevelIsMax;
+        public float upgradeCost;
+        public float successRate;
+        public float failRate;
+        public float breakRate;
+        public int damageAdd;
+        public float fireIntervalAdd;
+    }
+
     public class ProjectileDef
     {
         public string projectileId;
@@ -144,6 +158,7 @@ public static class GameData
     static Dictionary<string, WeaponDef> weapons = new Dictionary<string, WeaponDef>();
     static List<WeaponDef> weaponList = new List<WeaponDef>();
     static Dictionary<string, List<WeaponUnlockCost>> weaponUnlockCosts = new Dictionary<string, List<WeaponUnlockCost>>();
+    static Dictionary<string, Dictionary<int, WeaponUpgradeDef>> weaponUpgrades = new Dictionary<string, Dictionary<int, WeaponUpgradeDef>>();
     static Dictionary<string, ProjectileDef> projectiles = new Dictionary<string, ProjectileDef>();
     static Dictionary<string, OxygenDef> oxygenDefs = new Dictionary<string, OxygenDef>();
     static Dictionary<string, PlayerDef> players = new Dictionary<string, PlayerDef>();
@@ -239,6 +254,31 @@ public static class GameData
         return new List<WeaponUnlockCost>();
     }
 
+    public static WeaponUpgradeDef GetWeaponUpgrade(string weaponId, int level)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(weaponId)) return null;
+        if (!weaponUpgrades.TryGetValue(weaponId, out var byLevel)) return null;
+        byLevel.TryGetValue(level, out var upgrade);
+        return upgrade;
+    }
+
+    public static void GetWeaponUpgradeTotals(string weaponId, int currentLevel, out int damageAdd, out float fireIntervalAdd)
+    {
+        EnsureLoaded();
+        damageAdd = 0;
+        fireIntervalAdd = 0f;
+        if (string.IsNullOrEmpty(weaponId) || currentLevel <= 1) return;
+        if (!weaponUpgrades.TryGetValue(weaponId, out var byLevel)) return;
+
+        for (int level = 1; level < currentLevel; level++)
+        {
+            if (!byLevel.TryGetValue(level, out var upgrade)) continue;
+            damageAdd += upgrade.damageAdd;
+            fireIntervalAdd += upgrade.fireIntervalAdd;
+        }
+    }
+
     public static ProjectileDef GetProjectile(string projectileId)
     {
         EnsureLoaded();
@@ -280,6 +320,7 @@ public static class GameData
         LoadEnemySpawns();
         LoadWeapons();
         LoadWeaponUnlocks();
+        LoadWeaponUpgrades();
         LoadProjectiles();
         LoadOxygen();
         LoadPlayers();
@@ -436,6 +477,41 @@ public static class GameData
                 weaponUnlockCosts[cost.weaponId] = list;
             }
             list.Add(cost);
+        }
+    }
+
+    static void LoadWeaponUpgrades()
+    {
+        var table = LoadCsv("data/weaponUpgrade");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var upgrade = new WeaponUpgradeDef();
+            upgrade.weaponId = table.Get(row, "weaponId");
+            upgrade.level = table.GetInt(row, "level");
+            var nextLevelText = table.Get(row, "nextLevel").Trim();
+            upgrade.nextLevelIsMax = string.Equals(nextLevelText, "MAX", System.StringComparison.OrdinalIgnoreCase);
+            if (!upgrade.nextLevelIsMax &&
+                int.TryParse(nextLevelText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedNextLevel))
+            {
+                upgrade.nextLevel = parsedNextLevel;
+            }
+            upgrade.upgradeCost = table.GetFloat(row, "upgradeCost");
+            upgrade.successRate = table.GetFloat(row, "successRate");
+            upgrade.failRate = table.GetFloat(row, "failRate");
+            upgrade.breakRate = table.GetFloat(row, "breakRate");
+            upgrade.damageAdd = table.GetInt(row, "damageAdd");
+            upgrade.fireIntervalAdd = table.GetFloat(row, "fireIntervalAdd");
+
+            if (string.IsNullOrEmpty(upgrade.weaponId) || upgrade.level < 1)
+                continue;
+
+            if (!weaponUpgrades.TryGetValue(upgrade.weaponId, out var byLevel))
+            {
+                byLevel = new Dictionary<int, WeaponUpgradeDef>();
+                weaponUpgrades[upgrade.weaponId] = byLevel;
+            }
+            byLevel[upgrade.level] = upgrade;
         }
     }
 

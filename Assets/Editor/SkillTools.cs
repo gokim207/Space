@@ -42,4 +42,16 @@ public static class SkillTools
 
         UnityEngine.Debug.Log($"Reset weapon unlocks for slot {slot}. Default weapon remains available.");
     }
+
+    [MenuItem("Tools/Space Survivor/Reset Current Slot Weapon Levels")]
+    public static void ResetCurrentSlotWeaponLevels()
+    {
+        int slot = GameFlowManager.CurrentSlot >= 1 ? GameFlowManager.CurrentSlot : 1;
+        WeaponPanelManager.ResetSlotWeaponLevels(slot);
+
+        foreach (var manager in Object.FindObjectsOfType<WeaponPanelManager>(true))
+            manager.Refresh();
+
+        UnityEngine.Debug.Log($"Reset all weapon levels to Lv.{WeaponPanelManager.DefaultWeaponLevel} for slot {slot}.");
+    }
 }

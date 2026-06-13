@@ -7,6 +7,7 @@ using UnityEngine.UI;
 public class WeaponPanelManager : MonoBehaviour
 {
     const string DefaultWeaponId = "starter_gun";
+    public const int DefaultWeaponLevel = 1;
 
     GameObject weaponPanel;
     TMP_Text weaponNameText;
@@ -28,10 +29,17 @@ public class WeaponPanelManager : MonoBehaviour
     Image unlockIcon2Image;
     TMP_Text unlockValue1Text;
     TMP_Text unlockValue2Text;
+    GameObject levelUpContent;
+    TMP_Text levelText;
+    TMP_Text successRateText;
+    TMP_Text failRateText;
+    TMP_Text breakRateText;
+    TMP_Text upgradeCostText;
 
     readonly List<GameData.WeaponDef> weapons = new List<GameData.WeaponDef>();
     int currentIndex;
     bool currentWeaponAffordable;
+    bool currentWeaponCanUpgrade;
 
     void OnEnable()
     {
@@ -66,6 +74,7 @@ public class WeaponPanelManager : MonoBehaviour
         projectileCountText = FindTmp("unlock1", "projCount", "projectileCount");
         weaponVisualRoot = FindChildTransform("weapon", "weaponImage", "weaponPreview", "weaponRoot");
         BindUnlockContent();
+        BindLevelUpContent();
 
         purchaseButton = FindButton("purchaseBtn", "buyBtn", "btnPurchase");
         levelUpButton = FindButton("levelUpBtn", "upgradeBtn", "btnLevelUp");
@@ -74,7 +83,7 @@ public class WeaponPanelManager : MonoBehaviour
         prevButton = FindButton("lastWeapon", "prevWeapon", "leftWeapon", "prevBtn");
 
         BindButton(purchaseButton, PurchaseCurrent);
-        BindButton(levelUpButton, () => { /* 강화 데이터는 추후 연결 */ });
+        BindButton(levelUpButton, UpgradeCurrent);
         BindButton(equipButton, EquipCurrent);
         BindButton(nextButton, NextWeapon);
         BindButton(prevButton, PrevWeapon);
@@ -108,16 +117,22 @@ public class WeaponPanelManager : MonoBehaviour
         bool owned = IsOwned(weapon.weaponId);
         bool equipped = GetEquippedWeaponId() == weapon.weaponId;
         currentWeaponAffordable = IsWeaponAffordable(weapon);
+        int currentLevel = GetWeaponLevel(weapon.weaponId);
+        var upgrade = GameData.GetWeaponUpgrade(weapon.weaponId, currentLevel);
+        bool hasNextUpgrade = CanUseUpgrade(upgrade, currentLevel);
+        currentWeaponCanUpgrade = owned && hasNextUpgrade && GameFlowManager.Instance != null && GameFlowManager.Instance.GetMoney() + 0.0001f >= upgrade.upgradeCost;
+        GetEffectiveStats(weapon, currentLevel, out int effectiveDamage, out float effectiveFireInterval);
 
         SetText(weaponNameText, string.IsNullOrEmpty(weapon.weaponName) ? weapon.weaponId : weapon.weaponName);
         SetText(descText, weapon.desc);
-        SetText(damageText, $"공격력 : {weapon.damage}");
-        SetText(fireSpeedText, $"공격속도 : {weapon.fireInterval:0.##}");
+        SetText(damageText, $"공격력 : {effectiveDamage}");
+        SetText(fireSpeedText, $"공격속도 : {effectiveFireInterval:0.##}");
         SetText(rangeText, $"사거리 : {weapon.detectRange:0.##}");
         SetText(pierceText, $"관통 : {weapon.pierceCount}");
         SetText(projectileCountText, $"투사체 : {weapon.projCount}");
         RefreshWeaponVisual(weapon);
         RefreshUnlockContent(weapon, owned);
+        RefreshLevelUpContent(weapon, owned, currentLevel, upgrade);
 
         SetButtonVisible(purchaseButton, !owned);
         SetButtonVisible(levelUpButton, owned);
@@ -126,10 +141,12 @@ public class WeaponPanelManager : MonoBehaviour
         SetButtonVisible(nextButton, currentIndex < weapons.Count - 1);
 
         SetButtonText(purchaseButton, currentWeaponAffordable ? "구매하기" : "광석 부족");
-        SetButtonText(levelUpButton, "강화");
+        SetButtonText(levelUpButton, !hasNextUpgrade ? "최대 레벨" : currentWeaponCanUpgrade ? "강화" : "돈 부족");
         SetButtonText(equipButton, equipped ? "장착중" : "장착");
         if (purchaseButton != null)
             purchaseButton.interactable = !owned && currentWeaponAffordable;
+        if (levelUpButton != null)
+            levelUpButton.interactable = currentWeaponCanUpgrade;
         if (equipButton != null)
             equipButton.interactable = owned && !equipped;
     }
@@ -166,6 +183,19 @@ public class WeaponPanelManager : MonoBehaviour
             unlockIcon1Image = costImages[0];
         if (unlockIcon2Image == null && costImages.Count > 1)
             unlockIcon2Image = costImages[1];
+    }
+
+    void BindLevelUpContent()
+    {
+        var root = FindChildTransform("levelUpContent", "upgradeContent", "enhanceContent");
+        levelUpContent = root != null ? root.gameObject : null;
+        if (root == null) return;
+
+        levelText = FindTmpIn(root, "level", "levelText", "levelTitle");
+        successRateText = FindTmpIn(root, "successRate", "success", "successText");
+        failRateText = FindTmpIn(root, "failRate", "fail", "failText");
+        breakRateText = FindTmpIn(root, "breakRate", "break", "breakText", "destroyRate");
+        upgradeCostText = FindTmpIn(root, "cost", "upgradeCost", "costText");
     }
 
     void RefreshUnlockContent(GameData.WeaponDef weapon, bool owned)
@@ -210,6 +240,27 @@ public class WeaponPanelManager : MonoBehaviour
         }
     }
 
+    void RefreshLevelUpContent(GameData.WeaponDef weapon, bool owned, int currentLevel, GameData.WeaponUpgradeDef upgrade)
+    {
+        if (levelUpContent == null || weapon == null) return;
+        levelUpContent.SetActive(owned);
+        if (!owned) return;
+
+        bool hasNextUpgrade = CanUseUpgrade(upgrade, currentLevel);
+        SetText(levelText, hasNextUpgrade ? $"Lv. {currentLevel} -> Lv. {upgrade.nextLevel}" : $"Lv. {currentLevel} -> Lv. MAX");
+        SetText(upgradeCostText, hasNextUpgrade ? $"강화 비용 : ${upgrade.upgradeCost:0.#}" : "강화 비용 : -");
+        SetText(successRateText, hasNextUpgrade ? $"성공 : {upgrade.successRate:0.#}%" : "성공 : -");
+        SetText(failRateText, hasNextUpgrade ? $"실패 : {upgrade.failRate:0.#}%" : "실패 : -");
+        SetText(breakRateText, hasNextUpgrade ? $"파괴 : {upgrade.breakRate:0.#}%" : "파괴 : -");
+    }
+
+    bool CanUseUpgrade(GameData.WeaponUpgradeDef upgrade, int currentLevel)
+    {
+        return upgrade != null &&
+               !upgrade.nextLevelIsMax &&
+               upgrade.nextLevel > currentLevel;
+    }
+
     Sprite LoadIconSprite(string iconId)
     {
         if (string.IsNullOrWhiteSpace(iconId)) return null;
@@ -252,6 +303,42 @@ public class WeaponPanelManager : MonoBehaviour
         SavePrefs();
         if (GameFlowManager.Instance != null)
             GameFlowManager.Instance.SaveCurrentSlot();
+        Refresh();
+    }
+
+    void UpgradeCurrent()
+    {
+        var weapon = CurrentWeapon();
+        if (weapon == null || !IsOwned(weapon.weaponId)) return;
+
+        int currentLevel = GetWeaponLevel(weapon.weaponId);
+        var upgrade = GameData.GetWeaponUpgrade(weapon.weaponId, currentLevel);
+        if (!CanUseUpgrade(upgrade, currentLevel)) return;
+
+        var flow = GameFlowManager.Instance;
+        if (flow == null || !flow.SpendMoney(upgrade.upgradeCost))
+        {
+            Refresh();
+            return;
+        }
+
+        float totalRate = Mathf.Max(0f, upgrade.successRate + upgrade.failRate + upgrade.breakRate);
+        float roll = totalRate > 0f ? Random.Range(0f, totalRate) : 0f;
+        if (roll < upgrade.successRate)
+        {
+            SetWeaponLevel(weapon.weaponId, Mathf.Max(upgrade.nextLevel, currentLevel + 1));
+        }
+        else if (roll >= upgrade.successRate + upgrade.failRate && upgrade.breakRate > 0f)
+        {
+            SetWeaponLevel(weapon.weaponId, DefaultWeaponLevel);
+        }
+        else
+        {
+            SetWeaponLevel(weapon.weaponId, Mathf.Max(DefaultWeaponLevel, currentLevel - 1));
+        }
+
+        SavePrefs();
+        flow.SaveCurrentSlot();
         Refresh();
     }
 
@@ -319,6 +406,31 @@ public class WeaponPanelManager : MonoBehaviour
         if (weapons.Count == 0) return null;
         currentIndex = Mathf.Clamp(currentIndex, 0, weapons.Count - 1);
         return weapons[currentIndex];
+    }
+
+    static void GetEffectiveStats(GameData.WeaponDef weapon, int level, out int damage, out float fireInterval)
+    {
+        damage = weapon != null ? weapon.damage : 1;
+        fireInterval = weapon != null ? weapon.fireInterval : 1f;
+        if (weapon == null) return;
+
+        GameData.GetWeaponUpgradeTotals(weapon.weaponId, level, out int damageAdd, out float fireIntervalAdd);
+        damage = Mathf.Max(1, damage + damageAdd);
+        fireInterval = Mathf.Max(0.05f, fireInterval - fireIntervalAdd);
+    }
+
+    public static int GetEffectiveDamage(GameData.WeaponDef weapon)
+    {
+        if (weapon == null) return 1;
+        GetEffectiveStats(weapon, GetWeaponLevel(weapon.weaponId), out int damage, out _);
+        return damage;
+    }
+
+    public static float GetEffectiveFireInterval(GameData.WeaponDef weapon)
+    {
+        if (weapon == null) return 1f;
+        GetEffectiveStats(weapon, GetWeaponLevel(weapon.weaponId), out _, out float fireInterval);
+        return fireInterval;
     }
 
     TMP_Text FindTmp(params string[] names)
@@ -516,6 +628,7 @@ public class WeaponPanelManager : MonoBehaviour
 
     static string OwnedKey(int slot, string weaponId) => $"slot_{slot}_weapon_owned_{weaponId}";
     static string EquippedKey(int slot) => $"slot_{slot}_weapon_equipped";
+    static string LevelKey(int slot, string weaponId) => $"slot_{slot}_weapon_level_{weaponId}";
 
     public static bool IsOwned(string weaponId)
     {
@@ -546,6 +659,18 @@ public class WeaponPanelManager : MonoBehaviour
         PlayerPrefs.SetString(EquippedKey(Slot), weaponId);
     }
 
+    public static int GetWeaponLevel(string weaponId)
+    {
+        if (string.IsNullOrEmpty(weaponId) || Slot < 1) return DefaultWeaponLevel;
+        return Mathf.Max(DefaultWeaponLevel, PlayerPrefs.GetInt(LevelKey(Slot, weaponId), DefaultWeaponLevel));
+    }
+
+    public static void SetWeaponLevel(string weaponId, int level)
+    {
+        if (string.IsNullOrEmpty(weaponId) || Slot < 1) return;
+        PlayerPrefs.SetInt(LevelKey(Slot, weaponId), Mathf.Max(DefaultWeaponLevel, level));
+    }
+
     static void SavePrefs()
     {
         PlayerPrefs.Save();
@@ -560,7 +685,20 @@ public class WeaponPanelManager : MonoBehaviour
         {
             if (list[i] == null || string.IsNullOrEmpty(list[i].weaponId)) continue;
             PlayerPrefs.DeleteKey(OwnedKey(slot, list[i].weaponId));
+            PlayerPrefs.DeleteKey(LevelKey(slot, list[i].weaponId));
         }
+    }
+
+    public static void ResetSlotWeaponLevels(int slot)
+    {
+        if (slot < 1) return;
+        var list = GameData.GetWeapons();
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i] == null || string.IsNullOrEmpty(list[i].weaponId)) continue;
+            PlayerPrefs.SetInt(LevelKey(slot, list[i].weaponId), DefaultWeaponLevel);
+        }
+        PlayerPrefs.Save();
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
