@@ -22,7 +22,7 @@ public class WaveManager : MonoBehaviour
     public float fireRange = 30f; // targeting range
     private float baseFireRange = 30f;
     public float referenceOrbitRadius = 5f;
-    public float runtimeProjectileVisualScale = 1.5f;
+    public float runtimeProjectileVisualScale = 2.25f;
     public Vector2 firePointLocalOffset = new Vector2(0f, 0.08f);
     public bool requireTargetInView = true;
     public float viewportMargin = 0.02f; // allow slight margin outside [0,1]
@@ -142,35 +142,172 @@ public class WaveManager : MonoBehaviour
             firePoint = fpgo.transform;
         }
 
-        // Runtime: create a simple projectile prefab if none assigned
+        // Runtime: prefer a scene bullet template, then data/resource art, then a debug square.
         if (projectilePrefab == null)
-        {
-            var temp = new GameObject("ProjectilePrefab_Temp");
-            var sr = temp.AddComponent<SpriteRenderer>();
-            sr.sprite = CreateColorSprite(Color.yellow);
-            sr.color = Color.yellow;
-            // make sure temp projectile renders on top and not masked
-            try
-            {
-                sr.sortingOrder = Mathf.Max(sr.sortingOrder, 1000);
-                sr.maskInteraction = SpriteMaskInteraction.None;
-            }
-            catch (System.Exception) { }
-            var col = temp.AddComponent<CircleCollider2D>();
-            col.isTrigger = true;
-            var rb = temp.AddComponent<Rigidbody2D>();
-            rb.bodyType = RigidbodyType2D.Kinematic;
-            rb.gravityScale = 0f;
-            var proj = temp.AddComponent<Projectile>();
-            proj.speed = 4f;
-            temp.SetActive(false);
-            projectilePrefab = temp;
-            usingRuntimeProjectilePrefab = true;
-        }
+            projectilePrefab = FindSceneProjectileTemplate();
+
+        if (projectilePrefab == null)
+            projectilePrefab = CreateProjectilePrefabFromResources();
+
+        if (projectilePrefab == null)
+            projectilePrefab = CreateDebugProjectilePrefab();
         EnsureProjectilePrefabUsable();
         ApplyProjectileStats();
         // TODO: 웨이브, 산소 등 초기화
         if (spawner != null) spawner.OnWaveStarted(currentWave);
+    }
+
+
+
+    GameObject FindSceneProjectileTemplate()
+    {
+        var activeScene = SceneManager.GetActiveScene();
+        var roots = activeScene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            var found = FindChildByName(roots[i].transform, "bullet");
+            if (found == null)
+                found = FindChildByName(roots[i].transform, "Bullet");
+            if (found == null) continue;
+
+            var go = found.gameObject;
+            var scenePrefab = CreateProjectilePrefabFromSceneTemplate(go);
+            go.SetActive(false);
+            return scenePrefab != null ? scenePrefab : go;
+        }
+        return null;
+    }
+
+    Transform FindChildByName(Transform root, string targetName)
+    {
+        if (root.name == targetName)
+            return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            var result = FindChildByName(root.GetChild(i), targetName);
+            if (result != null)
+                return result;
+        }
+        return null;
+    }
+
+
+    GameObject CreateProjectilePrefabFromSceneTemplate(GameObject template)
+    {
+        if (template == null) return null;
+
+        var sourceSpriteRenderer = template.GetComponent<SpriteRenderer>();
+        var sourceImage = template.GetComponent<Image>();
+        Sprite sprite = sourceSpriteRenderer != null ? sourceSpriteRenderer.sprite : sourceImage != null ? sourceImage.sprite : null;
+        if (sprite == null) return null;
+
+        var temp = new GameObject("ProjectilePrefab_SceneBullet");
+        var sr = temp.AddComponent<SpriteRenderer>();
+        sr.sprite = sprite;
+        sr.color = sourceSpriteRenderer != null ? sourceSpriteRenderer.color : sourceImage != null ? sourceImage.color : Color.white;
+        try
+        {
+            sr.sortingOrder = Mathf.Max(sourceSpriteRenderer != null ? sourceSpriteRenderer.sortingOrder : 0, 1000);
+            sr.maskInteraction = SpriteMaskInteraction.None;
+        }
+        catch (System.Exception) { }
+
+        var col = temp.AddComponent<CircleCollider2D>();
+        col.isTrigger = true;
+        var rb = temp.AddComponent<Rigidbody2D>();
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        rb.gravityScale = 0f;
+        var proj = temp.AddComponent<Projectile>();
+        proj.speed = baseProjectileSpeed;
+        proj.lifeTime = baseProjectileLifeTime;
+        temp.SetActive(false);
+        usingRuntimeProjectilePrefab = true;
+        return temp;
+    }
+
+    GameObject CreateProjectilePrefabFromResources()
+    {
+        var pdef = GameData.GetProjectile(projectileId);
+        string prefabId = pdef != null ? pdef.prefabId : "";
+
+        var prefab = LoadProjectileResource<GameObject>(prefabId);
+        if (prefab != null)
+        {
+            usingRuntimeProjectilePrefab = false;
+            return prefab;
+        }
+
+        var sprite = LoadProjectileResource<Sprite>(prefabId);
+        if (sprite == null)
+            sprite = Resources.Load<Sprite>("bullets/Default");
+        if (sprite == null)
+            sprite = Resources.Load<Sprite>("bullets/default");
+        if (sprite == null)
+        {
+            var sprites = Resources.LoadAll<Sprite>("bullets");
+            if (sprites != null && sprites.Length > 0)
+                sprite = sprites[0];
+        }
+
+        if (sprite == null)
+            return null;
+
+        var temp = new GameObject("ProjectilePrefab_Resource");
+        var sr = temp.AddComponent<SpriteRenderer>();
+        sr.sprite = sprite;
+        sr.color = Color.white;
+        try
+        {
+            sr.sortingOrder = Mathf.Max(sr.sortingOrder, 1000);
+            sr.maskInteraction = SpriteMaskInteraction.None;
+        }
+        catch (System.Exception) { }
+
+        var col = temp.AddComponent<CircleCollider2D>();
+        col.isTrigger = true;
+        var rb = temp.AddComponent<Rigidbody2D>();
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        rb.gravityScale = 0f;
+        var proj = temp.AddComponent<Projectile>();
+        proj.speed = baseProjectileSpeed;
+        proj.lifeTime = baseProjectileLifeTime;
+        temp.SetActive(false);
+        usingRuntimeProjectilePrefab = true;
+        return temp;
+    }
+
+    T LoadProjectileResource<T>(string id) where T : Object
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        id = id.Trim();
+        var resource = Resources.Load<T>($"bullets/{id}");
+        if (resource != null) return resource;
+        return Resources.Load<T>(id);
+    }
+
+    GameObject CreateDebugProjectilePrefab()
+    {
+        var temp = new GameObject("ProjectilePrefab_Temp");
+        var sr = temp.AddComponent<SpriteRenderer>();
+        sr.sprite = CreateColorSprite(Color.yellow);
+        sr.color = Color.yellow;
+        try
+        {
+            sr.sortingOrder = Mathf.Max(sr.sortingOrder, 1000);
+            sr.maskInteraction = SpriteMaskInteraction.None;
+        }
+        catch (System.Exception) { }
+        var col = temp.AddComponent<CircleCollider2D>();
+        col.isTrigger = true;
+        var rb = temp.AddComponent<Rigidbody2D>();
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        rb.gravityScale = 0f;
+        var proj = temp.AddComponent<Projectile>();
+        proj.speed = 4f;
+        temp.SetActive(false);
+        usingRuntimeProjectilePrefab = true;
+        return temp;
     }
 
     void EnsureProjectilePrefabUsable()
@@ -322,8 +459,16 @@ public class WaveManager : MonoBehaviour
 
     void RefreshWaveUI()
     {
-        if (waveText != null) waveText.text = $"Wave : {currentWave}";
-        if (waveTimerText != null) waveTimerText.text = $"{Mathf.CeilToInt(waveDuration - waveTimer)}s";
+        if (waveText != null) waveText.text = $"{currentWave} Wave";
+        if (waveTimerText != null) waveTimerText.text = FormatMinuteSecond(RemainingWaveSeconds);
+    }
+
+    string FormatMinuteSecond(int totalSeconds)
+    {
+        totalSeconds = Mathf.Max(0, totalSeconds);
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+        return $"{minutes} : {seconds}";
     }
 
     void ApplyWaveConfig(int wave)
@@ -376,6 +521,7 @@ public class WaveManager : MonoBehaviour
         var pgo = Instantiate(projectilePrefab, firePoint.position, shotRotation) as GameObject;
         if (pgo != null)
         {
+            pgo.SetActive(true);
             // Ensure projectile's rotation matches firePoint so its local +X moves toward target
             pgo.transform.rotation = shotRotation;
             // Force visible settings
@@ -388,6 +534,7 @@ public class WaveManager : MonoBehaviour
                 proj.pierceCount = Mathf.Max(0, baseProjectilePierceCount);
                 proj.speed = baseProjectileSpeed * GetWorldScale();
                 proj.lifeTime = Mathf.Max(baseProjectileLifeTime, fireRange / Mathf.Max(1f, proj.speed) + 0.25f);
+                proj.SetMoveDirection(shotRotation * Vector3.right);
             }
             if (usingRuntimeProjectilePrefab || projectilePrefab.name.Contains("_Temp"))
                 pgo.transform.localScale = Vector3.one * Mathf.Max(1f, GetWorldScale() * runtimeProjectileVisualScale);
@@ -399,7 +546,6 @@ public class WaveManager : MonoBehaviour
                 psr.enabled = true;
                 try { psr.sortingOrder = Mathf.Max(psr.sortingOrder, 1000); psr.maskInteraction = SpriteMaskInteraction.None; } catch (System.Exception) { }
             }
-            pgo.SetActive(true);
         }
     }
 

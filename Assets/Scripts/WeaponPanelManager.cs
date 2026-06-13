@@ -122,11 +122,13 @@ public class WeaponPanelManager : MonoBehaviour
         bool hasNextUpgrade = CanUseUpgrade(upgrade, currentLevel);
         currentWeaponCanUpgrade = owned && hasNextUpgrade && GameFlowManager.Instance != null && GameFlowManager.Instance.GetMoney() + 0.0001f >= upgrade.upgradeCost;
         GetEffectiveStats(weapon, currentLevel, out int effectiveDamage, out float effectiveFireInterval);
+        string damageDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(upgrade.damageAdd, "0") : "";
+        string fireSpeedDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(-upgrade.fireIntervalAdd, "0.##") : "";
 
         SetText(weaponNameText, string.IsNullOrEmpty(weapon.weaponName) ? weapon.weaponId : weapon.weaponName);
         SetText(descText, weapon.desc);
-        SetText(damageText, $"공격력 : {effectiveDamage}");
-        SetText(fireSpeedText, $"공격속도 : {effectiveFireInterval:0.##}");
+        SetText(damageText, $"공격력 : {effectiveDamage}{damageDelta}");
+        SetText(fireSpeedText, $"공격속도 : {effectiveFireInterval:0.##}{fireSpeedDelta}");
         SetText(rangeText, $"사거리 : {weapon.detectRange:0.##}");
         SetText(pierceText, $"관통 : {weapon.pierceCount}");
         SetText(projectileCountText, $"투사체 : {weapon.projCount}");
@@ -247,11 +249,32 @@ public class WeaponPanelManager : MonoBehaviour
         if (!owned) return;
 
         bool hasNextUpgrade = CanUseUpgrade(upgrade, currentLevel);
-        SetText(levelText, hasNextUpgrade ? $"Lv. {currentLevel} -> Lv. {upgrade.nextLevel}" : $"Lv. {currentLevel} -> Lv. MAX");
+        SetText(levelText, hasNextUpgrade ? FormatLevelText(weapon.weaponId, currentLevel, upgrade) : $"Lv. {currentLevel} -> Lv. MAX");
         SetText(upgradeCostText, hasNextUpgrade ? $"강화 비용 : ${upgrade.upgradeCost:0.#}" : "강화 비용 : -");
-        SetText(successRateText, hasNextUpgrade ? $"성공 : {upgrade.successRate:0.#}%" : "성공 : -");
-        SetText(failRateText, hasNextUpgrade ? $"실패 : {upgrade.failRate:0.#}%" : "실패 : -");
-        SetText(breakRateText, hasNextUpgrade ? $"파괴 : {upgrade.breakRate:0.#}%" : "파괴 : -");
+        SetText(successRateText, hasNextUpgrade ? $"<color=#05C828>성공</color> : {upgrade.successRate:0.#}%" : "<color=#05C828>성공</color> : -");
+        SetText(failRateText, hasNextUpgrade ? $"<color=#FF0F02>실패</color> : {upgrade.failRate:0.#}%" : "<color=#FF0F02>실패</color> : -");
+        SetText(breakRateText, hasNextUpgrade ? $"<color=#620198>파괴</color> : {upgrade.breakRate:0.#}%" : "<color=#620198>파괴</color> : -");
+    }
+
+    string FormatLevelText(string weaponId, int currentLevel, GameData.WeaponUpgradeDef upgrade)
+    {
+        if (upgrade == null)
+            return $"Lv. {currentLevel} -> Lv. MAX";
+
+        bool reachesMaxLevel = upgrade.nextLevelIsMax ||
+                               GameData.GetWeaponUpgrade(weaponId, upgrade.nextLevel) == null;
+        string nextText = reachesMaxLevel ? "MAX" : upgrade.nextLevel.ToString();
+        return $"Lv. {currentLevel} -> Lv. {nextText}";
+    }
+
+    string FormatUpgradeDelta(float value, string format)
+    {
+        if (Mathf.Approximately(value, 0f))
+            return "";
+
+        string sign = value > 0f ? "+" : "-";
+        string amount = Mathf.Abs(value).ToString(format);
+        return $"<alpha=#80>( {sign}{amount} )";
     }
 
     bool CanUseUpgrade(GameData.WeaponUpgradeDef upgrade, int currentLevel)
@@ -607,7 +630,9 @@ public class WeaponPanelManager : MonoBehaviour
 
     void SetText(TMP_Text text, string value)
     {
-        if (text != null) text.text = value;
+        if (text == null) return;
+        text.richText = true;
+        text.text = value;
     }
 
     void SetButtonVisible(Button button, bool visible)

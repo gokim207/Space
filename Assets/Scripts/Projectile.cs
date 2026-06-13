@@ -10,6 +10,7 @@ public class Projectile : MonoBehaviour
     // Additional enemies this projectile can pass through after the first hit.
     public int pierceCount = 0;
     int remainingPierce;
+    Vector3 moveDirection = Vector3.right;
     readonly System.Collections.Generic.HashSet<int> hitEnemyIds = new System.Collections.Generic.HashSet<int>();
 
     void OnEnable()
@@ -17,11 +18,25 @@ public class Projectile : MonoBehaviour
         timer = 0f;
         remainingPierce = Mathf.Max(0, pierceCount);
         hitEnemyIds.Clear();
+        LockMoveDirection(transform.right);
+    }
+
+    public void SetMoveDirection(Vector3 direction)
+    {
+        LockMoveDirection(direction);
+    }
+
+    void LockMoveDirection(Vector3 direction)
+    {
+        direction.z = 0f;
+        if (direction.sqrMagnitude <= 0.0001f)
+            direction = transform.right;
+        moveDirection = direction.normalized;
     }
 
     void Update()
     {
-        transform.position += transform.right * speed * Time.deltaTime;
+        transform.position += moveDirection * speed * Time.deltaTime;
         timer += Time.deltaTime;
         if (timer >= lifeTime)
             Destroy(gameObject);

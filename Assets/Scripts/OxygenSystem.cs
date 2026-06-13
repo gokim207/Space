@@ -18,18 +18,25 @@ public class OxygenSystem : MonoBehaviour
     public Text oxygenText; // optional numeric text
     private float maxOxygen;
 
+    static readonly string[] OxygenFillNames =
+    {
+        "hpBar", "HPBar", "hpFill", "HPFill",
+        "oxygenBar", "OxygenBar", "oxygenFill", "OxygenFill"
+    };
+
     void Awake()
     {
         ApplyOxygenConfig();
-        currentOxygen = startOxygen + SkillEffects.MaxOxygenBonus;
+        maxOxygen = startOxygen + SkillEffects.MaxOxygenBonus;
+        currentOxygen = maxOxygen;
         timer = 0f;
-        maxOxygen = (maxOxygen > 0f ? maxOxygen : startOxygen) + SkillEffects.MaxOxygenBonus;
     }
 
     void Start()
     {
         if (waveManager == null)
             waveManager = FindObjectOfType<WaveManager>();
+        AutoBindOxygenFill();
         RefreshUI();
     }
 
@@ -68,7 +75,7 @@ public class OxygenSystem : MonoBehaviour
         var def = GameData.GetOxygen(oxygenId);
         if (def == null) return;
         if (def.startOxygen > 0f) startOxygen = def.startOxygen;
-        if (def.maxOxygen > 0f) maxOxygen = def.maxOxygen;
+        // maxOxygen in the table is reserved for future modes; the active player starts full at startOxygen.
         if (def.decreaseInterval > 0f) oxygenDecreaseInterval = def.decreaseInterval;
         if (def.decayMin > 0f) decayMin = def.decayMin;
         if (def.decayMax > 0f) decayMax = def.decayMax;
@@ -79,11 +86,36 @@ public class OxygenSystem : MonoBehaviour
     {
         if (oxygenFill != null && maxOxygen > 0)
         {
-            oxygenFill.fillAmount = currentOxygen / maxOxygen;
+            float ratio = Mathf.Clamp01(currentOxygen / maxOxygen);
+            oxygenFill.fillAmount = ratio;
         }
         if (oxygenText != null)
         {
             oxygenText.text = $"O2: {currentOxygen:0.0}/{maxOxygen:0.0}";
         }
+    }
+
+    void AutoBindOxygenFill()
+    {
+        if (oxygenFill == null)
+            oxygenFill = FindImageByNames(OxygenFillNames);
+
+        if (oxygenFill == null) return;
+
+        oxygenFill.type = Image.Type.Filled;
+        oxygenFill.fillMethod = Image.FillMethod.Horizontal;
+        oxygenFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+    }
+
+    Image FindImageByNames(string[] names)
+    {
+        for (int i = 0; i < names.Length; i++)
+        {
+            var go = GameObject.Find(names[i]);
+            if (go == null) continue;
+            var image = go.GetComponent<Image>();
+            if (image != null) return image;
+        }
+        return null;
     }
 }

@@ -1086,13 +1086,13 @@ public class GameFlowManager : MonoBehaviour
         }
         if (waveManager != null && CurrentPhase == GamePhase.Run)
         {
-            var value = $"Wave : {waveManager.currentWave}";
+            var value = $"{waveManager.currentWave} Wave";
             if (waveLabel != null) waveLabel.text = value;
             if (waveLabelTMP != null) waveLabelTMP.text = value;
         }
         if (waveManager != null && CurrentPhase == GamePhase.Run)
         {
-            var value = $"남은 시간 : {waveManager.RemainingWaveSeconds}s";
+            var value = FormatMinuteSecond(waveManager.RemainingWaveSeconds);
             if (timeLabel != null) timeLabel.text = value;
             if (timeLabelTMP != null) timeLabelTMP.text = value;
         }
@@ -1187,6 +1187,14 @@ public class GameFlowManager : MonoBehaviour
         sceneRunOxygenText = null;
         sceneRunWaveText = null;
         sceneRunTimeText = null;
+    }
+
+    string FormatMinuteSecond(int totalSeconds)
+    {
+        totalSeconds = Mathf.Max(0, totalSeconds);
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+        return $"{minutes} : {seconds}";
     }
 
     void EnsureSceneCanvasActive(Scene scene)
