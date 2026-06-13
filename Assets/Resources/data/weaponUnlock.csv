@@ -1,0 +1,7 @@
+weaponId,materialId,amount
+multi_shot,stone,100
+multi_shot,copper,10
+machine_gun,stone,100
+machine_gun,copper,10
+sniper_rail,stone,100
+sniper_rail,copper,10

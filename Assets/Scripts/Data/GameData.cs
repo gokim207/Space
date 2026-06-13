@@ -74,7 +74,18 @@ public static class GameData
         public int pierceCount;
         public int projCount;
         public string iconKey;
+        public string unlockIcon1;
+        public int unlockAmount1;
+        public string unlockIcon2;
+        public int unlockAmount2;
         public string desc;
+    }
+
+    public class WeaponUnlockCost
+    {
+        public string weaponId;
+        public string materialId;
+        public int amount;
     }
 
     public class ProjectileDef
@@ -132,6 +143,7 @@ public static class GameData
     static Dictionary<string, EnemySpawnDef> enemySpawns = new Dictionary<string, EnemySpawnDef>();
     static Dictionary<string, WeaponDef> weapons = new Dictionary<string, WeaponDef>();
     static List<WeaponDef> weaponList = new List<WeaponDef>();
+    static Dictionary<string, List<WeaponUnlockCost>> weaponUnlockCosts = new Dictionary<string, List<WeaponUnlockCost>>();
     static Dictionary<string, ProjectileDef> projectiles = new Dictionary<string, ProjectileDef>();
     static Dictionary<string, OxygenDef> oxygenDefs = new Dictionary<string, OxygenDef>();
     static Dictionary<string, PlayerDef> players = new Dictionary<string, PlayerDef>();
@@ -218,6 +230,15 @@ public static class GameData
         return weaponList;
     }
 
+    public static List<WeaponUnlockCost> GetWeaponUnlockCosts(string weaponId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(weaponId)) return new List<WeaponUnlockCost>();
+        if (weaponUnlockCosts.TryGetValue(weaponId, out var costs))
+            return costs;
+        return new List<WeaponUnlockCost>();
+    }
+
     public static ProjectileDef GetProjectile(string projectileId)
     {
         EnsureLoaded();
@@ -258,6 +279,7 @@ public static class GameData
         LoadForgeTable();
         LoadEnemySpawns();
         LoadWeapons();
+        LoadWeaponUnlocks();
         LoadProjectiles();
         LoadOxygen();
         LoadPlayers();
@@ -379,12 +401,41 @@ public static class GameData
             w.pierceCount = table.GetInt(row, "pierceCount");
             w.projCount = table.GetInt(row, "projCount");
             w.iconKey = table.Get(row, "iconKey");
+            w.unlockIcon1 = GetFirst(row, table, "unlockIcon1", "costIcon1", "needIcon1", "resourceIcon1", "oreIcon1");
+            w.unlockAmount1 = GetFirstInt(row, table, "unlockAmount1", "costAmount1", "needAmount1", "resourceAmount1", "oreAmount1", "unlockValue1", "cost1", "value1");
+            w.unlockIcon2 = GetFirst(row, table, "unlockIcon2", "costIcon2", "needIcon2", "resourceIcon2", "oreIcon2");
+            w.unlockAmount2 = GetFirstInt(row, table, "unlockAmount2", "costAmount2", "needAmount2", "resourceAmount2", "oreAmount2", "unlockValue2", "cost2", "value2");
             w.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(w.weaponId))
             {
                 weapons[w.weaponId] = w;
                 weaponList.Add(w);
             }
+        }
+    }
+
+    static void LoadWeaponUnlocks()
+    {
+        var table = LoadCsv("data/weaponUnlock");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var cost = new WeaponUnlockCost();
+            cost.weaponId = table.Get(row, "weaponId");
+            cost.materialId = table.Get(row, "materialId");
+            cost.amount = table.GetInt(row, "amount");
+
+            if (string.IsNullOrEmpty(cost.weaponId) ||
+                string.IsNullOrEmpty(cost.materialId) ||
+                cost.amount <= 0)
+                continue;
+
+            if (!weaponUnlockCosts.TryGetValue(cost.weaponId, out var list))
+            {
+                list = new List<WeaponUnlockCost>();
+                weaponUnlockCosts[cost.weaponId] = list;
+            }
+            list.Add(cost);
         }
     }
 
@@ -465,6 +516,28 @@ public static class GameData
             if (!string.IsNullOrEmpty(s.skillId) && !string.IsNullOrEmpty(s.targetStat))
                 skillEffects.Add(s);
         }
+    }
+
+    static string GetFirst(Dictionary<string, string> row, CsvTable table, params string[] keys)
+    {
+        for (int i = 0; i < keys.Length; i++)
+        {
+            string value = table.Get(row, keys[i]);
+            if (!string.IsNullOrWhiteSpace(value))
+                return value.Trim();
+        }
+        return "";
+    }
+
+    static int GetFirstInt(Dictionary<string, string> row, CsvTable table, params string[] keys)
+    {
+        for (int i = 0; i < keys.Length; i++)
+        {
+            int value = table.GetInt(row, keys[i]);
+            if (value != 0)
+                return value;
+        }
+        return 0;
     }
 
     static Color ParseColorRgb(string value, Color fallback)

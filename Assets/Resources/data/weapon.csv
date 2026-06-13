@@ -1,5 +1,5 @@
 weaponId,weaponName,damage,fireInterval,bulletSpeed,detectRange,pierceCount,projCount,iconKey,desc
 starter_gun,권총,5,1.5,10,12,0,1,icon_starter_gun,가장 기본적인 총이다.
+multi_shot,샷건,4,0.8,12,10,0,3,icon_multi_shot,부채꼴로 3발 동시 발사
 machine_gun,머신건,3,0.1,20,10,0,1,icon_machine_gun,"빠른 연사, 낮은 데미지"
 sniper_rail,스나이퍼,20,2,40,20,1,1,icon_sniper_rail,"긴 사거리, 다수 관통"
-multi_shot,샷건,4,0.8,12,10,0,3,icon_multi_shot,부채꼴로 3발 동시 발사

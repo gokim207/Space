@@ -1749,6 +1749,57 @@ public class GameFlowManager : MonoBehaviour
         UpdateMoneyLabels();
     }
 
+    public int GetMaterialAmount(string materialId)
+    {
+        materialId = NormalizeMaterialId(materialId);
+        if (materialId == "stone") return stone;
+        if (materialId == "copper") return copper;
+
+        if (CurrentSlot < 1 || string.IsNullOrEmpty(materialId))
+            return 0;
+        return PlayerPrefs.GetInt($"slot_{CurrentSlot}_material_{materialId}", 0);
+    }
+
+    public bool HasMaterial(string materialId, int amount)
+    {
+        if (amount <= 0) return true;
+        return GetMaterialAmount(materialId) >= amount;
+    }
+
+    public bool SpendMaterial(string materialId, int amount)
+    {
+        if (amount <= 0) return true;
+        materialId = NormalizeMaterialId(materialId);
+        if (!HasMaterial(materialId, amount)) return false;
+
+        if (materialId == "stone")
+        {
+            stone -= amount;
+            if (stone < 0) stone = 0;
+        }
+        else if (materialId == "copper")
+        {
+            copper -= amount;
+            if (copper < 0) copper = 0;
+        }
+        else if (CurrentSlot >= 1 && !string.IsNullOrEmpty(materialId))
+        {
+            string key = $"slot_{CurrentSlot}_material_{materialId}";
+            PlayerPrefs.SetInt(key, Mathf.Max(0, PlayerPrefs.GetInt(key, 0) - amount));
+        }
+
+        SyncForgeData();
+        UpdateMoneyLabels();
+        return true;
+    }
+
+    static string NormalizeMaterialId(string materialId)
+    {
+        return string.IsNullOrWhiteSpace(materialId)
+            ? ""
+            : materialId.Trim().ToLowerInvariant();
+    }
+
     public void SaveCurrentSlot()
     {
         if (CurrentSlot >= 1)
@@ -1815,7 +1866,7 @@ public class GameFlowManager : MonoBehaviour
             }
             ResetProgress();
             SaveSlot(slot);
-            SceneManager.LoadScene("UpgradeScene");
+            SceneManager.LoadScene(BaseSceneNavigation.SceneToLoad);
         }
         else
         {
@@ -1828,7 +1879,7 @@ public class GameFlowManager : MonoBehaviour
                 return;
             }
             LoadSlot(slot);
-            SceneManager.LoadScene("UpgradeScene");
+            SceneManager.LoadScene(BaseSceneNavigation.SceneToLoad);
         }
     }
 
