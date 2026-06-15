@@ -5,6 +5,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class GameFlowManager : MonoBehaviour
 {
@@ -95,6 +96,7 @@ public class GameFlowManager : MonoBehaviour
     public GameObject sceneEndPanel;
     public GameObject sceneTitlePanel;
     public GameObject sceneSlotPanel;
+    public GameObject sceneSettingPanel;
     public TMP_Text sceneOddsText;
     public TMP_Text sceneStoneText;
     public TMP_Text sceneCopperText;
@@ -116,10 +118,16 @@ public class GameFlowManager : MonoBehaviour
     public Button sceneBtnEndUpgrade;
     public Button sceneBtnTitleStart;
     public Button sceneBtnTitleContinue;
+    public Button sceneBtnTitleSetting;
     public Button sceneBtnTitleLeave;
     public Image sceneStoneIcon;
     public Image sceneCopperIcon;
     private bool upgradeSceneBound = false;
+    private readonly List<Button> titleMenuButtons = new List<Button>();
+    private int titleMenuIndex = 0;
+    private readonly Color titleMenuSelectedColor = Color.white;
+    private GameObject titleSelector;
+    private Image titleSelectorImage;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void EnsureExists()
@@ -251,7 +259,7 @@ public class GameFlowManager : MonoBehaviour
         bool hasSceneUI =
             sceneForgePanel != null || sceneSkillPanel != null || sceneWeaponPanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
             sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null ||
-            sceneTitlePanel != null || sceneBtnTitleStart != null || sceneBtnTitleContinue != null || sceneBtnTitleLeave != null;
+            sceneTitlePanel != null || sceneBtnTitleStart != null || sceneBtnTitleContinue != null || sceneBtnTitleSetting != null || sceneBtnTitleLeave != null;
         if (!hasSceneUI)
         {
             // Attempt auto-bind by common object names in the active scene.
@@ -264,6 +272,7 @@ public class GameFlowManager : MonoBehaviour
             sceneEndPanel = sceneEndPanel != null ? sceneEndPanel : FindInScene(activeScene, "endPanel", "EndPanel");
             sceneTitlePanel = sceneTitlePanel != null ? sceneTitlePanel : FindInScene(activeScene, "titlePanel", "TitlePanel");
             sceneSlotPanel = sceneSlotPanel != null ? sceneSlotPanel : FindInScene(activeScene, "slotPanel", "SlotPanel", "filePanel", "FilePanel");
+            sceneSettingPanel = sceneSettingPanel != null ? sceneSettingPanel : FindInScene(activeScene, "settingPanel", "SettingPanel", "optionPanel", "OptionPanel", "optionsPanel", "OptionsPanel");
 
             sceneOddsText = sceneOddsText != null ? sceneOddsText : FindTmpText(activeScene, "oddsText", "OddsText");
             sceneStoneText = sceneStoneText != null ? sceneStoneText : FindTmpText(activeScene, "stoneText", "StoneText");
@@ -293,6 +302,7 @@ public class GameFlowManager : MonoBehaviour
             sceneBtnEndUpgrade = sceneBtnEndUpgrade != null ? sceneBtnEndUpgrade : FindButton(activeScene, "upgradeButton", "UpgradeButton");
             sceneBtnTitleStart = sceneBtnTitleStart != null ? sceneBtnTitleStart : FindButton(activeScene, "startButton", "StartButton");
             sceneBtnTitleContinue = sceneBtnTitleContinue != null ? sceneBtnTitleContinue : FindButton(activeScene, "continueButton", "ContinueButton");
+            sceneBtnTitleSetting = sceneBtnTitleSetting != null ? sceneBtnTitleSetting : FindButton(activeScene, "settingButton", "SettingButton", "optionButton", "OptionButton", "optionsButton", "OptionsButton");
             sceneBtnTitleLeave = sceneBtnTitleLeave != null ? sceneBtnTitleLeave : FindButton(activeScene, "leaveButton", "LeaveButton");
 
             sceneStoneIcon = sceneStoneIcon != null ? sceneStoneIcon : FindImage(activeScene, "stoneIcon", "StoneIcon");
@@ -301,7 +311,7 @@ public class GameFlowManager : MonoBehaviour
             hasSceneUI =
                 sceneForgePanel != null || sceneSkillPanel != null || sceneWeaponPanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
                 sceneRunHud != null || sceneEndPanel != null || sceneBtnAgain != null || sceneBtnEndUpgrade != null ||
-                sceneTitlePanel != null || sceneBtnTitleStart != null || sceneBtnTitleContinue != null || sceneBtnTitleLeave != null;
+                sceneTitlePanel != null || sceneBtnTitleStart != null || sceneBtnTitleContinue != null || sceneBtnTitleSetting != null || sceneBtnTitleLeave != null;
         }
 
         if (!hasSceneUI) return false;
@@ -377,11 +387,17 @@ public class GameFlowManager : MonoBehaviour
             sceneBtnTitleContinue.onClick.RemoveAllListeners();
             sceneBtnTitleContinue.onClick.AddListener(() => ShowSlotSelect(SlotMode.Load));
         }
+        if (sceneBtnTitleSetting != null && sceneSettingPanel != null)
+        {
+            sceneBtnTitleSetting.onClick.RemoveAllListeners();
+            sceneBtnTitleSetting.onClick.AddListener(() => ShowTitleSettingPanel());
+        }
         if (sceneBtnTitleLeave != null)
         {
             sceneBtnTitleLeave.onClick.RemoveAllListeners();
             sceneBtnTitleLeave.onClick.AddListener(() => QuitGame());
         }
+        RebuildTitleMenuButtons();
 
         BindSceneSlotButtons(SceneManager.GetActiveScene());
 
@@ -409,6 +425,152 @@ public class GameFlowManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    void RebuildTitleMenuButtons()
+    {
+        titleMenuButtons.Clear();
+
+        if (titlePanel != null)
+        {
+            var buttons = titlePanel.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                if (buttons[i] != null && buttons[i].gameObject.activeInHierarchy)
+                    titleMenuButtons.Add(buttons[i]);
+            }
+
+            titleMenuButtons.Sort((a, b) =>
+            {
+                var ay = ((RectTransform)a.transform).position.y;
+                var by = ((RectTransform)b.transform).position.y;
+                return by.CompareTo(ay);
+            });
+        }
+
+        if (titleMenuButtons.Count == 0)
+        {
+            AddTitleMenuButton(sceneBtnTitleStart);
+            AddTitleMenuButton(sceneBtnTitleContinue);
+            AddTitleMenuButton(sceneBtnTitleSetting);
+            AddTitleMenuButton(sceneBtnTitleLeave);
+        }
+
+        titleMenuIndex = Mathf.Clamp(titleMenuIndex, 0, Mathf.Max(0, titleMenuButtons.Count - 1));
+
+        foreach (var button in titleMenuButtons)
+        {
+            if (button == null) continue;
+            var nav = button.navigation;
+            nav.mode = Navigation.Mode.None;
+            button.navigation = nav;
+
+            var colors = button.colors;
+            // 기존 버튼의 기본 투명도/색상은 유지하고 선택 상태만 밝게 만든다.
+            colors.highlightedColor = titleMenuSelectedColor;
+            colors.selectedColor = titleMenuSelectedColor;
+            colors.pressedColor = titleMenuSelectedColor;
+            button.colors = colors;
+        }
+    }
+
+    void EnsureTitleSelector(Button selected)
+    {
+        if (selected == null) return;
+
+        if (titleSelector == null || titleSelector.Equals(null))
+        {
+            titleSelector = new GameObject("TitleSelector");
+            titleSelectorImage = titleSelector.AddComponent<Image>();
+            titleSelectorImage.color = new Color(1f, 1f, 1f, 40f / 255f);
+            titleSelectorImage.raycastTarget = false;
+        }
+
+        titleSelector.transform.SetParent(selected.transform, false);
+        titleSelector.transform.SetAsFirstSibling();
+        titleSelector.SetActive(true);
+
+        var rt = titleSelector.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = new Vector2(455f, 120f);
+    }
+
+    void HideTitleSelector()
+    {
+        if (titleSelector != null && !titleSelector.Equals(null))
+            titleSelector.SetActive(false);
+    }
+
+    void AddTitleMenuButton(Button button)
+    {
+        if (button == null || titleMenuButtons.Contains(button)) return;
+        titleMenuButtons.Add(button);
+    }
+
+    void RefreshTitleMenuSelection()
+    {
+        if (titleMenuButtons.Count == 0) return;
+
+        titleMenuIndex = Mathf.Clamp(titleMenuIndex, 0, titleMenuButtons.Count - 1);
+        var selected = titleMenuButtons[titleMenuIndex];
+        if (selected != null && selected.gameObject.activeInHierarchy)
+        {
+            EnsureTitleSelector(selected);
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(selected.gameObject);
+            selected.Select();
+        }
+        else
+        {
+            HideTitleSelector();
+        }
+    }
+
+    void MoveTitleMenuSelection(int direction)
+    {
+        if (titleMenuButtons.Count == 0)
+            RebuildTitleMenuButtons();
+        if (titleMenuButtons.Count == 0) return;
+
+        titleMenuIndex = (titleMenuIndex + direction + titleMenuButtons.Count) % titleMenuButtons.Count;
+        RefreshTitleMenuSelection();
+    }
+
+    void InvokeSelectedTitleMenu()
+    {
+        if (titleMenuButtons.Count == 0)
+            RebuildTitleMenuButtons();
+        if (titleMenuButtons.Count == 0) return;
+
+        var button = titleMenuButtons[Mathf.Clamp(titleMenuIndex, 0, titleMenuButtons.Count - 1)];
+        if (button != null && button.gameObject.activeInHierarchy && button.interactable)
+            button.onClick.Invoke();
+    }
+
+    void ShowTitleSettingPanel()
+    {
+        CurrentPhase = GamePhase.Title;
+        SetActiveSafe(slotPanel, false);
+        SetActiveSafe(sceneSettingPanel, true);
+    }
+
+    void UpdateTitleMenuInput()
+    {
+        if (CurrentPhase != GamePhase.Title) return;
+        if (SceneManager.GetActiveScene().name != "TitleScene") return;
+        if (slotPanel != null && slotPanel.activeInHierarchy) return;
+        if (sceneSettingPanel != null && sceneSettingPanel.activeInHierarchy) return;
+
+        bool up = Keyboard.current != null && (Keyboard.current.upArrowKey.wasPressedThisFrame || Keyboard.current.wKey.wasPressedThisFrame);
+        bool down = Keyboard.current != null && (Keyboard.current.downArrowKey.wasPressedThisFrame || Keyboard.current.sKey.wasPressedThisFrame);
+        bool submit = Keyboard.current != null && (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame);
+
+        if (up) MoveTitleMenuSelection(-1);
+        if (down) MoveTitleMenuSelection(1);
+        if (submit) InvokeSelectedTitleMenu();
     }
 
     void BindSceneSlotButtons(Scene scene)
@@ -1052,7 +1214,10 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(weaponPanel, false);
         SetActiveSafe(titlePanel, true);
         SetActiveSafe(slotPanel, false);
+        SetActiveSafe(sceneSettingPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
+        RebuildTitleMenuButtons();
+        RefreshTitleMenuSelection();
     }
 
     void ShowSlotSelect(SlotMode mode)
@@ -1063,6 +1228,7 @@ public class GameFlowManager : MonoBehaviour
         // 파일 선택은 타이틀 위에 뜨는 팝업 성격이므로 타이틀 패널은 유지한다.
         SetActiveSafe(titlePanel, true);
         SetActiveSafe(slotPanel, true);
+        SetActiveSafe(sceneSettingPanel, false);
         SetActiveSafe(weaponPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         RefreshSlotUI();
@@ -1070,6 +1236,13 @@ public class GameFlowManager : MonoBehaviour
 
     void Update()
     {
+        if (CurrentPhase == GamePhase.Title && sceneSettingPanel != null && sceneSettingPanel.activeInHierarchy && IsCancelPressed())
+        {
+            ShowTitle();
+            return;
+        }
+        UpdateTitleMenuInput();
+
         if (SceneManager.GetActiveScene().name == "UpgradeScene" && CurrentPhase != GamePhase.SlotSelect && IsCancelPressed())
         {
             BaseSceneNavigation.ReturnToBaseScene();
