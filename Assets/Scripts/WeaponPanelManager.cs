@@ -117,7 +117,7 @@ public class WeaponPanelManager : MonoBehaviour
         bool owned = IsOwned(weapon.weaponId);
         bool equipped = GetEquippedWeaponId() == weapon.weaponId;
         currentWeaponAffordable = IsWeaponAffordable(weapon);
-        int currentLevel = GetWeaponLevel(weapon.weaponId);
+        int currentLevel = ClampWeaponLevel(weapon.weaponId, GetWeaponLevel(weapon.weaponId));
         var upgrade = GameData.GetWeaponUpgrade(weapon.weaponId, currentLevel);
         bool hasNextUpgrade = CanUseUpgrade(upgrade, currentLevel);
         currentWeaponCanUpgrade = owned && hasNextUpgrade && GameFlowManager.Instance != null && GameFlowManager.Instance.GetMoney() + 0.0001f >= upgrade.upgradeCost;
@@ -249,7 +249,7 @@ public class WeaponPanelManager : MonoBehaviour
         if (!owned) return;
 
         bool hasNextUpgrade = CanUseUpgrade(upgrade, currentLevel);
-        SetText(levelText, hasNextUpgrade ? FormatLevelText(weapon.weaponId, currentLevel, upgrade) : $"Lv. {currentLevel} -> Lv. MAX");
+        SetText(levelText, FormatLevelText(weapon.weaponId, currentLevel, upgrade));
         SetText(upgradeCostText, hasNextUpgrade ? $"강화 비용 : ${upgrade.upgradeCost:0.#}" : "강화 비용 : -");
         SetText(successRateText, hasNextUpgrade ? $"<color=#05C828>성공</color> : {upgrade.successRate:0.#}%" : "<color=#05C828>성공</color> : -");
         SetText(failRateText, hasNextUpgrade ? $"<color=#FF0F02>실패</color> : {upgrade.failRate:0.#}%" : "<color=#FF0F02>실패</color> : -");
@@ -259,7 +259,7 @@ public class WeaponPanelManager : MonoBehaviour
     string FormatLevelText(string weaponId, int currentLevel, GameData.WeaponUpgradeDef upgrade)
     {
         if (upgrade == null)
-            return $"Lv. {currentLevel} -> Lv. MAX";
+            return "Lv. MAX";
 
         bool reachesMaxLevel = upgrade.nextLevelIsMax ||
                                GameData.GetWeaponUpgrade(weaponId, upgrade.nextLevel) == null;
@@ -282,6 +282,51 @@ public class WeaponPanelManager : MonoBehaviour
         return upgrade != null &&
                !upgrade.nextLevelIsMax &&
                upgrade.nextLevel > currentLevel;
+    }
+
+    static int ClampWeaponLevel(string weaponId, int level)
+    {
+        return Mathf.Clamp(level, DefaultWeaponLevel, GetMaxWeaponLevel(weaponId));
+    }
+
+    static int GetMaxWeaponLevel(string weaponId)
+    {
+        if (string.IsNullOrEmpty(weaponId))
+            return DefaultWeaponLevel;
+
+        int level = DefaultWeaponLevel;
+        for (int guard = 0; guard < 100; guard++)
+        {
+            var upgrade = GameData.GetWeaponUpgrade(weaponId, level);
+            if (upgrade == null || upgrade.nextLevelIsMax || upgrade.nextLevel <= level)
+                break;
+
+            level = upgrade.nextLevel;
+        }
+
+        return Mathf.Max(DefaultWeaponLevel, level);
+    }
+
+    static int GetPreviousWeaponLevel(string weaponId, int currentLevel)
+    {
+        currentLevel = ClampWeaponLevel(weaponId, currentLevel);
+        int previous = DefaultWeaponLevel;
+        int maxLevel = GetMaxWeaponLevel(weaponId);
+
+        for (int level = DefaultWeaponLevel; level <= maxLevel; level++)
+        {
+            var upgrade = GameData.GetWeaponUpgrade(weaponId, level);
+            if (upgrade == null || upgrade.nextLevelIsMax)
+                continue;
+
+            if (upgrade.nextLevel == currentLevel)
+                previous = Mathf.Max(previous, upgrade.level);
+        }
+
+        if (previous < currentLevel)
+            return previous;
+
+        return Mathf.Max(DefaultWeaponLevel, currentLevel - 1);
     }
 
     Sprite LoadIconSprite(string iconId)
@@ -349,7 +394,7 @@ public class WeaponPanelManager : MonoBehaviour
         float roll = totalRate > 0f ? Random.Range(0f, totalRate) : 0f;
         if (roll < upgrade.successRate)
         {
-            SetWeaponLevel(weapon.weaponId, Mathf.Max(upgrade.nextLevel, currentLevel + 1));
+            SetWeaponLevel(weapon.weaponId, upgrade.nextLevel);
         }
         else if (roll >= upgrade.successRate + upgrade.failRate && upgrade.breakRate > 0f)
         {
@@ -357,7 +402,7 @@ public class WeaponPanelManager : MonoBehaviour
         }
         else
         {
-            SetWeaponLevel(weapon.weaponId, Mathf.Max(DefaultWeaponLevel, currentLevel - 1));
+            SetWeaponLevel(weapon.weaponId, GetPreviousWeaponLevel(weapon.weaponId, currentLevel));
         }
 
         SavePrefs();
@@ -687,13 +732,13 @@ public class WeaponPanelManager : MonoBehaviour
     public static int GetWeaponLevel(string weaponId)
     {
         if (string.IsNullOrEmpty(weaponId) || Slot < 1) return DefaultWeaponLevel;
-        return Mathf.Max(DefaultWeaponLevel, PlayerPrefs.GetInt(LevelKey(Slot, weaponId), DefaultWeaponLevel));
+        return ClampWeaponLevel(weaponId, PlayerPrefs.GetInt(LevelKey(Slot, weaponId), DefaultWeaponLevel));
     }
 
     public static void SetWeaponLevel(string weaponId, int level)
     {
         if (string.IsNullOrEmpty(weaponId) || Slot < 1) return;
-        PlayerPrefs.SetInt(LevelKey(Slot, weaponId), Mathf.Max(DefaultWeaponLevel, level));
+        PlayerPrefs.SetInt(LevelKey(Slot, weaponId), ClampWeaponLevel(weaponId, level));
     }
 
     static void SavePrefs()

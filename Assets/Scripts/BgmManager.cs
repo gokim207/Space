@@ -17,6 +17,7 @@ public class BgmManager : MonoBehaviour
     private bool applicationSuspended;
     private bool resumeAfterFocus;
     private int pausedTimeSamples;
+    private float pausedTimeSeconds;
     private AudioClip pausedClip;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -88,7 +89,7 @@ public class BgmManager : MonoBehaviour
 
         if (isBaseMusicScene)
         {
-            if (basePlaylistActive && cameFromBaseMusicScene && audioSource != null && audioSource.isPlaying)
+            if (basePlaylistActive && cameFromBaseMusicScene && (resumeAfterFocus || currentClip != null || (audioSource != null && audioSource.isPlaying)))
             {
                 previousSceneName = scene.name;
                 return;
@@ -152,6 +153,7 @@ public class BgmManager : MonoBehaviour
         resumeAfterFocus = false;
         pausedClip = null;
         pausedTimeSamples = 0;
+        pausedTimeSeconds = 0f;
         if (audioSource != null)
             audioSource.Stop();
     }
@@ -183,6 +185,7 @@ public class BgmManager : MonoBehaviour
         resumeAfterFocus = false;
         pausedClip = null;
         pausedTimeSamples = 0;
+        pausedTimeSeconds = 0f;
         currentClip = clip;
         audioSource.clip = clip;
         audioSource.Play();
@@ -195,8 +198,14 @@ public class BgmManager : MonoBehaviour
         if (!basePlaylistActive || audioSource == null || audioSource.clip == null)
             return;
 
+        // On some platforms Unity sends both focus and pause callbacks. Keep the first
+        // captured position because a second callback can report the paused source at 0.
+        if (resumeAfterFocus)
+            return;
+
         pausedClip = audioSource.clip;
         pausedTimeSamples = Mathf.Clamp(audioSource.timeSamples, 0, Mathf.Max(0, pausedClip.samples - 1));
+        pausedTimeSeconds = Mathf.Clamp(audioSource.time, 0f, Mathf.Max(0f, pausedClip.length - 0.01f));
         resumeAfterFocus = true;
 
         if (audioSource.isPlaying)
@@ -213,13 +222,19 @@ public class BgmManager : MonoBehaviour
         audioSource.clip = pausedClip;
         currentClip = pausedClip;
 
-        if (pausedClip.samples > 0)
+        if (pausedTimeSamples > 0 && pausedClip.samples > 0)
             audioSource.timeSamples = Mathf.Clamp(pausedTimeSamples, 0, pausedClip.samples - 1);
+        else if (pausedTimeSeconds > 0f)
+            audioSource.time = Mathf.Clamp(pausedTimeSeconds, 0f, Mathf.Max(0f, pausedClip.length - 0.01f));
 
         audioSource.Play();
+        if (pausedTimeSeconds > 0f)
+            audioSource.time = Mathf.Clamp(pausedTimeSeconds, 0f, Mathf.Max(0f, pausedClip.length - 0.01f));
+
         resumeAfterFocus = false;
         pausedClip = null;
         pausedTimeSamples = 0;
+        pausedTimeSeconds = 0f;
     }
 
     static int GetTrackNumber(AudioClip clip)
