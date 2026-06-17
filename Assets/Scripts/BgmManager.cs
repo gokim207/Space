@@ -14,6 +14,7 @@ public class BgmManager : MonoBehaviour
     private AudioClip currentClip;
     private string previousSceneName = string.Empty;
     private bool basePlaylistActive;
+    private bool titleLoopActive;
     private bool applicationSuspended;
     private bool resumeAfterFocus;
     private int pausedTimeSamples;
@@ -84,10 +85,15 @@ public class BgmManager : MonoBehaviour
     {
         bool isBase = BaseSceneNavigation.IsBaseSceneName(scene.name);
         bool isUpgrade = scene.name == "UpgradeScene";
+        bool isTitle = scene.name == "TitleScene";
         bool isBaseMusicScene = isBase || isUpgrade;
         bool cameFromBaseMusicScene = BaseSceneNavigation.IsBaseSceneName(previousSceneName) || previousSceneName == "UpgradeScene";
 
-        if (isBaseMusicScene)
+        if (isTitle)
+        {
+            StartTitleLoop();
+        }
+        else if (isBaseMusicScene)
         {
             if (basePlaylistActive && cameFromBaseMusicScene && (resumeAfterFocus || currentClip != null || (audioSource != null && audioSource.isPlaying)))
             {
@@ -99,7 +105,7 @@ public class BgmManager : MonoBehaviour
         }
         else
         {
-            StopBasePlaylist();
+            StopMusic();
         }
 
         previousSceneName = scene.name;
@@ -143,12 +149,38 @@ public class BgmManager : MonoBehaviour
         }
 
         basePlaylistActive = true;
+        titleLoopActive = false;
         PlayClip(baseClips[0]);
     }
 
-    void StopBasePlaylist()
+    void StartTitleLoop()
+    {
+        if (titleLoopActive && currentClip != null && audioSource != null && audioSource.isPlaying)
+            return;
+
+        if (baseClips.Length == 0)
+        {
+            LoadBaseClips();
+            if (baseClips.Length == 0)
+                return;
+        }
+
+        AudioClip titleClip = baseClips.FirstOrDefault(clip => GetTrackNumber(clip) == 19);
+        if (titleClip == null)
+        {
+            Debug.LogWarning("BgmManager: 타이틀 BGM 19번을 찾지 못했습니다. Resources/bgm/base/19.* 파일을 확인해 주세요.");
+            return;
+        }
+
+        basePlaylistActive = false;
+        titleLoopActive = true;
+        PlayClip(titleClip, true);
+    }
+
+    void StopMusic()
     {
         basePlaylistActive = false;
+        titleLoopActive = false;
         currentClip = null;
         resumeAfterFocus = false;
         pausedClip = null;
@@ -179,6 +211,11 @@ public class BgmManager : MonoBehaviour
 
     void PlayClip(AudioClip clip)
     {
+        PlayClip(clip, false);
+    }
+
+    void PlayClip(AudioClip clip, bool loop)
+    {
         if (clip == null || audioSource == null)
             return;
 
@@ -188,6 +225,7 @@ public class BgmManager : MonoBehaviour
         pausedTimeSeconds = 0f;
         currentClip = clip;
         audioSource.clip = clip;
+        audioSource.loop = loop;
         audioSource.Play();
     }
 
@@ -195,7 +233,7 @@ public class BgmManager : MonoBehaviour
     {
         applicationSuspended = true;
 
-        if (!basePlaylistActive || audioSource == null || audioSource.clip == null)
+        if ((!basePlaylistActive && !titleLoopActive) || audioSource == null || audioSource.clip == null)
             return;
 
         // On some platforms Unity sends both focus and pause callbacks. Keep the first
@@ -216,7 +254,7 @@ public class BgmManager : MonoBehaviour
     {
         applicationSuspended = false;
 
-        if (!resumeAfterFocus || !basePlaylistActive || audioSource == null || pausedClip == null)
+        if (!resumeAfterFocus || (!basePlaylistActive && !titleLoopActive) || audioSource == null || pausedClip == null)
             return;
 
         audioSource.clip = pausedClip;

@@ -190,7 +190,7 @@ public class GameFlowManager : MonoBehaviour
         CreateLabel(endPanel, "획득한 광석", new Vector2(0.5f, 0.70f), new Vector2(0.5f, 0.70f), Vector2.zero, 18);
         oreResultLabel = CreateLabel(endPanel, "돌 : 0", new Vector2(0.5f, 0.58f), new Vector2(0.5f, 0.58f), Vector2.zero, 20);
         CreateButton(endPanel, "다시 하기", new Vector2(0.25f, 0.15f), new Vector2(0.25f, 0.15f), new Vector2(0f, 0f), () => RestartRun());
-        CreateButton(endPanel, "기지로 이동", new Vector2(0.75f, 0.15f), new Vector2(0.75f, 0.15f), new Vector2(0f, 0f), () => GoToUpgradeScene());
+        CreateButton(endPanel, "기지로 이동", new Vector2(0.75f, 0.15f), new Vector2(0.75f, 0.15f), Vector2.zero, () => GoToBaseSceneFromRun());
 
         // Forge panel
         // Forge UI (wireframe style)
@@ -375,7 +375,7 @@ public class GameFlowManager : MonoBehaviour
         if (sceneBtnEndUpgrade != null)
         {
             sceneBtnEndUpgrade.onClick.RemoveAllListeners();
-            sceneBtnEndUpgrade.onClick.AddListener(() => GoToUpgradeScene());
+            sceneBtnEndUpgrade.onClick.AddListener(() => GoToBaseSceneFromRun());
         }
         if (sceneBtnTitleStart != null)
         {
@@ -1439,7 +1439,7 @@ public class GameFlowManager : MonoBehaviour
         }, "againButton");
         BindButton(sceneBtnEndUpgrade, () =>
         {
-            GoToUpgradeScene();
+            GoToBaseSceneFromRun();
         }, "upgradeButton");
         BindAllButtonsByName(scene, () =>
         {
@@ -1447,7 +1447,7 @@ public class GameFlowManager : MonoBehaviour
         }, "againButton", "AgainButton");
         BindAllButtonsByName(scene, () =>
         {
-            GoToUpgradeScene();
+            GoToBaseSceneFromRun();
         }, "upgradeButton", "UpgradeButton");
     }
 
@@ -1467,7 +1467,7 @@ public class GameFlowManager : MonoBehaviour
         if (IsScreenPointInside(sceneBtnEndUpgrade, mousePosition))
         {
             fallbackEndButtonClickHandled = true;
-            GoToUpgradeScene();
+            GoToBaseSceneFromRun();
         }
     }
 
@@ -1830,6 +1830,14 @@ public class GameFlowManager : MonoBehaviour
         Time.timeScale = 1f;
         var scene = SceneManager.GetActiveScene();
         SceneManager.LoadScene(scene.name);
+    }
+
+
+    void GoToBaseSceneFromRun()
+    {
+        Time.timeScale = 1f;
+        SyncEndResults();
+        BaseSceneNavigation.ReturnToBaseScene();
     }
 
     void GoToUpgradeScene()

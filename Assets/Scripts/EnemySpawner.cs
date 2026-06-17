@@ -19,6 +19,7 @@ public class EnemySpawner : MonoBehaviour
     public float baseMoveSpeed = 1.0f;
     public float speedPerWave = 0.05f;
     public float enemyScaleMultiplier = 1.5f;
+    public bool preservePrefabScale = true;
     public string spawnId = "default";
     public float referencePlanetRadius = 5f;
     bool warnedWaveManagerMissing = false;
@@ -251,10 +252,14 @@ public class EnemySpawner : MonoBehaviour
                     // Older Unity versions may not support maskInteraction property on SpriteRenderer.
                 }
             }
-            // Ensure transform is at z=0 and match player's scale if available
+            // 씬/프리팹에서 맞춘 크기를 기본으로 유지한다. 임시 프리팹만 테스트용으로 플레이어 기준 스케일을 적용한다.
             go.transform.position = new Vector3(pos.x, pos.y, 0f);
-            Vector3 baseScale = playerT != null ? playerT.localScale : Vector3.one;
-            go.transform.localScale = baseScale * Mathf.Max(0.01f, enemyScaleMultiplier);
+            bool isTempPrefab = enemyPrefab != null && enemyPrefab.name.Contains("_Temp");
+            if (!preservePrefabScale || isTempPrefab)
+            {
+                Vector3 baseScale = playerT != null ? playerT.localScale : Vector3.one;
+                go.transform.localScale = baseScale * Mathf.Max(0.01f, enemyScaleMultiplier);
+            }
         }
     }
 

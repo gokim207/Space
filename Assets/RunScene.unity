@@ -1389,6 +1389,8 @@ MonoBehaviour:
   fireRange: 20
   referenceOrbitRadius: 5
   runtimeProjectileVisualScale: 1.5
+  preserveProjectileTemplateScale: 1
+  uiProjectileSizeMultiplier: 1
   firePointLocalOffset: {x: 0, y: 0.08}
   requireTargetInView: 1
   viewportMargin: 0.02
@@ -2142,6 +2144,7 @@ MonoBehaviour:
   baseMoveSpeed: 1
   speedPerWave: 0.05
   enemyScaleMultiplier: 10
+  preservePrefabScale: 1
   spawnId: default
   referencePlanetRadius: 5
 --- !u!4 &1361992044

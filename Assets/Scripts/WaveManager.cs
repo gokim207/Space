@@ -23,6 +23,8 @@ public class WaveManager : MonoBehaviour
     private float baseFireRange = 30f;
     public float referenceOrbitRadius = 5f;
     public float runtimeProjectileVisualScale = 2.25f;
+    public bool preserveProjectileTemplateScale = true;
+    public float uiProjectileSizeMultiplier = 1.5f;
     public Vector2 firePointLocalOffset = new Vector2(0f, 0.08f);
     public bool requireTargetInView = true;
     public float viewportMargin = 0.02f; // allow slight margin outside [0,1]
@@ -203,6 +205,7 @@ public class WaveManager : MonoBehaviour
         if (sprite == null) return null;
 
         var temp = new GameObject("ProjectilePrefab_SceneBullet");
+        temp.transform.localScale = GetProjectileTemplateScale(template, sprite, sourceSpriteRenderer, sourceImage);
         var sr = temp.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
         sr.color = sourceSpriteRenderer != null ? sourceSpriteRenderer.color : sourceImage != null ? sourceImage.color : Color.white;
@@ -224,6 +227,30 @@ public class WaveManager : MonoBehaviour
         temp.SetActive(false);
         usingRuntimeProjectilePrefab = true;
         return temp;
+    }
+
+    Vector3 GetProjectileTemplateScale(GameObject template, Sprite sprite, SpriteRenderer sourceSpriteRenderer, Image sourceImage)
+    {
+        if (sourceSpriteRenderer != null)
+            return template.transform.localScale;
+
+        if (sourceImage != null)
+        {
+            var rect = sourceImage.rectTransform.rect;
+            Vector2 uiSize = rect.size;
+            if (uiSize.x <= 0.01f || uiSize.y <= 0.01f)
+                uiSize = sourceImage.rectTransform.sizeDelta;
+
+            Vector2 spriteSize = sprite.bounds.size;
+            if (uiSize.x > 0.01f && uiSize.y > 0.01f && spriteSize.x > 0.01f && spriteSize.y > 0.01f)
+            {
+                float scaleX = uiSize.x / spriteSize.x;
+                float scaleY = uiSize.y / spriteSize.y;
+                return new Vector3(scaleX, scaleY, 1f) * Mathf.Max(0.01f, uiProjectileSizeMultiplier);
+            }
+        }
+
+        return template.transform.localScale;
     }
 
     GameObject CreateProjectilePrefabFromResources()
@@ -536,7 +563,8 @@ public class WaveManager : MonoBehaviour
                 proj.lifeTime = Mathf.Max(baseProjectileLifeTime, fireRange / Mathf.Max(1f, proj.speed) + 0.25f);
                 proj.SetMoveDirection(shotRotation * Vector3.right);
             }
-            if (usingRuntimeProjectilePrefab || projectilePrefab.name.Contains("_Temp"))
+            bool isTempProjectile = projectilePrefab.name.Contains("_Temp");
+            if ((usingRuntimeProjectilePrefab && !preserveProjectileTemplateScale) || isTempProjectile)
                 pgo.transform.localScale = Vector3.one * Mathf.Max(1f, GetWorldScale() * runtimeProjectileVisualScale);
             else
                 pgo.transform.localScale = projectilePrefab.transform.localScale;
