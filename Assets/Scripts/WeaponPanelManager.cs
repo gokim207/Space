@@ -128,7 +128,7 @@ public class WeaponPanelManager : MonoBehaviour
         SetText(weaponNameText, string.IsNullOrEmpty(weapon.weaponName) ? weapon.weaponId : weapon.weaponName);
         SetText(descText, weapon.desc);
         SetText(damageText, $"공격력 : {effectiveDamage}{damageDelta}");
-        SetText(fireSpeedText, $"공격속도 : {effectiveFireInterval:0.##}{fireSpeedDelta}");
+        SetText(fireSpeedText, $"공격속도 : {effectiveFireInterval:0.##}s{fireSpeedDelta}");
         SetText(rangeText, $"사거리 : {weapon.detectRange:0.##}");
         SetText(pierceText, $"관통 : {weapon.pierceCount}");
         SetText(projectileCountText, $"투사체 : {weapon.projCount}");
@@ -238,7 +238,7 @@ public class WeaponPanelManager : MonoBehaviour
         {
             valueText.gameObject.SetActive(hasData);
             valueText.text = hasData ? cost.amount.ToString() : "";
-            valueText.color = !hasData || currentAmount >= cost.amount ? Color.white : new Color(1f, 0.35f, 0.35f, 1f);
+            valueText.color = !hasData ? Color.white : (currentAmount >= cost.amount ? new Color32(0x00, 0xC8, 0x16, 0xFF) : new Color(1f, 0.35f, 0.35f, 1f));
         }
     }
 
@@ -274,7 +274,7 @@ public class WeaponPanelManager : MonoBehaviour
 
         string sign = value > 0f ? "+" : "-";
         string amount = Mathf.Abs(value).ToString(format);
-        return $"<alpha=#80>( {sign}{amount} )";
+        return $" <alpha=#80>( {sign} {amount} )";
     }
 
     bool CanUseUpgrade(GameData.WeaponUpgradeDef upgrade, int currentLevel)

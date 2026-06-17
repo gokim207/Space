@@ -471,7 +471,34 @@ public class GameFlowManager : MonoBehaviour
             colors.selectedColor = titleMenuSelectedColor;
             colors.pressedColor = titleMenuSelectedColor;
             button.colors = colors;
+
+            var graphic = button.targetGraphic != null ? button.targetGraphic : button.GetComponent<Graphic>();
+            if (graphic != null)
+            {
+                graphic.raycastTarget = true;
+                button.targetGraphic = graphic;
+            }
+
+            var pointerTarget = button.GetComponent<TitleMenuPointerTarget>();
+            if (pointerTarget == null)
+                pointerTarget = button.gameObject.AddComponent<TitleMenuPointerTarget>();
+            pointerTarget.Init(this, button);
         }
+    }
+
+    public void SelectTitleMenuButtonFromPointer(Button button)
+    {
+        if (button == null) return;
+        if (slotPanel != null && slotPanel.activeInHierarchy) return;
+        if (sceneSettingPanel != null && sceneSettingPanel.activeInHierarchy) return;
+        if (titleMenuButtons.Count == 0)
+            RebuildTitleMenuButtons();
+
+        int index = titleMenuButtons.IndexOf(button);
+        if (index < 0) return;
+
+        titleMenuIndex = index;
+        RefreshTitleMenuSelection();
     }
 
     void EnsureTitleSelector(Button selected)
@@ -2463,5 +2490,33 @@ public class GameFlowManager : MonoBehaviour
         slotStatusLabel.color = c;
         slotStatusLabel.text = "";
         slotStatusLabel.gameObject.SetActive(false);
+    }
+}
+
+
+public class TitleMenuPointerTarget : MonoBehaviour, IPointerEnterHandler, IPointerMoveHandler, IPointerDownHandler
+{
+    private GameFlowManager manager;
+    private Button button;
+
+    public void Init(GameFlowManager owner, Button targetButton)
+    {
+        manager = owner;
+        button = targetButton;
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        manager?.SelectTitleMenuButtonFromPointer(button);
+    }
+
+    public void OnPointerMove(PointerEventData eventData)
+    {
+        manager?.SelectTitleMenuButtonFromPointer(button);
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        manager?.SelectTitleMenuButtonFromPointer(button);
     }
 }
