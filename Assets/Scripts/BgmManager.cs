@@ -6,6 +6,10 @@ using UnityEngine.SceneManagement;
 public class BgmManager : MonoBehaviour
 {
     private const string BaseBgmResourcePath = "bgm/base";
+    public const string MusicVolumePrefKey = "setting_music_volume";
+    public const string EffectVolumePrefKey = "setting_effect_volume";
+    public const float DefaultMusicVolume = 0.5f;
+    public const float DefaultEffectVolume = 0.5f;
 
     private static BgmManager instance;
 
@@ -56,12 +60,46 @@ public class BgmManager : MonoBehaviour
         audioSource.playOnAwake = false;
         audioSource.loop = false;
         audioSource.spatialBlend = 0f;
-        audioSource.volume = 0.6f;
+        ApplySavedVolume();
 
         LoadBaseClips();
 
         SceneManager.sceneLoaded -= OnSceneLoaded;
         SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    public static float MusicVolume => PlayerPrefs.GetFloat(MusicVolumePrefKey, DefaultMusicVolume);
+    public static float EffectVolume => PlayerPrefs.GetFloat(EffectVolumePrefKey, DefaultEffectVolume);
+
+    public static void SetMusicVolume(float volume)
+    {
+        PlayerPrefs.SetFloat(MusicVolumePrefKey, Mathf.Clamp01(volume));
+        PlayerPrefs.Save();
+
+        if (instance != null && !instance.Equals(null))
+            instance.ApplySavedVolume();
+    }
+
+    public static void SetEffectVolume(float volume)
+    {
+        PlayerPrefs.SetFloat(EffectVolumePrefKey, Mathf.Clamp01(volume));
+        PlayerPrefs.Save();
+    }
+
+    public static void ResetSoundSettings()
+    {
+        PlayerPrefs.SetFloat(MusicVolumePrefKey, DefaultMusicVolume);
+        PlayerPrefs.SetFloat(EffectVolumePrefKey, DefaultEffectVolume);
+        PlayerPrefs.Save();
+
+        if (instance != null && !instance.Equals(null))
+            instance.ApplySavedVolume();
+    }
+
+    void ApplySavedVolume()
+    {
+        if (audioSource != null)
+            audioSource.volume = MusicVolume;
     }
 
     void OnDestroy()

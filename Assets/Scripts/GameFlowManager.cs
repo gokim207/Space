@@ -9,6 +9,9 @@ using System.Collections.Generic;
 
 public class GameFlowManager : MonoBehaviour
 {
+    private const string FullscreenPrefKey = "setting_fullscreen";
+    private const bool DefaultFullscreen = false;
+
     public enum GamePhase { Run, End, Forge, SkillTree, Weapon, Title, SlotSelect }
     public GamePhase CurrentPhase { get; private set; } = GamePhase.Run;
 
@@ -141,6 +144,7 @@ public class GameFlowManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        ApplyDisplaySettings();
         if (!TryBindSceneUI())
             EnsureUI();
         SceneManager.sceneLoaded += OnSceneLoaded;
@@ -392,6 +396,7 @@ public class GameFlowManager : MonoBehaviour
             sceneBtnTitleSetting.onClick.RemoveAllListeners();
             sceneBtnTitleSetting.onClick.AddListener(() => ShowTitleSettingPanel());
         }
+        BindTitleSettingButtons(SceneManager.GetActiveScene());
         if (sceneBtnTitleLeave != null)
         {
             sceneBtnTitleLeave.onClick.RemoveAllListeners();
@@ -582,6 +587,60 @@ public class GameFlowManager : MonoBehaviour
         CurrentPhase = GamePhase.Title;
         SetActiveSafe(slotPanel, false);
         SetActiveSafe(sceneSettingPanel, true);
+        BindTitleSettingButtons(SceneManager.GetActiveScene());
+    }
+
+    void BindTitleSettingButtons(Scene scene)
+    {
+        if (scene.name != "TitleScene") return;
+        if (sceneSettingPanel == null) return;
+
+        BindButton(FindButton(scene, "fullButton", "FullButton", "fullscreenButton", "FullscreenButton"), () =>
+        {
+            SetFullscreen(true);
+        }, "fullButton");
+
+        BindButton(FindButton(scene, "winButton", "WinButton", "windowButton", "WindowButton"), () =>
+        {
+            SetFullscreen(false);
+        }, "winButton");
+
+        BindButton(FindButton(scene, "resetButton", "ResetButton"), () =>
+        {
+            ResetSettingsFromSettingsPanel();
+        }, "resetButton");
+    }
+
+    void ApplyDisplaySettings()
+    {
+        bool fullscreen = PlayerPrefs.GetInt(FullscreenPrefKey, Screen.fullScreen ? 1 : 0) == 1;
+        ApplyFullscreenMode(fullscreen, false);
+    }
+
+    void SetFullscreen(bool fullscreen)
+    {
+        PlayerPrefs.SetInt(FullscreenPrefKey, fullscreen ? 1 : 0);
+        PlayerPrefs.Save();
+        ApplyFullscreenMode(fullscreen, true);
+    }
+
+    void ApplyFullscreenMode(bool fullscreen, bool forceResolution)
+    {
+        Screen.fullScreenMode = fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+        Screen.fullScreen = fullscreen;
+
+        if (forceResolution)
+            Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, fullscreen);
+    }
+
+    void ResetSettingsFromSettingsPanel()
+    {
+        PlayerPrefs.SetInt(FullscreenPrefKey, DefaultFullscreen ? 1 : 0);
+        BgmManager.ResetSoundSettings();
+        PlayerPrefs.Save();
+
+        ApplyFullscreenMode(DefaultFullscreen, true);
+        Debug.Log("설정 초기화: 화면 설정과 사운드 설정을 기본값으로 되돌렸습니다. (음악 50%, 효과음 50%)");
     }
 
     void UpdateTitleMenuInput()
@@ -602,6 +661,11 @@ public class GameFlowManager : MonoBehaviour
 
     void BindSceneSlotButtons(Scene scene)
     {
+        BindButton(FindButton(scene, "Xbtn", "xBtn", "XBtn"), () =>
+        {
+            ShowTitle();
+        }, "Xbtn");
+
         string[] names = { "file1", "file2", "file3" };
         for (int i = 0; i < names.Length; i++)
         {
@@ -2146,6 +2210,13 @@ public class GameFlowManager : MonoBehaviour
             ShowSlotStatus("빈 슬롯입니다.", slotButtons[slot - 1]?.GetComponent<RectTransform>());
             return;
         }
+        DeleteSlotData(slot);
+        RefreshSlotUI();
+        ShowSlotStatus("삭제 완료", slotButtons[slot - 1]?.GetComponent<RectTransform>());
+    }
+
+    void DeleteSlotData(int slot)
+    {
         PlayerPrefs.DeleteKey($"slot_{slot}_money");
         PlayerPrefs.DeleteKey($"slot_{slot}_stone");
         PlayerPrefs.DeleteKey($"slot_{slot}_copper");
@@ -2165,8 +2236,22 @@ public class GameFlowManager : MonoBehaviour
                 PlayerPrefs.DeleteKey($"slot_{slot}_skill_{ids[i]}");
         }
         PlayerPrefs.Save();
+    }
+
+    void ResetAllSaveDataFromSettings()
+    {
+        for (int slot = 1; slot <= 3; slot++)
+            DeleteSlotData(slot);
+
+        CurrentSlot = 1;
+        money = 0f;
+        stone = 0;
+        copper = 0;
+        playtimeSeconds = 0f;
+        SkillTreeManager.ResetAllSkills();
+        SyncForgeData();
         RefreshSlotUI();
-        ShowSlotStatus("삭제 완료", slotButtons[slot - 1]?.GetComponent<RectTransform>());
+        Debug.Log("설정 초기화: 모든 저장 슬롯 데이터를 삭제했습니다.");
     }
 
     void AskDelete(int slot)
