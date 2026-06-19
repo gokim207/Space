@@ -518,8 +518,6 @@ public class WaveManager : MonoBehaviour
         if (projectilePrefab == null || firePoint == null) return;
         if (runWeaponDisplay == null)
             runWeaponDisplay = RunWeaponDisplay.EnsureExists(this);
-        if (runWeaponDisplay != null)
-            runWeaponDisplay.RefreshMuzzlePosition();
 
         // Find nearest enemy within range
         Transform target = FindNearestEnemy(firePoint.position, fireRange);
@@ -541,6 +539,13 @@ public class WaveManager : MonoBehaviour
                 firePoint.rotation = Quaternion.Euler(0f, 0f, ang);
             }
         }
+
+        if (runWeaponDisplay != null)
+        {
+            runWeaponDisplay.SetAimRotation(firePoint.rotation);
+            runWeaponDisplay.RefreshMuzzlePosition();
+        }
+
         int projectileCount = Mathf.Max(1, baseProjectileCount);
         float centerOffset = (projectileCount - 1) * 0.5f;
         for (int i = 0; i < projectileCount; i++)
@@ -725,7 +730,8 @@ public class RunWeaponDisplay : MonoBehaviour
         weaponRenderer = sceneWeaponRenderer;
 
         RefreshWeaponSprite(true);
-        RefreshDirection();
+        if (waveManager.firePoint != null)
+            SetAimRotation(waveManager.firePoint.rotation);
         RefreshMuzzlePosition();
     }
 
@@ -738,7 +744,6 @@ public class RunWeaponDisplay : MonoBehaviour
             player = FindFirstObjectByType<PlayerController>();
 
         RefreshWeaponSprite(false);
-        RefreshDirection();
         RefreshMuzzlePosition();
     }
 
@@ -747,12 +752,11 @@ public class RunWeaponDisplay : MonoBehaviour
         if (waveManager == null || waveManager.firePoint == null || player == null)
             return;
 
-        bool facingRight = player.IsFacingRight;
         if (weaponRenderer != null && weaponRenderer.sprite != null)
         {
             Bounds spriteBounds = weaponRenderer.sprite.bounds;
             Vector3 localMuzzle = new Vector3(
-                facingRight ? spriteBounds.max.x : spriteBounds.min.x,
+                spriteBounds.max.x,
                 spriteBounds.center.y,
                 0f);
             Vector3 worldMuzzle = weaponRenderer.transform.TransformPoint(localMuzzle);
@@ -791,13 +795,14 @@ public class RunWeaponDisplay : MonoBehaviour
         displayedWeaponId = weaponId;
     }
 
-    void RefreshDirection()
+    public void SetAimRotation(Quaternion shotRotation)
     {
         if (weaponRenderer == null)
             return;
 
-        bool facingRight = player == null || player.IsFacingRight;
-        weaponRenderer.flipX = !facingRight;
+        weaponRenderer.flipX = false;
+        weaponRenderer.flipY = false;
+        weaponRenderer.transform.rotation = shotRotation;
     }
 
     static SpriteRenderer FindSceneWeaponRenderer()
