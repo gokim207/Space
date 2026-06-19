@@ -268,10 +268,11 @@ public class GameFlowManager : MonoBehaviour
         {
             // Attempt auto-bind by common object names in the active scene.
             var activeScene = SceneManager.GetActiveScene();
+            bool isUpgradeScene = activeScene.name == "UpgradeScene";
             sceneCanvas = sceneCanvas != null ? sceneCanvas : FindCanvasInScene(activeScene);
-            sceneForgePanel = sceneForgePanel != null ? sceneForgePanel : FindInScene(activeScene, "forgePanel", "ForgePanel");
-            sceneSkillPanel = sceneSkillPanel != null ? sceneSkillPanel : FindInScene(activeScene, "skillPanel", "SkillPanel");
-            sceneWeaponPanel = sceneWeaponPanel != null ? sceneWeaponPanel : FindInScene(activeScene, "weaponPanel", "WeaponPanel");
+            sceneForgePanel = isUpgradeScene && sceneForgePanel == null ? FindInScene(activeScene, "forgePanel", "ForgePanel") : sceneForgePanel;
+            sceneSkillPanel = isUpgradeScene && sceneSkillPanel == null ? FindInScene(activeScene, "skillPanel", "SkillPanel") : sceneSkillPanel;
+            sceneWeaponPanel = isUpgradeScene && sceneWeaponPanel == null ? FindInScene(activeScene, "weaponPanel", "WeaponPanel") : sceneWeaponPanel;
             sceneRunHud = sceneRunHud != null ? sceneRunHud : FindInScene(activeScene, "runPanel", "runHud", "RunPanel", "RunHUD");
             sceneEndPanel = sceneEndPanel != null ? sceneEndPanel : FindInScene(activeScene, "endPanel", "EndPanel");
             sceneTitlePanel = sceneTitlePanel != null ? sceneTitlePanel : FindInScene(activeScene, "titlePanel", "TitlePanel");
@@ -1136,7 +1137,8 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, false);
         SetActiveSafe(skillPanel, false);
-        SetActiveSafe(weaponPanel, false);
+        if (weaponPanel == null || weaponPanel.scene.name == "UpgradeScene")
+            SetActiveSafe(weaponPanel, false);
         SetActiveSafe(titlePanel, false);
         SetActiveSafe(slotPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
@@ -1606,6 +1608,11 @@ public class GameFlowManager : MonoBehaviour
         var scene = SceneManager.GetActiveScene();
         if (scene.name != "RunScene") return;
 
+        if (sceneWeaponPanel != null && sceneWeaponPanel.scene == scene)
+            sceneWeaponPanel = null;
+        if (weaponPanel != null && weaponPanel.scene == scene)
+            weaponPanel = null;
+
         sceneCanvas = FindCanvasInScene(scene);
         sceneRunHud = FindInScene(scene, "runPanel", "runHud", "RunPanel", "RunHUD");
         sceneEndPanel = FindInScene(scene, "endPanel", "EndPanel");
@@ -1622,6 +1629,9 @@ public class GameFlowManager : MonoBehaviour
         canvas = sceneCanvas != null ? sceneCanvas : canvas;
         runHud = sceneRunHud;
         endPanel = sceneEndPanel;
+        var runWeaponPanel = FindInScene(scene, "weaponPanel", "WeaponPanel");
+        if (runWeaponPanel != null)
+            runWeaponPanel.SetActive(true);
         if (sceneEndResultText != null) endReasonLabelTMP = sceneEndResultText;
         if (sceneEndStoneText != null) endStoneResultTMP = sceneEndStoneText;
         if (sceneEndCopperText != null) endCopperResultTMP = sceneEndCopperText;

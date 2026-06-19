@@ -1,0 +1,51 @@
+traitId,name,desc,rarity,weaponType,weight
+overcharged_1,과충전 I,공격력 +5%\n공격 속도 -5%,common,all,100
+overcharged_2,과충전 II,공격력 +10%\n공격 속도 -10%,rare,all,50
+overcharged_3,과충전 III,공격력 +15%\n공격 속도 -15%,epic,all,20
+overcharged_4,과충전 IV,공격력 +20%\n공격 속도 -20%,legendary,all,5
+lightweight_1,경량탄 I,공격력 -5%\n공격 속도 +5%,common,all,100
+lightweight_2,경량탄 II,공격력 -10%\n공격 속도 +10%,rare,all,50
+lightweight_3,경량탄 III,공격력 -15%\n공격 속도 +15%,epic,all,20
+lightweight_4,경량탄 IV,공격력 -20%\n공격 속도 +20%,legendary,all,5
+precision_1,관통탄 I,관통 탄환 수 + 1,common,all,100
+precision_2,관통탄 II,관통 탄환 수 + 2,rare,all,50
+precision_3,관통탄 III,관통 탄환 수 + 3,epic,all,20
+precision_4,관통탄 IV,관통 탄환 수 + 4,legendary,all,5
+concentrated_1,집중 사격 I,같은 적을 공격할 때마다\n피해량 +5%(최대 5회),rare,all,50
+concentrated_2,집중 사격 II,같은 적을 공격할 때마다\n피해량 +7%(최대 5회),epic,all,20
+concentrated_3,집중 사격 III,같은 적을 공격할 때마다\n피해량 +10%(최대 5회),legendary,all,5
+unstable_core_1,불안전탄 I,5% 확률로 2배 피해\n10% 확률로 탄환 소멸,rare,all,50
+unstable_core_2,불안전탄 II,10% 확률로 2배 피해\n10% 확률로 탄환이 소멸합니다.,epic,all,20
+unstable_core_3,불안전탄 III,15% 확률로 2배 피해\n5% 확률로 탄환이 소멸합니다.,legendary,all,5
+oxygen_absorb_1,산소탄 I,적 처치 시 잃은 산소의 3% 회복,common,all,100
+oxygen_absorb_2,산소탄 II,적 처치 시 잃은 산소의 5% 회복,rare,all,50
+oxygen_absorb_3,산소탄 III,적 처치 시 잃은 산소의 7% 회복,epic,all,20
+oxygen_absorb_4,산소탄 IV,적 처치 시 잃은 산소의 10% 회복,legendary,all,5
+mineral_detect_1,광물탄 I,광물 획득량 +5%,common,all,100
+mineral_detect_2,광물탄 II,광물 획득량 +10%,rare,all,50
+mineral_detect_3,광물탄 III,광물 획득량 +15%,epic,all,20
+mineral_detect_4,광물탄 IV,광물 획득량 +30%,legendary,all,5
+survival_instinct_1,생존 본능 I,잃은 산소 비례하여 공격 속도 최대 10% 증가,common,all,100
+survival_instinct_2,생존 본능 II,잃은 산소 비례하여 공격 속도 최대 25% 증가,rare,all,50
+survival_instinct_3,생존 본능 III,잃은 산소 비례하여 공격 속도 최대 40% 증가,epic,all,20
+survival_instinct_4,생존 본능 IV,잃은 산소 비례하여 공격 속도 최대 60% 증가,legendary,all,5
+explore_bonus_1,보너스 I,웨이브 종료 시 획득 광석 +5%,common,all,100
+explore_bonus_2,보너스 II,웨이브 종료 시 획득 광석 +10%,rare,all,50
+explore_bonus_3,보너스 III,웨이브 종료 시 획득 광석 +15%,epic,all,20
+explore_bonus_4,보너스 IV,웨이브 종료 시 획득 광석 +20%,legendary,all,5
+pistol_precision,정밀 조준,탄환 피해 +25%,special,starter_gun,25
+pistol_quick_hand,빠른 손놀림,공격 속도 + 15%,special,starter_gun,25
+pistol_critical,약점 사격,10% 확률로 200%의 피해를 입힙니다,special,starter_gun,25
+pistol_power_chamber,강화 약실,3번째 탄환마다 200% 피해를 입힙니다.,special,starter_gun,25
+shotgun_spread_plus,탄환 확산,탄환 개수 + 3,special,multi_shot,25
+shotgun_narrow_barrage,좁은 탄막,탄 퍼짐 -30%\n탄환 피해 +20%,special,multi_shot,25
+shotgun_close_impact,산탄 충격,적과 가까울수록 피해가 증가합니다.\n최대 피해 +50%,special,multi_shot,25
+shotgun_pierce_pellet,관통 산탄,탄환 관통 +3,special,multi_shot,25
+machinegun_ramp_up,연사 가속,계속 발사할수록 공격 속도가 증가합니다.,special,machine_gun,25
+machinegun_overheat,과열,계속 발사할수록 공격력이 증가합니다.\n최대 도달 시 잠시 느려집니다.,special,machine_gun,25
+machinegun_barrage,탄막 과부하,공격 속도 +20%\n탄 퍼짐 +25%,special,machine_gun,25
+machinegun_stable_fire,안정 사격,1초 이상 이동하지 않으면\n공격력 +20%\n공격 속도 +15%,special,machine_gun,25
+sniper_line_pierce,일직선 관통,탄환 관통 +4,special,sniper_rail,25
+sniper_weakness_pierce,약점 관통,첫 번째 적에게 200% 피해를 입히고 이후 적에게는 피해가 감소합니다,special,sniper_rail,25
+sniper_charge_shot,차지샷,발사 간격 +50%\n피해 +100%,special,sniper_rail,25
+sniper_execute,처형탄,체력이 15% 이하인 일반 적을 즉시 처치합니다./n(보스 제외),special,sniper_rail,25

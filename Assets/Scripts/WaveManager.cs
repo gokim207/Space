@@ -25,10 +25,11 @@ public class WaveManager : MonoBehaviour
     public float runtimeProjectileVisualScale = 2.25f;
     public bool preserveProjectileTemplateScale = true;
     public float uiProjectileSizeMultiplier = 1.5f;
-    public Vector2 firePointLocalOffset = new Vector2(0f, 0.08f);
+    public Vector2 firePointLocalOffset = new Vector2(0.25f, 0.05f);
     public bool requireTargetInView = true;
     public float viewportMargin = 0.02f; // allow slight margin outside [0,1]
     private bool usingRuntimeProjectilePrefab = false;
+    private RunWeaponDisplay runWeaponDisplay;
     // Wave system
     public int currentWave = 1;
     public float waveDuration = 40f;
@@ -143,6 +144,8 @@ public class WaveManager : MonoBehaviour
             }
             firePoint = fpgo.transform;
         }
+
+        runWeaponDisplay = RunWeaponDisplay.EnsureExists(this);
 
         // Runtime: prefer a scene bullet template, then data/resource art, then a debug square.
         if (projectilePrefab == null)
@@ -513,6 +516,11 @@ public class WaveManager : MonoBehaviour
     void AutoFire()
     {
         if (projectilePrefab == null || firePoint == null) return;
+        if (runWeaponDisplay == null)
+            runWeaponDisplay = RunWeaponDisplay.EnsureExists(this);
+        if (runWeaponDisplay != null)
+            runWeaponDisplay.RefreshMuzzlePosition();
+
         // Find nearest enemy within range
         Transform target = FindNearestEnemy(firePoint.position, fireRange);
         if (target != null)
@@ -681,4 +689,159 @@ public class WaveManager : MonoBehaviour
         }
         return best;
     }
+}
+
+public class RunWeaponDisplay : MonoBehaviour
+{
+    private WaveManager waveManager;
+    private PlayerController player;
+    private SpriteRenderer weaponRenderer;
+    private string displayedWeaponId;
+
+    public static RunWeaponDisplay EnsureExists(WaveManager manager)
+    {
+        if (manager == null || SceneManager.GetActiveScene().name != "RunScene")
+            return null;
+
+        SpriteRenderer sceneWeaponRenderer = FindSceneWeaponRenderer();
+        if (sceneWeaponRenderer == null)
+        {
+            Debug.LogWarning("RunWeaponDisplay: Player 하위의 WeaponVisual SpriteRenderer를 찾지 못했습니다.");
+            return null;
+        }
+
+        var display = sceneWeaponRenderer.GetComponent<RunWeaponDisplay>();
+        if (display == null)
+            display = sceneWeaponRenderer.gameObject.AddComponent<RunWeaponDisplay>();
+
+        display.Configure(manager, sceneWeaponRenderer);
+        return display;
+    }
+
+    public void Configure(WaveManager manager, SpriteRenderer sceneWeaponRenderer)
+    {
+        waveManager = manager;
+        player = FindFirstObjectByType<PlayerController>();
+        weaponRenderer = sceneWeaponRenderer;
+
+        RefreshWeaponSprite(true);
+        RefreshDirection();
+        RefreshMuzzlePosition();
+    }
+
+    void LateUpdate()
+    {
+        if (waveManager == null)
+            return;
+
+        if (player == null)
+            player = FindFirstObjectByType<PlayerController>();
+
+        RefreshWeaponSprite(false);
+        RefreshDirection();
+        RefreshMuzzlePosition();
+    }
+
+    public void RefreshMuzzlePosition()
+    {
+        if (waveManager == null || waveManager.firePoint == null || player == null)
+            return;
+
+        bool facingRight = player.IsFacingRight;
+        if (weaponRenderer != null && weaponRenderer.sprite != null)
+        {
+            Bounds spriteBounds = weaponRenderer.sprite.bounds;
+            Vector3 localMuzzle = new Vector3(
+                facingRight ? spriteBounds.max.x : spriteBounds.min.x,
+                spriteBounds.center.y,
+                0f);
+            Vector3 worldMuzzle = weaponRenderer.transform.TransformPoint(localMuzzle);
+            worldMuzzle.z = player.transform.position.z;
+            waveManager.firePoint.position = worldMuzzle;
+            return;
+        }
+
+    }
+
+    void RefreshWeaponSprite(bool force)
+    {
+        if (weaponRenderer == null)
+            return;
+
+        string weaponId = WeaponPanelManager.GetEquippedWeaponId();
+        if (!force && displayedWeaponId == weaponId)
+            return;
+
+        var weapon = GameData.GetWeapon(weaponId);
+        string iconKey = weapon != null && !string.IsNullOrWhiteSpace(weapon.iconKey)
+            ? weapon.iconKey.Trim()
+            : $"icon_{weaponId}";
+        Sprite sprite = LoadWeaponSprite(iconKey);
+
+        if (sprite == null)
+        {
+            Debug.LogWarning($"RunWeaponDisplay: Resources/weapon/{iconKey} 무기 이미지를 찾지 못했습니다.");
+            weaponRenderer.enabled = false;
+            displayedWeaponId = weaponId;
+            return;
+        }
+
+        weaponRenderer.sprite = sprite;
+        weaponRenderer.enabled = true;
+        displayedWeaponId = weaponId;
+    }
+
+    void RefreshDirection()
+    {
+        if (weaponRenderer == null)
+            return;
+
+        bool facingRight = player == null || player.IsFacingRight;
+        weaponRenderer.flipX = !facingRight;
+    }
+
+    static SpriteRenderer FindSceneWeaponRenderer()
+    {
+        PlayerController playerController = FindFirstObjectByType<PlayerController>();
+        if (playerController == null)
+            return null;
+
+        SpriteRenderer[] renderers = playerController.GetComponentsInChildren<SpriteRenderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            SpriteRenderer renderer = renderers[i];
+            if (renderer == null || renderer.gameObject == playerController.gameObject)
+                continue;
+
+            if (renderer.name == "WeaponVisual")
+                return renderer;
+        }
+
+        return null;
+    }
+
+    static Sprite LoadWeaponSprite(string iconKey)
+    {
+        if (string.IsNullOrWhiteSpace(iconKey))
+            return null;
+
+        Sprite sprite = Resources.Load<Sprite>($"weapon/{iconKey}");
+        if (sprite != null)
+            return sprite;
+
+        Sprite[] sprites = Resources.LoadAll<Sprite>($"weapon/{iconKey}");
+        if (sprites == null || sprites.Length == 0)
+            return null;
+
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            if (sprites[i] != null &&
+                (sprites[i].name == iconKey || sprites[i].name == $"{iconKey}_0"))
+                return sprites[i];
+        }
+
+        return sprites[0];
+    }
+
 }

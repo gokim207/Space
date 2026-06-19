@@ -6,6 +6,8 @@ using UnityEngine.SceneManagement;
 public class BgmManager : MonoBehaviour
 {
     private const string BaseBgmResourcePath = "bgm/base";
+    private const string Battle01ResourcePath = "bgm/battle01";
+    private const string Battle02ResourcePath = "bgm/battle02";
     public const string MusicVolumePrefKey = "setting_music_volume";
     public const string EffectVolumePrefKey = "setting_effect_volume";
     public const float DefaultMusicVolume = 0.5f;
@@ -15,9 +17,13 @@ public class BgmManager : MonoBehaviour
 
     private AudioSource audioSource;
     private AudioClip[] baseClips = Array.Empty<AudioClip>();
+    private AudioClip[] battle01Clips = Array.Empty<AudioClip>();
+    private AudioClip[] battle02Clips = Array.Empty<AudioClip>();
+    private AudioClip[] activeBattleClips = Array.Empty<AudioClip>();
     private AudioClip currentClip;
     private string previousSceneName = string.Empty;
     private bool basePlaylistActive;
+    private bool battlePlaylistActive;
     private bool titleLoopActive;
     private bool applicationSuspended;
     private bool resumeAfterFocus;
@@ -63,6 +69,7 @@ public class BgmManager : MonoBehaviour
         ApplySavedVolume();
 
         LoadBaseClips();
+        LoadBattleClips();
 
         SceneManager.sceneLoaded -= OnSceneLoaded;
         SceneManager.sceneLoaded += OnSceneLoaded;
@@ -110,13 +117,16 @@ public class BgmManager : MonoBehaviour
 
     void Update()
     {
-        if (!basePlaylistActive || applicationSuspended || resumeAfterFocus)
+        if ((!basePlaylistActive && !battlePlaylistActive) || applicationSuspended || resumeAfterFocus)
             return;
 
-        if (audioSource == null || audioSource.isPlaying || baseClips.Length == 0)
+        if (audioSource == null || audioSource.isPlaying)
             return;
 
-        PlayRandomBaseClip();
+        if (battlePlaylistActive)
+            PlayRandomBattleClip();
+        else if (basePlaylistActive && baseClips.Length > 0)
+            PlayRandomBaseClip();
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -124,12 +134,17 @@ public class BgmManager : MonoBehaviour
         bool isBase = BaseSceneNavigation.IsBaseSceneName(scene.name);
         bool isUpgrade = scene.name == "UpgradeScene";
         bool isTitle = scene.name == "TitleScene";
+        bool isRun = scene.name == "RunScene";
         bool isBaseMusicScene = isBase || isUpgrade;
         bool cameFromBaseMusicScene = BaseSceneNavigation.IsBaseSceneName(previousSceneName) || previousSceneName == "UpgradeScene";
 
         if (isTitle)
         {
             StartTitleLoop();
+        }
+        else if (isRun)
+        {
+            StartBattlePlaylist();
         }
         else if (isBaseMusicScene)
         {
@@ -177,6 +192,26 @@ public class BgmManager : MonoBehaviour
             Debug.LogWarning($"BgmManager: Resources/{BaseBgmResourcePath} 에 BGM AudioClip이 없습니다.");
     }
 
+    void LoadBattleClips()
+    {
+        battle01Clips = LoadClips(Battle01ResourcePath);
+        battle02Clips = LoadClips(Battle02ResourcePath);
+
+        if (battle01Clips.Length == 0)
+            Debug.LogWarning($"BgmManager: Resources/{Battle01ResourcePath} 에 BGM AudioClip이 없습니다.");
+        if (battle02Clips.Length == 0)
+            Debug.LogWarning($"BgmManager: Resources/{Battle02ResourcePath} 에 BGM AudioClip이 없습니다.");
+    }
+
+    AudioClip[] LoadClips(string resourcePath)
+    {
+        return Resources.LoadAll<AudioClip>(resourcePath)
+            .Where(clip => clip != null)
+            .OrderBy(GetTrackNumber)
+            .ThenBy(clip => clip.name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
     void StartBasePlaylistFromFirstTrack()
     {
         if (baseClips.Length == 0)
@@ -187,8 +222,34 @@ public class BgmManager : MonoBehaviour
         }
 
         basePlaylistActive = true;
+        battlePlaylistActive = false;
         titleLoopActive = false;
         PlayClip(baseClips[0]);
+    }
+
+    void StartBattlePlaylist()
+    {
+        if (battle01Clips.Length == 0 && battle02Clips.Length == 0)
+        {
+            LoadBattleClips();
+            if (battle01Clips.Length == 0 && battle02Clips.Length == 0)
+            {
+                StopMusic();
+                return;
+            }
+        }
+
+        if (battle01Clips.Length == 0)
+            activeBattleClips = battle02Clips;
+        else if (battle02Clips.Length == 0)
+            activeBattleClips = battle01Clips;
+        else
+            activeBattleClips = UnityEngine.Random.Range(0, 2) == 0 ? battle01Clips : battle02Clips;
+
+        basePlaylistActive = false;
+        battlePlaylistActive = true;
+        titleLoopActive = false;
+        PlayRandomBattleClip();
     }
 
     void StartTitleLoop()
@@ -211,6 +272,7 @@ public class BgmManager : MonoBehaviour
         }
 
         basePlaylistActive = false;
+        battlePlaylistActive = false;
         titleLoopActive = true;
         PlayClip(titleClip, true);
     }
@@ -218,7 +280,9 @@ public class BgmManager : MonoBehaviour
     void StopMusic()
     {
         basePlaylistActive = false;
+        battlePlaylistActive = false;
         titleLoopActive = false;
+        activeBattleClips = Array.Empty<AudioClip>();
         currentClip = null;
         resumeAfterFocus = false;
         pausedClip = null;
@@ -241,6 +305,28 @@ public class BgmManager : MonoBehaviour
         while (nextClip == currentClip && guard < 16)
         {
             nextClip = baseClips[UnityEngine.Random.Range(0, baseClips.Length)];
+            guard++;
+        }
+
+        PlayClip(nextClip);
+    }
+
+    void PlayRandomBattleClip()
+    {
+        if (activeBattleClips == null || activeBattleClips.Length == 0)
+            return;
+
+        if (activeBattleClips.Length == 1)
+        {
+            PlayClip(activeBattleClips[0]);
+            return;
+        }
+
+        AudioClip nextClip = currentClip;
+        int guard = 0;
+        while (nextClip == currentClip && guard < 16)
+        {
+            nextClip = activeBattleClips[UnityEngine.Random.Range(0, activeBattleClips.Length)];
             guard++;
         }
 
@@ -271,7 +357,7 @@ public class BgmManager : MonoBehaviour
     {
         applicationSuspended = true;
 
-        if ((!basePlaylistActive && !titleLoopActive) || audioSource == null || audioSource.clip == null)
+        if ((!basePlaylistActive && !battlePlaylistActive && !titleLoopActive) || audioSource == null || audioSource.clip == null)
             return;
 
         // On some platforms Unity sends both focus and pause callbacks. Keep the first
@@ -292,7 +378,7 @@ public class BgmManager : MonoBehaviour
     {
         applicationSuspended = false;
 
-        if (!resumeAfterFocus || (!basePlaylistActive && !titleLoopActive) || audioSource == null || pausedClip == null)
+        if (!resumeAfterFocus || (!basePlaylistActive && !battlePlaylistActive && !titleLoopActive) || audioSource == null || pausedClip == null)
             return;
 
         audioSource.clip = pausedClip;

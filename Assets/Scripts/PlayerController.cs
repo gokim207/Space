@@ -41,6 +41,7 @@ public class PlayerController : MonoBehaviour
     private int currentIdleFrame = -1;
     private float walkFrameTimer = 0f;
     private int currentWalkFrame = -1;
+    public bool IsFacingRight => facingRight;
 
     void Start()
     {

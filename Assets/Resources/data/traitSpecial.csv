@@ -1,0 +1,20 @@
+traitId,specialType,param1,param2,param3,desc
+concentrated_1,Concentrated,5,5,,피해 증가 / 최대 중첩 수
+concentrated_2,Concentrated,7,5,,
+concentrated_3,Concentrated,10,5,,
+unstable_core_1,Unstable_core,0.05,2,0.1,2배 피해 확률 /피해 비율 / 소멸 확률
+unstable_core_2,Unstable_core,0.1,2,0.1,
+unstable_core_3,Unstable_core,0.15,2,0.05,
+oxygen_absorb_1,OxygenOnKillMissing,0.03,,,잃은 산소 비례 획득량
+oxygen_absorb_2,OxygenOnKillMissing,0.05,,,
+oxygen_absorb_3,OxygenOnKillMissing,0.07,,,
+oxygen_absorb_4,OxygenOnKillMissing,0.1,,,
+survival_instinct_1,AttackSpeedByMissingOxygen,0.1,,,최대 공격 속도
+survival_instinct_2,AttackSpeedByMissingOxygen,0.25,,,
+survival_instinct_3,AttackSpeedByMissingOxygen,0.4,,,
+survival_instinct_4,AttackSpeedByMissingOxygen,0.6,,,
+pistol_critical,CriticalShot,0.1,2,,치명타 확률 / 배율
+pistol_power_chamber,EveryNthBulletDamage,3,2,,n번째 탄환 / 데미지 배율
+shotgun_close_impact,CloseRangeBonus,0.5,,,최대 데미지 증가율
+sniper_weakness_pierce,PierceFallOffDamage,2,0.5,,첫 적 피해 비율 / 관통 시 피해 감소
+sniper_execute,ExecuteShot,0.15,,,처형 비율

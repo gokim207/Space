@@ -1,5 +1,5 @@
 id,baseMoveSpeed,maxHp,invincibilityTime,radius,fixedY,desc
-default,70,1,1,0.5,0,기본 플레이어 캐릭터
+default,70,1,0,0.5,0,기본 플레이어 캐릭터
 tank,3.5,2,1.5,0.7,0,느리지만 튼튼한 캐릭터
 scout,7.5,3,0.8,0.4,0,빠르지만 약한 캐릭터
 speaky,9.5,1,0.6,0.3,0,이벤트
