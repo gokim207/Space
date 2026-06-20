@@ -12,7 +12,7 @@ public class GameFlowManager : MonoBehaviour
     private const string FullscreenPrefKey = "setting_fullscreen";
     private const bool DefaultFullscreen = false;
 
-    public enum GamePhase { Run, End, Forge, SkillTree, Weapon, Title, SlotSelect }
+    public enum GamePhase { Run, End, Forge, SkillTree, Weapon, Title, SlotSelect, Credit }
     public GamePhase CurrentPhase { get; private set; } = GamePhase.Run;
 
     private Canvas canvas;
@@ -23,6 +23,11 @@ public class GameFlowManager : MonoBehaviour
     private GameObject weaponPanel;
     private GameObject titlePanel;
     private GameObject slotPanel;
+    private GameObject creditPanel;
+    private RectTransform creditContent;
+    private float creditStartY;
+    private float creditEndY;
+    private const float CreditScrollSpeed = 90f;
     private Text oxygenLabel;
     private Text waveLabel;
     private Text timeLabel;
@@ -100,6 +105,7 @@ public class GameFlowManager : MonoBehaviour
     public GameObject sceneTitlePanel;
     public GameObject sceneSlotPanel;
     public GameObject sceneSettingPanel;
+    public GameObject sceneCreditPanel;
     public TMP_Text sceneOddsText;
     public TMP_Text sceneStoneText;
     public TMP_Text sceneCopperText;
@@ -123,6 +129,7 @@ public class GameFlowManager : MonoBehaviour
     public Button sceneBtnTitleContinue;
     public Button sceneBtnTitleSetting;
     public Button sceneBtnTitleLeave;
+    public Button sceneBtnTitleCredit;
     public Image sceneStoneIcon;
     public Image sceneCopperIcon;
     private bool upgradeSceneBound = false;
@@ -276,6 +283,7 @@ public class GameFlowManager : MonoBehaviour
             sceneTitlePanel = sceneTitlePanel != null ? sceneTitlePanel : FindInScene(activeScene, "titlePanel", "TitlePanel");
             sceneSlotPanel = sceneSlotPanel != null ? sceneSlotPanel : FindInScene(activeScene, "slotPanel", "SlotPanel", "filePanel", "FilePanel");
             sceneSettingPanel = sceneSettingPanel != null ? sceneSettingPanel : FindInScene(activeScene, "settingPanel", "SettingPanel", "optionPanel", "OptionPanel", "optionsPanel", "OptionsPanel");
+            sceneCreditPanel = sceneCreditPanel != null ? sceneCreditPanel : FindInScene(activeScene, "creditPanel", "CreditPanel", "creditsPanel", "CreditsPanel");
 
             sceneOddsText = sceneOddsText != null ? sceneOddsText : FindTmpText(activeScene, "oddsText", "OddsText");
             sceneStoneText = sceneStoneText != null ? sceneStoneText : FindTmpText(activeScene, "stoneText", "StoneText");
@@ -309,6 +317,7 @@ public class GameFlowManager : MonoBehaviour
             sceneBtnTitleContinue = sceneBtnTitleContinue != null ? sceneBtnTitleContinue : FindButton(activeScene, "continueButton", "ContinueButton");
             sceneBtnTitleSetting = sceneBtnTitleSetting != null ? sceneBtnTitleSetting : FindButton(activeScene, "settingButton", "SettingButton", "optionButton", "OptionButton", "optionsButton", "OptionsButton");
             sceneBtnTitleLeave = sceneBtnTitleLeave != null ? sceneBtnTitleLeave : FindButton(activeScene, "leaveButton", "LeaveButton");
+            sceneBtnTitleCredit = sceneBtnTitleCredit != null ? sceneBtnTitleCredit : FindButton(activeScene, "credit", "Credit", "creditButton", "CreditButton", "creditsButton", "CreditsButton");
 
             sceneStoneIcon = sceneStoneIcon != null ? sceneStoneIcon : FindImage(activeScene, "stoneIcon", "StoneIcon");
             sceneCopperIcon = sceneCopperIcon != null ? sceneCopperIcon : FindImage(activeScene, "copperIcon", "CopperIcon");
@@ -329,6 +338,7 @@ public class GameFlowManager : MonoBehaviour
         weaponPanel = sceneWeaponPanel;
         titlePanel = sceneTitlePanel;
         slotPanel = sceneSlotPanel;
+        creditPanel = sceneCreditPanel;
 
         oddsLabelTMP = sceneOddsText;
         forgeStoneLabelTMP = sceneStoneText;
@@ -396,6 +406,11 @@ public class GameFlowManager : MonoBehaviour
         {
             sceneBtnTitleSetting.onClick.RemoveAllListeners();
             sceneBtnTitleSetting.onClick.AddListener(() => ShowTitleSettingPanel());
+        }
+        if (sceneBtnTitleCredit != null && creditPanel != null)
+        {
+            sceneBtnTitleCredit.onClick.RemoveAllListeners();
+            sceneBtnTitleCredit.onClick.AddListener(() => ShowCredits());
         }
         BindTitleSettingButtons(SceneManager.GetActiveScene());
         if (sceneBtnTitleLeave != null)
@@ -642,6 +657,105 @@ public class GameFlowManager : MonoBehaviour
 
         ApplyFullscreenMode(DefaultFullscreen, true);
         Debug.Log("설정 초기화: 화면 설정과 사운드 설정을 기본값으로 되돌렸습니다. (음악 50%, 효과음 50%)");
+    }
+
+    void ShowCredits()
+    {
+        if (creditPanel == null)
+            return;
+
+        CurrentPhase = GamePhase.Credit;
+        HideTitleSelector();
+        SetActiveSafe(slotPanel, false);
+        SetActiveSafe(sceneSettingPanel, false);
+        SetActiveSafe(creditPanel, true);
+        EnsureCreditContent();
+
+        if (creditContent != null)
+            creditContent.anchoredPosition = new Vector2(creditContent.anchoredPosition.x, creditStartY);
+    }
+
+    void EnsureCreditContent()
+    {
+        if (creditPanel == null)
+            return;
+        if (creditContent != null && !creditContent.Equals(null))
+            return;
+
+        Transform existing = FindChildByName(creditPanel.transform, "creditContent", "CreditContent", "content", "Content");
+        if (existing != null)
+        {
+            creditContent = existing as RectTransform;
+        }
+        else
+        {
+            var contentObject = new GameObject("CreditContent", typeof(RectTransform));
+            creditContent = contentObject.GetComponent<RectTransform>();
+            creditContent.SetParent(creditPanel.transform, false);
+            creditContent.anchorMin = new Vector2(0.5f, 0.5f);
+            creditContent.anchorMax = new Vector2(0.5f, 0.5f);
+            creditContent.pivot = new Vector2(0.5f, 0.5f);
+            creditContent.sizeDelta = new Vector2(1200f, 900f);
+
+            var logoSource = FindInScene(SceneManager.GetActiveScene(), "logo", "Logo");
+            if (logoSource != null)
+            {
+                var logoClone = Instantiate(logoSource, creditContent);
+                logoClone.name = "CreditLogo";
+                logoClone.SetActive(true);
+                var logoRect = logoClone.GetComponent<RectTransform>();
+                if (logoRect != null)
+                {
+                    logoRect.anchorMin = logoRect.anchorMax = new Vector2(0.5f, 0.5f);
+                    logoRect.anchoredPosition = new Vector2(0f, 180f);
+                }
+            }
+
+            var textObject = new GameObject("CreditText", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            var textRect = textObject.GetComponent<RectTransform>();
+            textRect.SetParent(creditContent, false);
+            textRect.anchorMin = textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = new Vector2(0f, -190f);
+            textRect.sizeDelta = new Vector2(1000f, 360f);
+
+            var creditText = textObject.GetComponent<TextMeshProUGUI>();
+            var sourceText = titlePanel != null ? titlePanel.GetComponentInChildren<TMP_Text>(true) : null;
+            if (sourceText != null)
+            {
+                creditText.font = sourceText.font;
+                creditText.fontSharedMaterial = sourceText.fontSharedMaterial;
+            }
+            creditText.text = "SPACE SURVIVOR\n\nTHANK YOU FOR PLAYING";
+            creditText.fontSize = 52f;
+            creditText.alignment = TextAlignmentOptions.Center;
+            creditText.color = Color.white;
+        }
+
+        RectTransform panelRect = creditPanel.GetComponent<RectTransform>();
+        float panelHeight = panelRect != null && panelRect.rect.height > 0f ? panelRect.rect.height : Screen.height;
+        float contentHeight = creditContent != null && creditContent.rect.height > 0f ? creditContent.rect.height : 900f;
+        creditStartY = -(panelHeight + contentHeight) * 0.5f;
+        creditEndY = (panelHeight + contentHeight) * 0.5f;
+    }
+
+    void UpdateCredits()
+    {
+        if (CurrentPhase != GamePhase.Credit || creditPanel == null || !creditPanel.activeInHierarchy)
+            return;
+
+        if (IsCancelPressed())
+        {
+            ShowTitle();
+            return;
+        }
+
+        float speedMultiplier = Keyboard.current != null && Keyboard.current.spaceKey.isPressed ? 2f : 1f;
+        if (creditContent != null)
+        {
+            creditContent.anchoredPosition += Vector2.up * (CreditScrollSpeed * speedMultiplier * Time.unscaledDeltaTime);
+            if (creditContent.anchoredPosition.y >= creditEndY)
+                ShowTitle();
+        }
     }
 
     void UpdateTitleMenuInput()

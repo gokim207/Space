@@ -34,9 +34,7 @@ public class BossPatternController : MonoBehaviour
     Coroutine patternLoop;
     bool hazardActive;
     Vector2 swingRootOffsetFromBoss;
-    Vector2 bulletOffsetFromBoss;
     bool hasSwingOffset;
-    bool hasBulletOffset;
     bool swingActive;
 
     readonly List<Sprite> attackFrames = new List<Sprite>();
@@ -529,13 +527,6 @@ public class BossPatternController : MonoBehaviour
         return collider != null && collider.OverlapPoint(player.transform.position);
     }
 
-    Vector2 PlayerCanvasPoint(Canvas canvas)
-    {
-        if (player == null)
-            return Vector2.zero;
-        return WorldToCanvasPoint(player.transform.position, canvas);
-    }
-
     Vector2 WorldToCanvasPoint(Vector3 worldPosition, Canvas canvas)
     {
         if (canvas == null)
@@ -612,6 +603,12 @@ public class BossPatternController : MonoBehaviour
 
         leftCircle = FindChildObject(patternsRoot, "leftCircle");
         rightCircle = FindChildObject(patternsRoot, "rightCircle");
+        leftWarning = FindChildObject(patternsRoot, "leftwarning");
+        rightWarning = FindChildObject(patternsRoot, "rightwarning");
+        if (leftWarning == null && leftCircle != null)
+            leftWarning = FindChildObject(leftCircle.transform, "warning");
+        if (rightWarning == null && rightCircle != null)
+            rightWarning = FindChildObject(rightCircle.transform, "warning");
 
         if (boss != null && swingRoot != null && swingCanvas != null)
         {
@@ -624,20 +621,6 @@ public class BossPatternController : MonoBehaviour
             hasSwingOffset = false;
         }
 
-        RectTransform bulletRect = bossBulletTemplate != null
-            ? bossBulletTemplate.GetComponent<RectTransform>()
-            : null;
-        if (boss != null && bulletRect != null && bulletCanvas != null)
-        {
-            bulletOffsetFromBoss =
-                bulletRect.anchoredPosition - WorldToCanvasPoint(boss.transform.position, bulletCanvas);
-            hasBulletOffset = true;
-        }
-        else
-        {
-            hasBulletOffset = false;
-        }
-
         GameObject panel = FindInScene("bossPanel");
         debuffType = FindTmp(panel, "debuffType");
         debuffTime = FindTmp(panel, "debuffTime");
@@ -647,6 +630,8 @@ public class BossPatternController : MonoBehaviour
         SetActive(bossBulletTemplate, false);
         SetActive(leftCircle, false);
         SetActive(rightCircle, false);
+        SetActive(leftWarning, false);
+        SetActive(rightWarning, false);
         SetDebuffUI(false);
     }
 
