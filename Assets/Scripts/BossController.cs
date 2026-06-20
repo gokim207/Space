@@ -9,6 +9,8 @@ public class BossController : MonoBehaviour
 {
     public int maxHP = 150000;
     public string bossName = "보스";
+    public float introDuration = 1f;
+    public float idleFramesPerSecond = 4f;
 
     float currentHP;
     Image hpBar;
@@ -18,6 +20,10 @@ public class BossController : MonoBehaviour
     bool defeated;
     int phase = 1;
     Collider2D[] hitColliders;
+    Sprite[] idleFrames;
+    float idleFrameTimer;
+    int idleFrameIndex;
+    Coroutine hitFlashRoutine;
 
     public float CurrentHP => currentHP;
     public float HealthRatio => maxHP > 0 ? Mathf.Clamp01((float)currentHP / maxHP) : 0f;
@@ -30,6 +36,7 @@ public class BossController : MonoBehaviour
             visual = GetComponentInChildren<SpriteRenderer>(true);
         if (visual != null)
             baseColor = visual.color;
+        LoadIdleFrames();
     }
 
     public void BeginBattle()
@@ -38,11 +45,92 @@ public class BossController : MonoBehaviour
         currentHP = maxHP;
         defeated = false;
         phase = 1;
-        BossBattleSession.SetCombatPaused(false);
+        BossBattleSession.SetCombatPaused(true);
         EnsureVisible();
-        SetHitCollidersEnabled(true);
+        SetHitCollidersEnabled(false);
         BindUI();
         RefreshUI();
+        StartCoroutine(PlayIntro());
+    }
+
+    void Update()
+    {
+        if (visual == null || idleFrames == null || idleFrames.Length == 0)
+            return;
+
+        idleFrameTimer += Time.deltaTime;
+        float frameDuration = 1f / Mathf.Max(0.01f, idleFramesPerSecond);
+        if (idleFrameTimer < frameDuration)
+            return;
+
+        idleFrameTimer %= frameDuration;
+        idleFrameIndex = (idleFrameIndex + 1) % idleFrames.Length;
+        visual.sprite = idleFrames[idleFrameIndex];
+    }
+
+    IEnumerator PlayIntro()
+    {
+        float duration = Mathf.Max(0.01f, introDuration);
+        SpriteRenderer[] renderers = GetComponentsInChildren<SpriteRenderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Color color = renderers[i].color;
+            color.a = 0f;
+            renderers[i].color = color;
+        }
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Clamp01(elapsed / duration);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] == null) continue;
+                Color color = renderers[i].color;
+                color.a = alpha;
+                renderers[i].color = color;
+            }
+            yield return null;
+        }
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] == null) continue;
+            Color color = renderers[i].color;
+            color.a = 1f;
+            renderers[i].color = color;
+        }
+
+        if (visual != null)
+            baseColor = visual.color;
+        SetHitCollidersEnabled(true);
+        BossBattleSession.SetCombatPaused(false);
+    }
+
+    void LoadIdleFrames()
+    {
+        Sprite[] sprites = Resources.LoadAll<Sprite>("character/boss");
+        Sprite boss0 = null;
+        Sprite boss1 = null;
+
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            if (sprites[i].name == "boss_0")
+                boss0 = sprites[i];
+            else if (sprites[i].name == "boss_1")
+                boss1 = sprites[i];
+        }
+
+        if (boss0 != null && boss1 != null)
+        {
+            idleFrames = new[] { boss0, boss1 };
+            idleFrameIndex = 0;
+            idleFrameTimer = 0f;
+            if (visual != null)
+                visual.sprite = idleFrames[0];
+        }
     }
 
     void EnsureVisible()
@@ -73,8 +161,9 @@ public class BossController : MonoBehaviour
 
         if (visual != null)
         {
-            StopAllCoroutines();
-            StartCoroutine(FlashHit());
+            if (hitFlashRoutine != null)
+                StopCoroutine(hitFlashRoutine);
+            hitFlashRoutine = StartCoroutine(FlashHit());
         }
 
         if (currentHP <= 0)
@@ -87,6 +176,7 @@ public class BossController : MonoBehaviour
         yield return new WaitForSeconds(0.08f);
         if (visual != null)
             visual.color = baseColor;
+        hitFlashRoutine = null;
     }
 
     void Defeat()
