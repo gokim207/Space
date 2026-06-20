@@ -76,6 +76,7 @@ public class WaveManager : MonoBehaviour
             0.05f,
             baseFireInterval *
             SkillEffects.FireIntervalMultiplier *
+            BossBattleSession.FireIntervalMultiplier *
             WeaponTraitRuntime.GetDynamicFireIntervalMultiplier(weaponId, oxygenSystem));
         fireTimer += Time.deltaTime;
         if (fireTimer >= effectiveFireInterval)
@@ -640,6 +641,7 @@ public class WaveManager : MonoBehaviour
                 proj.damage = Mathf.Max(0.01f,
                     baseProjectileDamage *
                     SkillEffects.DamageMultiplier *
+                    BossBattleSession.DamageMultiplier *
                     proj.damageMultiplier *
                     shotModifiers.damageMultiplier);
                 proj.pierceCount = Mathf.Max(0, baseProjectilePierceCount);
@@ -738,7 +740,7 @@ public class WaveManager : MonoBehaviour
         if (BossBattleSession.IsBossBattle)
         {
             var boss = FindFirstObjectByType<BossController>();
-            if (boss != null && boss.gameObject.activeInHierarchy && boss.CurrentHP > 0)
+            if (boss != null && boss.gameObject.activeInHierarchy && boss.IsTargetable && boss.CurrentHP > 0)
                 return boss.transform;
         }
 

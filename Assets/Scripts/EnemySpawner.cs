@@ -189,7 +189,12 @@ public class EnemySpawner : MonoBehaviour
 
     void SpawnEnemy(Vector3 pos)
     {
-        if (enemyPrefab == null || planetCenter == null) return;
+        SpawnEnemy(pos, null);
+    }
+
+    Enemy SpawnEnemy(Vector3 pos, string forcedOreId)
+    {
+        if (enemyPrefab == null || planetCenter == null) return null;
         var playerT = GetPlayerTransform();
         var go = Instantiate(enemyPrefab, pos, Quaternion.identity);
         go.SetActive(true);
@@ -213,7 +218,9 @@ public class EnemySpawner : MonoBehaviour
                 e.moveSpeed = 1f;
             }
             int wave = waveManager != null ? waveManager.currentWave : 1;
-            var def = PickEnemyDef(wave);
+            var def = string.IsNullOrEmpty(forcedOreId)
+                ? PickEnemyDef(wave)
+                : GameData.GetEnemyByOreId(forcedOreId);
             int scaledHp = CalculateWaveHp(baseHP, wave);
             float scaledSpeed = Mathf.Max(0.1f, baseMoveSpeed + (wave - 1) * speedPerWave);
             Color enemyColor = new Color(0.15f, 0.15f, 0.15f);
@@ -225,6 +232,8 @@ public class EnemySpawner : MonoBehaviour
                 enemyColor = def.color;
                 if (!string.IsNullOrEmpty(def.dropOreId)) oreId = def.dropOreId;
             }
+            if (!string.IsNullOrEmpty(forcedOreId))
+                oreId = forcedOreId;
             e.oreId = oreId;
             e.ApplyStats(scaledHp, scaledSpeed * GetWorldScale());
             e.contactRadius = Mathf.Max(e.contactRadius, EstimateContactRadius(e, playerT));
@@ -263,6 +272,17 @@ public class EnemySpawner : MonoBehaviour
                 go.transform.localScale = baseScale * Mathf.Max(0.01f, enemyScaleMultiplier);
             }
         }
+        return e;
+    }
+
+    public Enemy SpawnBossEnemy(string oreId)
+    {
+        if (enemyPrefab == null || planetCenter == null)
+            return null;
+
+        float distance = planetSurfaceRadius + Mathf.Max(0.1f, Random.Range(spawnMinOffset, spawnMaxOffset));
+        float angle = ResolveSafeSpawnAngle(Random.Range(0f, 360f), distance);
+        return SpawnEnemy(BuildSafeSpawnPosition(angle, distance), oreId);
     }
 
     static int CalculateWaveHp(int baseHp, int wave)

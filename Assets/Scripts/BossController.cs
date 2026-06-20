@@ -24,6 +24,9 @@ public class BossController : MonoBehaviour
     float idleFrameTimer;
     int idleFrameIndex;
     Coroutine hitFlashRoutine;
+    BossPatternController patternController;
+    bool patternAnimationLocked;
+    bool targetable = true;
 
     public float CurrentHP => currentHP;
     public float HealthRatio => maxHP > 0 ? Mathf.Clamp01((float)currentHP / maxHP) : 0f;
@@ -55,7 +58,7 @@ public class BossController : MonoBehaviour
 
     void Update()
     {
-        if (visual == null || idleFrames == null || idleFrames.Length == 0)
+        if (patternAnimationLocked || visual == null || idleFrames == null || idleFrames.Length == 0)
             return;
 
         idleFrameTimer += Time.deltaTime;
@@ -107,6 +110,10 @@ public class BossController : MonoBehaviour
             baseColor = visual.color;
         SetHitCollidersEnabled(true);
         BossBattleSession.SetCombatPaused(false);
+        patternController = GetComponent<BossPatternController>();
+        if (patternController == null)
+            patternController = gameObject.AddComponent<BossPatternController>();
+        patternController.Begin(this);
     }
 
     void LoadIdleFrames()
@@ -153,7 +160,7 @@ public class BossController : MonoBehaviour
 
     public void TakeDamage(float damage)
     {
-        if (defeated || damage <= 0)
+        if (!targetable || defeated || damage <= 0)
             return;
 
         currentHP = Mathf.Max(0, currentHP - damage);
@@ -182,6 +189,8 @@ public class BossController : MonoBehaviour
     void Defeat()
     {
         defeated = true;
+        if (patternController != null)
+            patternController.StopPatterns();
         if (phase == 1)
             StartCoroutine(TransitionToSecondPhase());
         else
@@ -204,6 +213,8 @@ public class BossController : MonoBehaviour
         BossBattleSession.SetCombatPaused(false);
         SetHitCollidersEnabled(true);
         RefreshUI();
+        if (patternController != null)
+            patternController.Begin(this);
     }
 
     IEnumerator FinishBossBattle()
@@ -230,6 +241,39 @@ public class BossController : MonoBehaviour
             if (hitColliders[i] != null)
                 hitColliders[i].enabled = enabled;
         }
+    }
+
+    public int Phase => phase;
+    public SpriteRenderer Visual => visual;
+    public bool IsTargetable => targetable && !defeated;
+
+    public void SetTargetable(bool value)
+    {
+        targetable = value;
+        SetHitCollidersEnabled(value);
+    }
+
+    public void SetPatternAnimationLocked(bool locked)
+    {
+        patternAnimationLocked = locked;
+        if (!locked && idleFrames != null && idleFrames.Length > 0 && visual != null)
+        {
+            idleFrameIndex = 0;
+            idleFrameTimer = 0f;
+            visual.sprite = idleFrames[0];
+        }
+    }
+
+    public Sprite FindBossFrame(int index)
+    {
+        Sprite[] sprites = Resources.LoadAll<Sprite>("character/boss");
+        string targetName = $"boss_{index}";
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            if (sprites[i] != null && sprites[i].name == targetName)
+                return sprites[i];
+        }
+        return null;
     }
 
     void BindUI()

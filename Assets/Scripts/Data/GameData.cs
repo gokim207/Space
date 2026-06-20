@@ -245,6 +245,22 @@ public static class GameData
         }
     }
 
+    public static EnemyDef GetEnemyByOreId(string oreId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrWhiteSpace(oreId))
+            return null;
+
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            EnemyDef enemy = enemies[i];
+            if (enemy != null &&
+                string.Equals(enemy.dropOreId, oreId, System.StringComparison.OrdinalIgnoreCase))
+                return enemy;
+        }
+        return null;
+    }
+
     public static WaveDef GetWave(int wave)
     {
         EnsureLoaded();
