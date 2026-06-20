@@ -16,13 +16,30 @@ public class WeaponPanelManager : MonoBehaviour
     TMP_Text fireSpeedText;
     TMP_Text rangeText;
     TMP_Text pierceText;
-    TMP_Text projectileCountText;
     Button purchaseButton;
     Button levelUpButton;
     Button equipButton;
     Button nextButton;
     Button prevButton;
+    Button traitOpenButton;
+    Button traitCloseButton;
+    Button traitRerollButton;
+    Button traitLock1Button;
+    Button traitLock2Button;
+    Image traitLock1Image;
+    Image traitLock2Image;
+    Sprite traitLockedSprite;
+    Sprite traitUnlockedSprite;
     Transform weaponVisualRoot;
+    GameObject traitContent;
+    TMP_Text traitDetail1Text;
+    TMP_Text traitDetail2Text;
+    TMP_Text traitTitle1Text;
+    TMP_Text traitTitle2Text;
+    TMP_Text traitDesc1Text;
+    TMP_Text traitDesc2Text;
+    GameObject traitLock1;
+    GameObject traitLock2;
     GameObject unlockContent;
     TMP_Text unlockTitleText;
     Image unlockIcon1Image;
@@ -71,10 +88,10 @@ public class WeaponPanelManager : MonoBehaviour
         fireSpeedText = FindTmp("atkSpeed", "fireInterval", "fireSpeed");
         rangeText = FindTmp("ability1", "range", "detectRange");
         pierceText = FindTmp("ability2", "pierce", "pierceCount");
-        projectileCountText = FindTmp("unlock1", "projCount", "projectileCount");
         weaponVisualRoot = FindChildTransform("weapon", "weaponImage", "weaponPreview", "weaponRoot");
         BindUnlockContent();
         BindLevelUpContent();
+        BindTraitPopup();
 
         purchaseButton = FindButton("purchaseBtn", "buyBtn", "btnPurchase");
         levelUpButton = FindButton("levelUpBtn", "upgradeBtn", "btnLevelUp");
@@ -87,6 +104,58 @@ public class WeaponPanelManager : MonoBehaviour
         BindButton(equipButton, EquipCurrent);
         BindButton(nextButton, NextWeapon);
         BindButton(prevButton, PrevWeapon);
+    }
+
+    void BindTraitPopup()
+    {
+        Transform detailRoot = FindChildTransform("detailContent");
+        Transform traitRoot = FindChildTransform("traitContent");
+        traitContent = traitRoot != null ? traitRoot.gameObject : null;
+
+        traitOpenButton = FindButtonIn(detailRoot, "Button");
+        traitCloseButton = FindButtonIn(traitRoot, "Xbtn");
+        traitRerollButton = FindButtonIn(traitRoot, "Button");
+        traitLock1Button = FindButtonIn(traitRoot, "islock1", "isLock1");
+        traitLock2Button = FindButtonIn(traitRoot, "islock2", "isLock2");
+        traitLock1Image = FindImageIn(traitLock1Button != null ? traitLock1Button.transform : null, "lockImage", "lockimage");
+        traitLock2Image = FindImageIn(traitLock2Button != null ? traitLock2Button.transform : null, "lockImage", "lockimage");
+        traitLockedSprite = LoadIconSprite("lock");
+        traitUnlockedSprite = LoadIconSprite("unlock");
+        traitDetail1Text = FindTmpIn(detailRoot, "unlock1");
+        traitDetail2Text = FindTmpIn(detailRoot, "unlock2");
+        traitTitle1Text = FindTmpIn(traitRoot, "traitTitle1", "traitTitile1");
+        traitTitle2Text = FindTmpIn(traitRoot, "traitTitle2", "traitTitile2");
+        traitDesc1Text = FindTmpIn(traitRoot, "traitContent1");
+        traitDesc2Text = FindTmpIn(traitRoot, "traitContent2");
+        traitLock1 = FindChildTransformIn(traitRoot, "unlock1")?.gameObject;
+        traitLock2 = FindChildTransformIn(traitRoot, "unlock2")?.gameObject;
+
+        BindButton(traitOpenButton, ToggleTraitPopup);
+        BindButton(traitCloseButton, CloseTraitPopup);
+        BindButton(traitRerollButton, RerollTraits);
+        BindButton(traitLock1Button, () => ToggleTraitLock(5));
+        BindButton(traitLock2Button, () => ToggleTraitLock(10));
+
+        if (traitContent != null && traitContent.activeSelf)
+            traitContent.SetActive(false);
+    }
+
+    void ToggleTraitPopup()
+    {
+        if (traitContent == null || weapons.Count == 0)
+            return;
+
+        var weapon = weapons[Mathf.Clamp(currentIndex, 0, weapons.Count - 1)];
+        if (!IsOwned(weapon.weaponId))
+            return;
+
+        traitContent.SetActive(!traitContent.activeSelf);
+    }
+
+    void CloseTraitPopup()
+    {
+        if (traitContent != null)
+            traitContent.SetActive(false);
     }
 
     void ReloadWeapons()
@@ -109,6 +178,8 @@ public class WeaponPanelManager : MonoBehaviour
             SetButtonVisible(equipButton, false);
             SetButtonVisible(nextButton, false);
             SetButtonVisible(prevButton, false);
+            SetButtonVisible(traitOpenButton, false);
+            CloseTraitPopup();
             return;
         }
 
@@ -131,10 +202,11 @@ public class WeaponPanelManager : MonoBehaviour
         SetText(fireSpeedText, $"공격속도 : {effectiveFireInterval:0.##}s{fireSpeedDelta}");
         SetText(rangeText, $"사거리 : {weapon.detectRange:0.##}");
         SetText(pierceText, $"관통 : {weapon.pierceCount}");
-        SetText(projectileCountText, $"투사체 : {weapon.projCount}");
         RefreshWeaponVisual(weapon);
         RefreshUnlockContent(weapon, owned);
         RefreshLevelUpContent(weapon, owned, currentLevel, upgrade);
+        RefreshTraitAccess(owned);
+        RefreshTraitDisplay(weapon, owned, currentLevel);
 
         SetButtonVisible(purchaseButton, !owned);
         SetButtonVisible(levelUpButton, owned);
@@ -151,6 +223,286 @@ public class WeaponPanelManager : MonoBehaviour
             levelUpButton.interactable = currentWeaponCanUpgrade;
         if (equipButton != null)
             equipButton.interactable = owned && !equipped;
+    }
+
+    void RefreshTraitAccess(bool owned)
+    {
+        SetButtonVisible(traitOpenButton, owned);
+        if (!owned)
+            CloseTraitPopup();
+    }
+
+    void RefreshTraitDisplay(GameData.WeaponDef weapon, bool owned, int currentLevel)
+    {
+        if (weapon == null)
+            return;
+
+        GameData.WeaponTraitDef firstTrait = owned
+            ? GetOrAssignTrait(weapon.weaponId, 5, currentLevel, null)
+            : null;
+        GameData.WeaponTraitDef secondTrait = owned
+            ? GetOrAssignTrait(weapon.weaponId, 10, currentLevel, firstTrait?.traitId)
+            : null;
+
+        SetText(traitDetail1Text, firstTrait != null ? firstTrait.name : "Lv. 5 해금");
+        SetText(traitDetail2Text, secondTrait != null ? secondTrait.name : "Lv. 10 해금");
+        SetTraitTextColor(traitDetail1Text, firstTrait, true);
+        SetTraitTextColor(traitDetail2Text, secondTrait, true);
+
+        SetTraitPopupSlot(traitTitle1Text, traitDesc1Text, traitLock1, firstTrait, currentLevel >= 5);
+        SetTraitPopupSlot(traitTitle2Text, traitDesc2Text, traitLock2, secondTrait, currentLevel >= 10);
+        RefreshTraitRerollControls(weapon, owned, currentLevel, firstTrait, secondTrait);
+    }
+
+    void SetTraitPopupSlot(
+        TMP_Text title,
+        TMP_Text desc,
+        GameObject lockObject,
+        GameData.WeaponTraitDef trait,
+        bool levelReached)
+    {
+        bool unlocked = levelReached && trait != null;
+        if (title != null)
+        {
+            title.gameObject.SetActive(unlocked);
+            if (unlocked)
+            {
+                SetText(title, trait.name);
+                SetTraitTextColor(title, trait, false);
+            }
+        }
+        if (desc != null)
+        {
+            desc.gameObject.SetActive(unlocked);
+            if (unlocked)
+            {
+                SetText(desc, trait.desc);
+                desc.color = Color.black;
+            }
+        }
+        if (lockObject != null)
+            lockObject.SetActive(!levelReached);
+    }
+
+    void SetTraitTextColor(TMP_Text text, GameData.WeaponTraitDef trait, bool isDetail)
+    {
+        if (text == null)
+            return;
+
+        // 잠금 안내 문구는 기존 회색 박스에서 잘 보이도록 흰색을 유지한다.
+        if (trait == null)
+        {
+            text.color = Color.white;
+            return;
+        }
+
+        switch ((trait.rarity ?? "").Trim().ToLowerInvariant())
+        {
+            case "rare":
+                text.color = new Color32(0x01, 0x2A, 0xB0, 0xFF);
+                break;
+            case "epic":
+                text.color = new Color32(0x67, 0x00, 0xEA, 0xFF);
+                break;
+            case "legendary":
+                text.color = new Color32(0xB3, 0xBA, 0x00, 0xFF);
+                break;
+            case "special":
+                text.color = Color.red;
+                break;
+            case "common":
+            default:
+                text.color = isDetail ? Color.black : Color.white;
+                break;
+        }
+    }
+
+    void RefreshTraitRerollControls(
+        GameData.WeaponDef weapon,
+        bool owned,
+        int currentLevel,
+        GameData.WeaponTraitDef firstTrait,
+        GameData.WeaponTraitDef secondTrait)
+    {
+        if (weapon == null)
+            return;
+
+        bool firstUnlocked = owned && currentLevel >= 5 && firstTrait != null;
+        bool secondUnlocked = owned && currentLevel >= 10 && secondTrait != null;
+        bool firstLocked = firstUnlocked && IsTraitLocked(weapon.weaponId, 5);
+        bool secondLocked = secondUnlocked && IsTraitLocked(weapon.weaponId, 10);
+
+        RefreshTraitLockButton(traitLock1Button, traitLock1Image, firstUnlocked, firstLocked);
+        RefreshTraitLockButton(traitLock2Button, traitLock2Image, secondUnlocked, secondLocked);
+
+        int lockedCount = (firstLocked ? 1 : 0) + (secondLocked ? 1 : 0);
+        int rerollCost = 100 + lockedCount * 50;
+        bool hasRerollTarget = (firstUnlocked && !firstLocked) || (secondUnlocked && !secondLocked);
+        bool canAfford = GameFlowManager.Instance != null &&
+                         GameFlowManager.Instance.GetMoney() + 0.0001f >= rerollCost;
+
+        SetButtonText(traitRerollButton, $"리롤(${rerollCost})");
+        if (traitRerollButton != null)
+            traitRerollButton.interactable = owned && hasRerollTarget && canAfford;
+    }
+
+    void RefreshTraitLockButton(Button button, Image image, bool visible, bool locked)
+    {
+        SetButtonVisible(button, visible);
+        if (!visible || image == null)
+            return;
+
+        Sprite sprite = locked ? traitLockedSprite : traitUnlockedSprite;
+        if (sprite != null)
+            image.sprite = sprite;
+        image.preserveAspect = true;
+    }
+
+    void ToggleTraitLock(int unlockLevel)
+    {
+        var weapon = CurrentWeapon();
+        if (weapon == null || !IsOwned(weapon.weaponId))
+            return;
+
+        int currentLevel = GetWeaponLevel(weapon.weaponId);
+        if (currentLevel < unlockLevel ||
+            GameData.GetWeaponTrait(PlayerPrefs.GetString(TraitKey(Slot, weapon.weaponId, unlockLevel), "")) == null)
+            return;
+
+        string key = TraitLockKey(Slot, weapon.weaponId, unlockLevel);
+        PlayerPrefs.SetInt(key, IsTraitLocked(weapon.weaponId, unlockLevel) ? 0 : 1);
+        SavePrefs();
+        Refresh();
+    }
+
+    void RerollTraits()
+    {
+        var weapon = CurrentWeapon();
+        if (weapon == null || !IsOwned(weapon.weaponId))
+            return;
+
+        int currentLevel = GetWeaponLevel(weapon.weaponId);
+        GameData.WeaponTraitDef firstTrait = GetOrAssignTrait(weapon.weaponId, 5, currentLevel, null);
+        GameData.WeaponTraitDef secondTrait = GetOrAssignTrait(weapon.weaponId, 10, currentLevel, firstTrait?.traitId);
+        bool firstUnlocked = currentLevel >= 5 && firstTrait != null;
+        bool secondUnlocked = currentLevel >= 10 && secondTrait != null;
+        bool firstLocked = firstUnlocked && IsTraitLocked(weapon.weaponId, 5);
+        bool secondLocked = secondUnlocked && IsTraitLocked(weapon.weaponId, 10);
+        bool rerollFirst = firstUnlocked && !firstLocked;
+        bool rerollSecond = secondUnlocked && !secondLocked;
+        if (!rerollFirst && !rerollSecond)
+            return;
+
+        int rerollCost = 100 + ((firstLocked ? 1 : 0) + (secondLocked ? 1 : 0)) * 50;
+        var flow = GameFlowManager.Instance;
+        if (flow == null || !flow.SpendMoney(rerollCost))
+        {
+            Refresh();
+            return;
+        }
+
+        GameData.WeaponTraitDef newFirst = firstTrait;
+        GameData.WeaponTraitDef newSecond = secondTrait;
+        if (rerollFirst)
+            newFirst = RollDifferentTrait(weapon.weaponId, firstTrait?.traitId, secondTrait?.traitId) ?? firstTrait;
+        if (rerollSecond)
+            newSecond = RollDifferentTrait(weapon.weaponId, secondTrait?.traitId, newFirst?.traitId) ?? secondTrait;
+
+        if (rerollFirst && newFirst != null)
+            PlayerPrefs.SetString(TraitKey(Slot, weapon.weaponId, 5), newFirst.traitId);
+        if (rerollSecond && newSecond != null)
+            PlayerPrefs.SetString(TraitKey(Slot, weapon.weaponId, 10), newSecond.traitId);
+
+        SavePrefs();
+        flow.SaveCurrentSlot();
+        Refresh();
+    }
+
+    GameData.WeaponTraitDef RollDifferentTrait(string weaponId, string currentTraitId, string otherTraitId)
+    {
+        var excluded = new HashSet<string>();
+        if (!string.IsNullOrEmpty(currentTraitId)) excluded.Add(currentTraitId);
+        if (!string.IsNullOrEmpty(otherTraitId)) excluded.Add(otherTraitId);
+
+        var result = RollWeightedTrait(weaponId, excluded);
+        if (result != null)
+            return result;
+
+        // 후보가 적으면 중복만 방지하고 기존 특성이 다시 나오는 것은 허용한다.
+        excluded.Clear();
+        if (!string.IsNullOrEmpty(otherTraitId)) excluded.Add(otherTraitId);
+        return RollWeightedTrait(weaponId, excluded);
+    }
+
+    GameData.WeaponTraitDef RollWeightedTrait(string weaponId, HashSet<string> excludedTraitIds)
+    {
+        var candidates = GameData.GetAvailableWeaponTraits(weaponId);
+        int totalWeight = 0;
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            var candidate = candidates[i];
+            if (candidate == null || excludedTraitIds.Contains(candidate.traitId)) continue;
+            totalWeight += Mathf.Max(0, candidate.weight);
+        }
+        if (totalWeight <= 0)
+            return null;
+
+        int roll = Random.Range(0, totalWeight);
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            var candidate = candidates[i];
+            if (candidate == null || excludedTraitIds.Contains(candidate.traitId)) continue;
+            roll -= Mathf.Max(0, candidate.weight);
+            if (roll < 0)
+                return candidate;
+        }
+        return null;
+    }
+
+    bool IsTraitLocked(string weaponId, int unlockLevel)
+    {
+        return PlayerPrefs.GetInt(TraitLockKey(Slot, weaponId, unlockLevel), 0) == 1;
+    }
+
+    GameData.WeaponTraitDef GetOrAssignTrait(
+        string weaponId,
+        int unlockLevel,
+        int currentLevel,
+        string excludedTraitId)
+    {
+        string key = TraitKey(Slot, weaponId, unlockLevel);
+        string savedTraitId = PlayerPrefs.GetString(key, "");
+        if (!string.IsNullOrEmpty(savedTraitId))
+            return GameData.GetWeaponTrait(savedTraitId);
+
+        if (currentLevel < unlockLevel)
+            return null;
+
+        var candidates = GameData.GetAvailableWeaponTraits(weaponId);
+        int totalWeight = 0;
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            var candidate = candidates[i];
+            if (candidate == null || candidate.traitId == excludedTraitId) continue;
+            totalWeight += Mathf.Max(0, candidate.weight);
+        }
+        if (totalWeight <= 0)
+            return null;
+
+        int roll = Random.Range(0, totalWeight);
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            var candidate = candidates[i];
+            if (candidate == null || candidate.traitId == excludedTraitId) continue;
+            roll -= Mathf.Max(0, candidate.weight);
+            if (roll >= 0) continue;
+
+            PlayerPrefs.SetString(key, candidate.traitId);
+            SavePrefs();
+            return candidate;
+        }
+
+        return null;
     }
 
     void BindUnlockContent()
@@ -552,6 +904,15 @@ public class WeaponPanelManager : MonoBehaviour
         return btn;
     }
 
+    Button FindButtonIn(Transform root, params string[] names)
+    {
+        Transform target = FindChildTransformIn(root, names);
+        if (target == null) return null;
+        var button = target.GetComponent<Button>();
+        if (button == null) button = target.gameObject.AddComponent<Button>();
+        return button;
+    }
+
     GameObject FindChild(params string[] names)
     {
         var t = FindChildTransform(names);
@@ -699,6 +1060,10 @@ public class WeaponPanelManager : MonoBehaviour
     static string OwnedKey(int slot, string weaponId) => $"slot_{slot}_weapon_owned_{weaponId}";
     static string EquippedKey(int slot) => $"slot_{slot}_weapon_equipped";
     static string LevelKey(int slot, string weaponId) => $"slot_{slot}_weapon_level_{weaponId}";
+    static string TraitKey(int slot, string weaponId, int unlockLevel) =>
+        $"slot_{slot}_weapon_trait_{weaponId}_{unlockLevel}";
+    static string TraitLockKey(int slot, string weaponId, int unlockLevel) =>
+        $"slot_{slot}_weapon_trait_lock_{weaponId}_{unlockLevel}";
 
     public static bool IsOwned(string weaponId)
     {
@@ -756,6 +1121,10 @@ public class WeaponPanelManager : MonoBehaviour
             if (list[i] == null || string.IsNullOrEmpty(list[i].weaponId)) continue;
             PlayerPrefs.DeleteKey(OwnedKey(slot, list[i].weaponId));
             PlayerPrefs.DeleteKey(LevelKey(slot, list[i].weaponId));
+            PlayerPrefs.DeleteKey(TraitKey(slot, list[i].weaponId, 5));
+            PlayerPrefs.DeleteKey(TraitKey(slot, list[i].weaponId, 10));
+            PlayerPrefs.DeleteKey(TraitLockKey(slot, list[i].weaponId, 5));
+            PlayerPrefs.DeleteKey(TraitLockKey(slot, list[i].weaponId, 10));
         }
     }
 
@@ -767,6 +1136,10 @@ public class WeaponPanelManager : MonoBehaviour
         {
             if (list[i] == null || string.IsNullOrEmpty(list[i].weaponId)) continue;
             PlayerPrefs.SetInt(LevelKey(slot, list[i].weaponId), DefaultWeaponLevel);
+            PlayerPrefs.DeleteKey(TraitKey(slot, list[i].weaponId, 5));
+            PlayerPrefs.DeleteKey(TraitKey(slot, list[i].weaponId, 10));
+            PlayerPrefs.DeleteKey(TraitLockKey(slot, list[i].weaponId, 5));
+            PlayerPrefs.DeleteKey(TraitLockKey(slot, list[i].weaponId, 10));
         }
         PlayerPrefs.Save();
     }

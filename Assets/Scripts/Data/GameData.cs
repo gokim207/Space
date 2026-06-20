@@ -102,6 +102,16 @@ public static class GameData
         public float fireIntervalAdd;
     }
 
+    public class WeaponTraitDef
+    {
+        public string traitId;
+        public string name;
+        public string desc;
+        public string rarity;
+        public string weaponType;
+        public int weight;
+    }
+
     public class ProjectileDef
     {
         public string projectileId;
@@ -159,6 +169,8 @@ public static class GameData
     static List<WeaponDef> weaponList = new List<WeaponDef>();
     static Dictionary<string, List<WeaponUnlockCost>> weaponUnlockCosts = new Dictionary<string, List<WeaponUnlockCost>>();
     static Dictionary<string, Dictionary<int, WeaponUpgradeDef>> weaponUpgrades = new Dictionary<string, Dictionary<int, WeaponUpgradeDef>>();
+    static Dictionary<string, WeaponTraitDef> weaponTraits = new Dictionary<string, WeaponTraitDef>();
+    static List<WeaponTraitDef> weaponTraitList = new List<WeaponTraitDef>();
     static Dictionary<string, ProjectileDef> projectiles = new Dictionary<string, ProjectileDef>();
     static Dictionary<string, OxygenDef> oxygenDefs = new Dictionary<string, OxygenDef>();
     static Dictionary<string, PlayerDef> players = new Dictionary<string, PlayerDef>();
@@ -263,6 +275,33 @@ public static class GameData
         return upgrade;
     }
 
+    public static WeaponTraitDef GetWeaponTrait(string traitId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(traitId)) return null;
+        weaponTraits.TryGetValue(traitId, out var trait);
+        return trait;
+    }
+
+    public static List<WeaponTraitDef> GetAvailableWeaponTraits(string weaponId)
+    {
+        EnsureLoaded();
+        var result = new List<WeaponTraitDef>();
+        if (string.IsNullOrEmpty(weaponId)) return result;
+
+        for (int i = 0; i < weaponTraitList.Count; i++)
+        {
+            var trait = weaponTraitList[i];
+            if (trait == null || trait.weight <= 0) continue;
+            if (string.Equals(trait.weaponType, "all", System.StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trait.weaponType, weaponId, System.StringComparison.OrdinalIgnoreCase))
+            {
+                result.Add(trait);
+            }
+        }
+        return result;
+    }
+
     public static void GetWeaponUpgradeTotals(string weaponId, int currentLevel, out int damageAdd, out float fireIntervalAdd)
     {
         EnsureLoaded();
@@ -321,6 +360,7 @@ public static class GameData
         LoadWeapons();
         LoadWeaponUnlocks();
         LoadWeaponUpgrades();
+        LoadWeaponTraits();
         LoadProjectiles();
         LoadOxygen();
         LoadPlayers();
@@ -512,6 +552,28 @@ public static class GameData
                 weaponUpgrades[upgrade.weaponId] = byLevel;
             }
             byLevel[upgrade.level] = upgrade;
+        }
+    }
+
+    static void LoadWeaponTraits()
+    {
+        var table = LoadCsv("data/weaponTrait");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var trait = new WeaponTraitDef();
+            trait.traitId = table.Get(row, "traitId").Trim();
+            trait.name = table.Get(row, "name").Trim();
+            trait.desc = table.Get(row, "desc").Replace("\\n", "\n");
+            trait.rarity = table.Get(row, "rarity").Trim();
+            trait.weaponType = table.Get(row, "weaponType").Trim();
+            trait.weight = table.GetInt(row, "weight");
+
+            if (string.IsNullOrEmpty(trait.traitId) || trait.weight <= 0)
+                continue;
+
+            weaponTraits[trait.traitId] = trait;
+            weaponTraitList.Add(trait);
         }
     }
 
