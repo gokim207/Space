@@ -18,6 +18,7 @@ public class WaveManager : MonoBehaviour
     private int baseProjectilePierceCount = 0;
     private int baseProjectileCount = 1;
     public float multiProjectileSpreadAngle = 12f;
+    private float baseMultiProjectileSpreadAngle = 12f;
     private float fireTimer;
     public float fireRange = 30f; // targeting range
     private float baseFireRange = 30f;
@@ -40,6 +41,9 @@ public class WaveManager : MonoBehaviour
     public int oresCollectedStone = 0;
     public int oresCollectedCopper = 0;
     public Dictionary<string, int> oresCollectedById = new Dictionary<string, int>();
+    readonly Dictionary<string, float> oreDropRemainders = new Dictionary<string, float>();
+    readonly Dictionary<string, int> waveStartOreCounts = new Dictionary<string, int>();
+    readonly Dictionary<string, float> waveBonusRemainders = new Dictionary<string, float>();
     private bool endSequenceStarted = false;
     // UI
     public Text waveText;
@@ -62,7 +66,10 @@ public class WaveManager : MonoBehaviour
     {
         if (CurrentState != GameState.Run)
             return;
-        float effectiveFireInterval = baseFireInterval * SkillEffects.FireIntervalMultiplier;
+        WeaponTraitRuntime.UpdateCombat(Time.deltaTime);
+        float effectiveFireInterval = baseFireInterval *
+                                      SkillEffects.FireIntervalMultiplier *
+                                      WeaponTraitRuntime.GetDynamicFireIntervalMultiplier(weaponId, oxygenSystem);
         fireTimer += Time.deltaTime;
         if (fireTimer >= effectiveFireInterval)
         {
@@ -83,6 +90,8 @@ public class WaveManager : MonoBehaviour
     public void StartGame()
     {
         CurrentState = GameState.Run;
+        WeaponTraitRuntime.ResetRun();
+        baseMultiProjectileSpreadAngle = multiProjectileSpreadAngle;
         fireTimer = 0f;
         ApplyWeaponConfig();
         currentWave = 1;
@@ -92,6 +101,9 @@ public class WaveManager : MonoBehaviour
         oresCollectedStone = 0;
         oresCollectedCopper = 0;
         oresCollectedById.Clear();
+        oreDropRemainders.Clear();
+        waveStartOreCounts.Clear();
+        waveBonusRemainders.Clear();
         if (spawner != null) spawner.waveManager = this;
         else
         {
@@ -398,6 +410,7 @@ public class WaveManager : MonoBehaviour
 
     void AdvanceWave()
     {
+        ApplyWaveEndOreBonus();
         currentWave++;
         ApplyWaveConfig(currentWave);
         if (spawner != null) spawner.OnWaveStarted(currentWave);
@@ -416,21 +429,22 @@ public class WaveManager : MonoBehaviour
         // Actual boss prefab logic can be added later
     }
 
-    public void OnEnemyKilled(int ore, float oxygen, string oreId)
+    public void OnEnemyKilled(int ore, float oxygen, string oreId, Projectile sourceProjectile = null)
     {
-        oresCollectedThisRun += ore;
-        if (!string.IsNullOrEmpty(oreId))
-        {
-            if (!oresCollectedById.ContainsKey(oreId)) oresCollectedById[oreId] = 0;
-            oresCollectedById[oreId] += ore;
-        }
-        if (oreId == "copper")
-            oresCollectedCopper += ore;
-        else if (oreId == "stone")
-            oresCollectedStone += ore;
+        string sourceWeaponId = sourceProjectile != null && !string.IsNullOrEmpty(sourceProjectile.weaponId)
+            ? sourceProjectile.weaponId
+            : weaponId;
+        float exactOre = ore * WeaponTraitRuntime.GetOreDropMultiplier(sourceWeaponId);
+        oreDropRemainders.TryGetValue(oreId ?? "", out float remainder);
+        exactOre += remainder;
+        int awardedOre = Mathf.Max(0, Mathf.FloorToInt(exactOre));
+        oreDropRemainders[oreId ?? ""] = exactOre - awardedOre;
+        AddCollectedOre(oreId, awardedOre);
         if (oxygenSystem != null)
         {
             float totalOxygen = oxygen + SkillEffects.OxygenOnKillBonus;
+            float missingOxygen = Mathf.Max(0f, oxygenSystem.MaxOxygen - oxygenSystem.currentOxygen);
+            totalOxygen += missingOxygen * WeaponTraitRuntime.GetOxygenOnKillMissingRatio(sourceWeaponId);
             if (oxygenSystem != null && oxygenSystem.killReward > 0f && SkillEffects.OxygenOnKillBonus > 0f)
                 totalOxygen += oxygenSystem.killReward;
             if (totalOxygen > 0f)
@@ -438,6 +452,56 @@ public class WaveManager : MonoBehaviour
         }
         // Enemy killed: update ores and oxygen (log suppressed per request)
         RefreshOreUI();
+    }
+
+    void AddCollectedOre(string oreId, int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        oresCollectedThisRun += amount;
+        if (!string.IsNullOrEmpty(oreId))
+        {
+            if (!oresCollectedById.ContainsKey(oreId)) oresCollectedById[oreId] = 0;
+            oresCollectedById[oreId] += amount;
+        }
+        if (oreId == "copper")
+            oresCollectedCopper += amount;
+        else if (oreId == "stone")
+            oresCollectedStone += amount;
+    }
+
+    void ApplyWaveEndOreBonus()
+    {
+        float multiplier = WeaponTraitRuntime.GetWaveOreRewardMultiplier(weaponId);
+        if (multiplier <= 1f)
+        {
+            SnapshotWaveOreCounts();
+            return;
+        }
+
+        var ids = new List<string>(oresCollectedById.Keys);
+        for (int i = 0; i < ids.Count; i++)
+        {
+            string oreId = ids[i];
+            int current = oresCollectedById[oreId];
+            waveStartOreCounts.TryGetValue(oreId, out int start);
+            int earnedThisWave = Mathf.Max(0, current - start);
+            waveBonusRemainders.TryGetValue(oreId, out float remainder);
+            float exactBonus = earnedThisWave * (multiplier - 1f) + remainder;
+            int bonus = Mathf.Max(0, Mathf.FloorToInt(exactBonus));
+            waveBonusRemainders[oreId] = exactBonus - bonus;
+            AddCollectedOre(oreId, bonus);
+        }
+        SnapshotWaveOreCounts();
+        RefreshOreUI();
+    }
+
+    void SnapshotWaveOreCounts()
+    {
+        waveStartOreCounts.Clear();
+        foreach (var pair in oresCollectedById)
+            waveStartOreCounts[pair.Key] = pair.Value;
     }
 
     // Called when player's HP reaches zero to trigger end-run sequence
@@ -546,16 +610,20 @@ public class WaveManager : MonoBehaviour
             runWeaponDisplay.RefreshMuzzlePosition();
         }
 
+        var shotModifiers = WeaponTraitRuntime.OnWeaponFired(weaponId);
+        if (shotModifiers.destroyImmediately)
+            return;
+
         int projectileCount = Mathf.Max(1, baseProjectileCount);
         float centerOffset = (projectileCount - 1) * 0.5f;
         for (int i = 0; i < projectileCount; i++)
         {
             float angleOffset = (i - centerOffset) * multiProjectileSpreadAngle;
-            SpawnProjectile(angleOffset);
+            SpawnProjectile(angleOffset, shotModifiers);
         }
     }
 
-    void SpawnProjectile(float angleOffset)
+    void SpawnProjectile(float angleOffset, WeaponTraitRuntime.ShotModifiers shotModifiers)
     {
         Quaternion shotRotation = firePoint.rotation * Quaternion.Euler(0f, 0f, angleOffset);
         var pgo = Instantiate(projectilePrefab, firePoint.position, shotRotation) as GameObject;
@@ -570,10 +638,13 @@ public class WaveManager : MonoBehaviour
             if (proj != null)
             {
                 proj.damage = Mathf.Max(1, baseProjectileDamage + SkillEffects.DamageBonus);
-                proj.damage = Mathf.Max(1, Mathf.RoundToInt(proj.damage * proj.damageMultiplier));
+                proj.damage = Mathf.Max(1, Mathf.RoundToInt(
+                    proj.damage * proj.damageMultiplier * shotModifiers.damageMultiplier));
                 proj.pierceCount = Mathf.Max(0, baseProjectilePierceCount);
                 proj.speed = baseProjectileSpeed * GetWorldScale();
                 proj.lifeTime = Mathf.Max(baseProjectileLifeTime, fireRange / Mathf.Max(1f, proj.speed) + 0.25f);
+                proj.weaponId = weaponId;
+                proj.maxRange = fireRange;
                 proj.SetMoveDirection(shotRotation * Vector3.right);
             }
             bool isTempProjectile = projectilePrefab.name.Contains("_Temp");
@@ -601,8 +672,9 @@ public class WaveManager : MonoBehaviour
             if (w.detectRange > 0f) baseFireRange = w.detectRange;
             if (w.bulletSpeed > 0f) baseProjectileSpeed = w.bulletSpeed;
             baseProjectileDamage = WeaponPanelManager.GetEffectiveDamage(w);
-            baseProjectilePierceCount = Mathf.Max(0, w.pierceCount);
-            baseProjectileCount = Mathf.Max(1, w.projCount);
+            baseProjectilePierceCount = WeaponPanelManager.GetEffectivePierceCount(w);
+            baseProjectileCount = WeaponPanelManager.GetEffectiveProjectileCount(w);
+            multiProjectileSpreadAngle = WeaponPanelManager.GetEffectiveSpreadAngle(w, baseMultiProjectileSpreadAngle);
         }
         baseFireInterval = fireInterval;
         fireRange = GetScaledRange(baseFireRange);
@@ -618,8 +690,9 @@ public class WaveManager : MonoBehaviour
         {
             if (w.bulletSpeed > 0f) baseProjectileSpeed = w.bulletSpeed;
             baseProjectileDamage = WeaponPanelManager.GetEffectiveDamage(w);
-            baseProjectilePierceCount = Mathf.Max(0, w.pierceCount);
-            baseProjectileCount = Mathf.Max(1, w.projCount);
+            baseProjectilePierceCount = WeaponPanelManager.GetEffectivePierceCount(w);
+            baseProjectileCount = WeaponPanelManager.GetEffectiveProjectileCount(w);
+            multiProjectileSpreadAngle = WeaponPanelManager.GetEffectiveSpreadAngle(w, baseMultiProjectileSpreadAngle);
         }
         var pdef = GameData.GetProjectile(projectileId);
         if (pdef != null)

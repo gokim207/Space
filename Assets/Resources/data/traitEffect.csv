@@ -23,6 +23,10 @@ mineral_detect_1,oreDropRate,mul,1.05
 mineral_detect_2,oreDropRate,mul,1.1
 mineral_detect_3,oreDropRate,mul,1.15
 mineral_detect_4,oreDropRate,mul,1.3
+explore_bonus_1,waveOreReward,mul,1.05
+explore_bonus_2,waveOreReward,mul,1.1
+explore_bonus_3,waveOreReward,mul,1.15
+explore_bonus_4,waveOreReward,mul,1.2
 pistol_precision,damage,mul,1.5
 pistol_quick_hand,fireInterval,mul,0.7
 shotgun_spread_plus,projCount,add,3

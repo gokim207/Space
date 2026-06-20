@@ -9,7 +9,11 @@ public class Projectile : MonoBehaviour
     public float damageMultiplier = 1f;
     // Additional enemies this projectile can pass through after the first hit.
     public int pierceCount = 0;
+    public string weaponId;
+    public float maxRange;
     int remainingPierce;
+    int hitIndex;
+    Vector3 spawnPosition;
     Vector3 moveDirection = Vector3.right;
     readonly System.Collections.Generic.HashSet<int> hitEnemyIds = new System.Collections.Generic.HashSet<int>();
 
@@ -18,11 +22,16 @@ public class Projectile : MonoBehaviour
         timer = 0f;
         remainingPierce = Mathf.Max(0, pierceCount);
         hitEnemyIds.Clear();
+        hitIndex = 0;
+        spawnPosition = transform.position;
         LockMoveDirection(transform.right);
     }
 
     public void SetMoveDirection(Vector3 direction)
     {
+        remainingPierce = Mathf.Max(0, pierceCount);
+        hitIndex = 0;
+        spawnPosition = transform.position;
         LockMoveDirection(direction);
     }
 
@@ -51,7 +60,17 @@ public class Projectile : MonoBehaviour
             if (hitEnemyIds.Contains(id)) return;
             hitEnemyIds.Add(id);
 
-            enemy.TakeDamage(damage);
+            int appliedDamage = WeaponTraitRuntime.ShouldExecute(weaponId, enemy)
+                ? enemy.CurrentHP
+                : WeaponTraitRuntime.ModifyHitDamage(
+                    weaponId,
+                    enemy,
+                    damage,
+                    hitIndex,
+                    Vector3.Distance(spawnPosition, transform.position),
+                    maxRange);
+            enemy.TakeDamage(appliedDamage, this);
+            hitIndex++;
             if (remainingPierce <= 0)
             {
                 Destroy(gameObject);

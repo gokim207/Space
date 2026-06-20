@@ -13,6 +13,16 @@ public class Enemy : MonoBehaviour
     public WaveManager waveManager;
     bool hasDamaged = false;
     private Color baseColor = Color.white;
+    public int CurrentHP => hp;
+    public float HealthRatio => maxHP > 0 ? Mathf.Clamp01((float)hp / maxHP) : 0f;
+    public bool IsBoss
+    {
+        get
+        {
+            try { return CompareTag("Boss"); }
+            catch (UnityException) { return false; }
+        }
+    }
 
     void Start()
     {
@@ -80,7 +90,7 @@ public class Enemy : MonoBehaviour
         }
     }
 
-    public void TakeDamage(int dmg)
+    public void TakeDamage(int dmg, Projectile sourceProjectile = null)
     {
         hp -= dmg;
         // Visual feedback: flash red briefly
@@ -92,7 +102,7 @@ public class Enemy : MonoBehaviour
         }
         if (hp <= 0)
         {
-            Die();
+            Die(sourceProjectile);
         }
     }
 
@@ -111,12 +121,12 @@ public class Enemy : MonoBehaviour
         if (sr != null) sr.color = c;
     }
 
-    void Die()
+    void Die(Projectile sourceProjectile)
     {
         // Notify wave manager
         if (waveManager != null)
         {
-            waveManager.OnEnemyKilled(oreDrop, oxygenGain, oreId);
+            waveManager.OnEnemyKilled(oreDrop, oxygenGain, oreId, sourceProjectile);
         }
         Destroy(gameObject);
     }

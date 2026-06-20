@@ -112,6 +112,24 @@ public static class GameData
         public int weight;
     }
 
+    public class TraitEffectDef
+    {
+        public string traitId;
+        public string targetStat;
+        public string calcType;
+        public float value;
+    }
+
+    public class TraitSpecialDef
+    {
+        public string traitId;
+        public string specialType;
+        public float param1;
+        public float param2;
+        public float param3;
+        public string desc;
+    }
+
     public class ProjectileDef
     {
         public string projectileId;
@@ -171,6 +189,8 @@ public static class GameData
     static Dictionary<string, Dictionary<int, WeaponUpgradeDef>> weaponUpgrades = new Dictionary<string, Dictionary<int, WeaponUpgradeDef>>();
     static Dictionary<string, WeaponTraitDef> weaponTraits = new Dictionary<string, WeaponTraitDef>();
     static List<WeaponTraitDef> weaponTraitList = new List<WeaponTraitDef>();
+    static Dictionary<string, List<TraitEffectDef>> traitEffects = new Dictionary<string, List<TraitEffectDef>>();
+    static Dictionary<string, TraitSpecialDef> traitSpecials = new Dictionary<string, TraitSpecialDef>();
     static Dictionary<string, ProjectileDef> projectiles = new Dictionary<string, ProjectileDef>();
     static Dictionary<string, OxygenDef> oxygenDefs = new Dictionary<string, OxygenDef>();
     static Dictionary<string, PlayerDef> players = new Dictionary<string, PlayerDef>();
@@ -302,6 +322,22 @@ public static class GameData
         return result;
     }
 
+    public static List<TraitEffectDef> GetTraitEffects(string traitId)
+    {
+        EnsureLoaded();
+        if (!string.IsNullOrEmpty(traitId) && traitEffects.TryGetValue(traitId, out var effects))
+            return effects;
+        return new List<TraitEffectDef>();
+    }
+
+    public static TraitSpecialDef GetTraitSpecial(string traitId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(traitId)) return null;
+        traitSpecials.TryGetValue(traitId, out var special);
+        return special;
+    }
+
     public static void GetWeaponUpgradeTotals(string weaponId, int currentLevel, out int damageAdd, out float fireIntervalAdd)
     {
         EnsureLoaded();
@@ -361,6 +397,8 @@ public static class GameData
         LoadWeaponUnlocks();
         LoadWeaponUpgrades();
         LoadWeaponTraits();
+        LoadTraitEffects();
+        LoadTraitSpecials();
         LoadProjectiles();
         LoadOxygen();
         LoadPlayers();
@@ -574,6 +612,51 @@ public static class GameData
 
             weaponTraits[trait.traitId] = trait;
             weaponTraitList.Add(trait);
+        }
+    }
+
+    static void LoadTraitEffects()
+    {
+        var table = LoadCsv("data/traitEffect");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var effect = new TraitEffectDef
+            {
+                traitId = table.Get(row, "traitId").Trim(),
+                targetStat = table.Get(row, "targetStat").Trim(),
+                calcType = table.Get(row, "calcType").Trim(),
+                value = table.GetFloat(row, "value")
+            };
+            if (string.IsNullOrEmpty(effect.traitId) || string.IsNullOrEmpty(effect.targetStat))
+                continue;
+
+            if (!traitEffects.TryGetValue(effect.traitId, out var list))
+            {
+                list = new List<TraitEffectDef>();
+                traitEffects[effect.traitId] = list;
+            }
+            list.Add(effect);
+        }
+    }
+
+    static void LoadTraitSpecials()
+    {
+        var table = LoadCsv("data/traitSpecial");
+        if (table == null) return;
+        foreach (var row in table.Rows)
+        {
+            var special = new TraitSpecialDef
+            {
+                traitId = table.Get(row, "traitId").Trim(),
+                specialType = table.Get(row, "specialType").Trim(),
+                param1 = table.GetFloat(row, "param1"),
+                param2 = table.GetFloat(row, "param2"),
+                param3 = table.GetFloat(row, "param3"),
+                desc = table.Get(row, "desc").Replace("\\n", "\n")
+            };
+            if (!string.IsNullOrEmpty(special.traitId) && !string.IsNullOrEmpty(special.specialType))
+                traitSpecials[special.traitId] = special;
         }
     }
 

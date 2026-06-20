@@ -189,19 +189,28 @@ public class WeaponPanelManager : MonoBehaviour
         bool equipped = GetEquippedWeaponId() == weapon.weaponId;
         currentWeaponAffordable = IsWeaponAffordable(weapon);
         int currentLevel = ClampWeaponLevel(weapon.weaponId, GetWeaponLevel(weapon.weaponId));
+        if (owned)
+        {
+            var firstTrait = GetOrAssignTrait(weapon.weaponId, 5, currentLevel, null);
+            GetOrAssignTrait(weapon.weaponId, 10, currentLevel, firstTrait?.traitId);
+        }
         var upgrade = GameData.GetWeaponUpgrade(weapon.weaponId, currentLevel);
         bool hasNextUpgrade = CanUseUpgrade(upgrade, currentLevel);
         currentWeaponCanUpgrade = owned && hasNextUpgrade && GameFlowManager.Instance != null && GameFlowManager.Instance.GetMoney() + 0.0001f >= upgrade.upgradeCost;
         GetEffectiveStats(weapon, currentLevel, out int effectiveDamage, out float effectiveFireInterval);
-        string damageDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(upgrade.damageAdd, "0") : "";
-        string fireSpeedDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(-upgrade.fireIntervalAdd, "0.##") : "";
+        int nextDamage = effectiveDamage;
+        float nextFireInterval = effectiveFireInterval;
+        if (owned && hasNextUpgrade)
+            GetEffectiveStats(weapon, upgrade.nextLevel, out nextDamage, out nextFireInterval);
+        string damageDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(nextDamage - effectiveDamage, "0") : "";
+        string fireSpeedDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(nextFireInterval - effectiveFireInterval, "0.##") : "";
 
         SetText(weaponNameText, string.IsNullOrEmpty(weapon.weaponName) ? weapon.weaponId : weapon.weaponName);
         SetText(descText, weapon.desc);
         SetText(damageText, $"공격력 : {effectiveDamage}{damageDelta}");
         SetText(fireSpeedText, $"공격속도 : {effectiveFireInterval:0.##}s{fireSpeedDelta}");
         SetText(rangeText, $"사거리 : {weapon.detectRange:0.##}");
-        SetText(pierceText, $"관통 : {weapon.pierceCount}");
+        SetText(pierceText, $"관통 : {GetEffectivePierceCount(weapon)}");
         RefreshWeaponVisual(weapon);
         RefreshUnlockContent(weapon, owned);
         RefreshLevelUpContent(weapon, owned, currentLevel, upgrade);
@@ -835,8 +844,10 @@ public class WeaponPanelManager : MonoBehaviour
         if (weapon == null) return;
 
         GameData.GetWeaponUpgradeTotals(weapon.weaponId, level, out int damageAdd, out float fireIntervalAdd);
-        damage = Mathf.Max(1, damage + damageAdd);
-        fireInterval = Mathf.Max(0.05f, fireInterval - fireIntervalAdd);
+        damage = Mathf.Max(1, Mathf.RoundToInt(
+            WeaponTraitRuntime.ApplyStatEffects(weapon.weaponId, "damage", damage + damageAdd)));
+        fireInterval = Mathf.Max(0.05f,
+            WeaponTraitRuntime.ApplyStatEffects(weapon.weaponId, "fireInterval", fireInterval - fireIntervalAdd));
     }
 
     public static int GetEffectiveDamage(GameData.WeaponDef weapon)
@@ -851,6 +862,27 @@ public class WeaponPanelManager : MonoBehaviour
         if (weapon == null) return 1f;
         GetEffectiveStats(weapon, GetWeaponLevel(weapon.weaponId), out _, out float fireInterval);
         return fireInterval;
+    }
+
+    public static int GetEffectivePierceCount(GameData.WeaponDef weapon)
+    {
+        if (weapon == null) return 0;
+        return Mathf.Max(0, Mathf.RoundToInt(
+            WeaponTraitRuntime.ApplyStatEffects(weapon.weaponId, "pierceCount", weapon.pierceCount)));
+    }
+
+    public static int GetEffectiveProjectileCount(GameData.WeaponDef weapon)
+    {
+        if (weapon == null) return 1;
+        return Mathf.Max(1, Mathf.RoundToInt(
+            WeaponTraitRuntime.ApplyStatEffects(weapon.weaponId, "projCount", weapon.projCount)));
+    }
+
+    public static float GetEffectiveSpreadAngle(GameData.WeaponDef weapon, float baseSpreadAngle)
+    {
+        if (weapon == null) return baseSpreadAngle;
+        return Mathf.Max(0f,
+            WeaponTraitRuntime.ApplyStatEffects(weapon.weaponId, "spreadAngle", baseSpreadAngle));
     }
 
     TMP_Text FindTmp(params string[] names)
@@ -1098,6 +1130,28 @@ public class WeaponPanelManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(weaponId) || Slot < 1) return DefaultWeaponLevel;
         return ClampWeaponLevel(weaponId, PlayerPrefs.GetInt(LevelKey(Slot, weaponId), DefaultWeaponLevel));
+    }
+
+    public static List<string> GetActiveTraitIds(string weaponId)
+    {
+        var result = new List<string>();
+        if (string.IsNullOrEmpty(weaponId) || Slot < 1 || !IsOwned(weaponId))
+            return result;
+
+        int level = GetWeaponLevel(weaponId);
+        AddActiveTrait(result, weaponId, level, 5);
+        AddActiveTrait(result, weaponId, level, 10);
+        return result;
+    }
+
+    static void AddActiveTrait(List<string> result, string weaponId, int level, int unlockLevel)
+    {
+        if (level < unlockLevel)
+            return;
+
+        string traitId = PlayerPrefs.GetString(TraitKey(Slot, weaponId, unlockLevel), "");
+        if (!string.IsNullOrEmpty(traitId) && GameData.GetWeaponTrait(traitId) != null)
+            result.Add(traitId);
     }
 
     public static void SetWeaponLevel(string weaponId, int level)

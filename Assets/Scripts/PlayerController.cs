@@ -248,6 +248,7 @@ public class PlayerController : MonoBehaviour
 
         angle += -move * moveSpeed * Time.deltaTime; // 좌우 반전(시계/반시계)
         angle = angle % 360f;
+        WeaponTraitRuntime.UpdatePlayerMovement(Mathf.Abs(move) > 0.01f, Time.deltaTime);
         UpdateFacing(move);
         UpdatePosition();
         UpdateCameraPosition();
