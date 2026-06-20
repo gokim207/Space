@@ -1,10 +1,25 @@
-skillId,targetStat,calcType,baseVal,perLevel,minVal,maxVal,desc
-atk,damageBonus,add,0,1,-9999,9999,0 + (1 * level)
-firerate,fireIntervalMult,add,1,-0.03,0.2,1,1 + (-0.03 * level)
-oxygenkill,oxygenOnKill,add,0,3,-9999,9999,0 + (3 * level)
-oxygenmax,maxOxygen,add,0,10,-9999,9999,0 + (10 * level)
-oxygendecay,oxygenDecayMult,add,1,-0.03,0.1,1,1 + (-0.03 * level)
-forge,forgeCooldownReduce,add,0,0.2,-9999,9999,0 + (0.2 * level)
-anvil,forgeStabilityLevel,add,0,1,0,3,0 + (1 * level)
-value,valueMult,pow,1,1.5,-9999,9999,1 * (1.5 ^ level)
-copper,copperUnlocked,bool,0,1,-9999,9999,level > 0 이면 True
+skillId,targetStat,calcType,baseVal,perLevel
+atk1,damageMult,mul,1,1.1
+atk2,damageMult,mul,1,1.1
+atk3,damageMult,mul,1,1.1
+firerate1,fireIntervalMult,mul,1,0.95
+firerate2,fireIntervalMult,mul,1,0.95
+firerate3,fireIntervalMult,mul,1,0.95
+oxygenkill1,oxygenOnKillMissing,add,0,0.05
+oxygenkill2,oxygenOnKillMissing,add,0,0.05
+oxygenmax1,maxOxygen,add,0,10
+oxygendecay1,oxygenDecayMult,mul,1,0.97
+oxygendecay2,oxygenDecayMult,mul,1,0.97
+forge1,forgeCooldownReduce,add,0,0.2
+anvil,forgeStabilityLevel,add,0,1
+value1,valueMult,mul,1,1.5
+value2,valueMult,mul,1,1.5
+value3,valueMult,mul,1,1.5
+copper,copperUnlocked,bool,0,1
+iron,ironUnlocked,bool,0,1
+gold,goldUnlocked,bool,0,1
+diamond,diamondUnlocked,bool,0,1
+forge_bonus,forgeBonusChance,add,0,0.2
+forge_bonus,forgeBonusMultiplier,add,1,1
+revive,reviveOxygenPercent,add,0,0.5
+shield,shieldCount,add,0,1

@@ -170,10 +170,10 @@ public static class WeaponTraitRuntime
         return result;
     }
 
-    public static int ModifyHitDamage(
+    public static float ModifyHitDamage(
         string weaponId,
         Enemy enemy,
-        int baseDamage,
+        float baseDamage,
         int hitIndex,
         float travelledDistance,
         float maxRange)
@@ -209,7 +209,7 @@ public static class WeaponTraitRuntime
                     break;
             }
         }
-        return Mathf.Max(1, Mathf.RoundToInt(damage));
+        return Mathf.Max(0.01f, damage);
     }
 
     public static bool ShouldExecute(string weaponId, Enemy enemy)

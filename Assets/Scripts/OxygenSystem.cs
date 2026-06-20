@@ -1,5 +1,7 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 public class OxygenSystem : MonoBehaviour
 {
@@ -16,7 +18,9 @@ public class OxygenSystem : MonoBehaviour
     // UI
     public Image oxygenFill; // assign Image with Fill method
     public Text oxygenText; // optional numeric text
+    public TMP_Text oxygenTextTMP;
     private float maxOxygen;
+    private bool reviveUsed;
 
     static readonly string[] OxygenFillNames =
     {
@@ -29,6 +33,7 @@ public class OxygenSystem : MonoBehaviour
         ApplyOxygenConfig();
         maxOxygen = startOxygen + SkillEffects.MaxOxygenBonus;
         currentOxygen = maxOxygen;
+        reviveUsed = false;
         timer = 0f;
     }
 
@@ -36,7 +41,7 @@ public class OxygenSystem : MonoBehaviour
     {
         if (waveManager == null)
             waveManager = FindObjectOfType<WaveManager>();
-        AutoBindOxygenFill();
+        RebindUI();
         RefreshUI();
     }
 
@@ -44,12 +49,16 @@ public class OxygenSystem : MonoBehaviour
     {
         if (waveManager == null || waveManager.CurrentState != WaveManager.GameState.Run)
             return;
+        if (BossBattleSession.IsCombatPaused)
+            return;
 
         timer += Time.deltaTime;
         if (timer >= oxygenDecreaseInterval)
         {
             timer = 0f;
-            float dec = Random.Range(decayMin, decayMax) * SkillEffects.OxygenDecayMultiplier;
+            float dec = Random.Range(decayMin, decayMax) *
+                SkillEffects.OxygenDecayMultiplier *
+                BossBattleSession.OxygenDecayMultiplier;
             ChangeOxygen(-dec);
         }
     }
@@ -60,6 +69,14 @@ public class OxygenSystem : MonoBehaviour
         if (currentOxygen > maxOxygen) currentOxygen = maxOxygen;
         if (currentOxygen <= 0)
         {
+            if (!reviveUsed && SkillEffects.ReviveOxygenPercent > 0f)
+            {
+                reviveUsed = true;
+                currentOxygen = Mathf.Max(0.1f, maxOxygen * Mathf.Clamp01(SkillEffects.ReviveOxygenPercent));
+                RefreshUI();
+                return;
+            }
+
             currentOxygen = 0;
             var flow = GameFlowManager.Instance;
             if (flow != null) flow.SetEndReason("산소 부족");
@@ -91,20 +108,31 @@ public class OxygenSystem : MonoBehaviour
         }
         if (oxygenText != null)
         {
-            oxygenText.text = $"O2: {currentOxygen:0.0}/{maxOxygen:0.0}";
+            oxygenText.text = $"남은 산소 ({currentOxygen:0.0} / {maxOxygen:0.0})";
         }
+        if (oxygenTextTMP != null)
+            oxygenTextTMP.text = $"남은 산소 ({currentOxygen:0.0} / {maxOxygen:0.0})";
     }
 
-    void AutoBindOxygenFill()
+    public void RebindUI()
     {
-        if (oxygenFill == null)
-            oxygenFill = FindImageByNames(OxygenFillNames);
+        string panelName = BossBattleSession.IsBossBattle ? "bossPanel" : "runPanel";
+        Transform panel = FindInActiveScene(panelName);
+
+        oxygenFill = panel != null
+            ? FindImageByNames(panel, OxygenFillNames)
+            : FindImageByNames(OxygenFillNames);
+
+        Transform textTransform = panel != null ? FindChild(panel, "oxygenText") : null;
+        oxygenTextTMP = textTransform != null ? textTransform.GetComponent<TMP_Text>() : null;
+        oxygenText = textTransform != null ? textTransform.GetComponent<Text>() : null;
 
         if (oxygenFill == null) return;
 
         oxygenFill.type = Image.Type.Filled;
         oxygenFill.fillMethod = Image.FillMethod.Horizontal;
         oxygenFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+        RefreshUI();
     }
 
     Image FindImageByNames(string[] names)
@@ -115,6 +143,47 @@ public class OxygenSystem : MonoBehaviour
             if (go == null) continue;
             var image = go.GetComponent<Image>();
             if (image != null) return image;
+        }
+        return null;
+    }
+
+    static Image FindImageByNames(Transform root, string[] names)
+    {
+        for (int i = 0; i < names.Length; i++)
+        {
+            Transform found = FindChild(root, names[i]);
+            if (found == null) continue;
+            Image image = found.GetComponent<Image>();
+            if (image != null) return image;
+        }
+        return null;
+    }
+
+    static Transform FindInActiveScene(string targetName)
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            Transform found = FindChild(roots[i].transform, targetName);
+            if (found != null)
+                return found;
+        }
+        return null;
+    }
+
+    static Transform FindChild(Transform root, string targetName)
+    {
+        if (root == null)
+            return null;
+        if (string.Equals(root.name, targetName, System.StringComparison.OrdinalIgnoreCase))
+            return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindChild(root.GetChild(i), targetName);
+            if (found != null)
+                return found;
         }
         return null;
     }

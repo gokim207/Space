@@ -29,6 +29,15 @@ public class SkillNodeButton : MonoBehaviour, IPointerClickHandler
         {
             var binder = FindObjectOfType<SkillTreeUIBinder>();
             if (binder != null) binder.RefreshAll();
+
+            // 스킬 구매 직후 무기 탭의 최종 공격력/발사 간격도 같은 값으로 갱신한다.
+            var weaponPanels = Resources.FindObjectsOfTypeAll<WeaponPanelManager>();
+            for (int i = 0; i < weaponPanels.Length; i++)
+            {
+                var panel = weaponPanels[i];
+                if (panel != null && panel.gameObject.scene.IsValid())
+                    panel.Refresh();
+            }
         }
     }
 

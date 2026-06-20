@@ -100,7 +100,7 @@ public class SkillTreeManager : MonoBehaviour
         {
             var line = lines[i].Trim();
             if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
-            if (i == 0 && line.ToLower().StartsWith("id,")) continue;
+            if (i == 0 && IsSkillHeader(line)) continue;
 
             var cols = ParseCsvLine(line);
             if (cols.Count < 9) continue;
@@ -324,6 +324,9 @@ public class SkillTreeManager : MonoBehaviour
 
     int GetLevelByEffectKey(string key)
     {
+        if (nodes.TryGetValue(key, out var exactNode))
+            return exactNode.level;
+
         int level = 0;
         foreach (var n in nodes.Values)
         {
@@ -430,7 +433,7 @@ public class SkillTreeManager : MonoBehaviour
         {
             var line = lines[i].Trim();
             if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
-            if (i == 0 && line.ToLower().StartsWith("id,")) continue;
+            if (i == 0 && IsSkillHeader(line)) continue;
             var cols = ParseCsvLine(line);
             if (cols.Count > 0)
             {
@@ -439,6 +442,12 @@ public class SkillTreeManager : MonoBehaviour
             }
         }
         return ids;
+    }
+
+    static bool IsSkillHeader(string line)
+    {
+        string lower = line.ToLowerInvariant();
+        return lower.StartsWith("id,") || lower.StartsWith("skillid,");
     }
 
     void HideTooltip()
@@ -548,28 +557,57 @@ public class SkillTreeManager : MonoBehaviour
 
     public static void ResetAllSkills()
     {
-        int slot = GameFlowManager.CurrentSlot;
+        int slot = GameFlowManager.CurrentSlot >= 1 ? GameFlowManager.CurrentSlot : 1;
+        ResetSkillsForSlot(slot);
+    }
+
+    public static void ResetSkillsForSlot(int slot)
+    {
+        if (slot < 1) return;
+
+        var ids = GetSkillIdsFromCsv();
+        foreach (var id in ids)
+            PlayerPrefs.SetInt($"slot_{slot}_skill_{id}", 0);
+        PlayerPrefs.Save();
+
         runtimeSlot = slot;
         hasRuntimeLevels = true;
         runtimeLevels.Clear();
+        foreach (var id in ids)
+            runtimeLevels[id] = 0;
 
-        var mgr = FindManager();
-        if (mgr != null)
+        var managers = Resources.FindObjectsOfTypeAll<SkillTreeManager>();
+        foreach (var mgr in managers)
         {
+            if (mgr == null || !mgr.gameObject.scene.IsValid()) continue;
+            if (mgr.nodes.Count == 0)
+                mgr.InitDataOnly();
+
             foreach (var n in mgr.nodes.Values)
             {
                 n.level = 0;
-                CacheRuntimeLevel(slot, n.id, 0);
+                runtimeLevels[n.id] = 0;
             }
             mgr.ApplySkillEffects();
             mgr.RefreshUnlocks();
             mgr.RefreshVisuals();
-            return;
         }
 
-        foreach (var id in GetSkillIdsFromCsv())
-            runtimeLevels[id] = 0;
         SkillEffects.ApplyAllFromTable(GetSkillLevel);
+
+        var binders = Resources.FindObjectsOfTypeAll<SkillTreeUIBinder>();
+        foreach (var binder in binders)
+        {
+            if (binder != null && binder.gameObject.scene.IsValid())
+                binder.RefreshAll();
+        }
+
+        var tooltips = Resources.FindObjectsOfTypeAll<SkillTooltipManager>();
+        foreach (var tooltip in tooltips)
+        {
+            if (tooltip != null && tooltip.gameObject.scene.IsValid())
+                tooltip.Hide();
+        }
     }
 
     public static int GetSkillLevel(string id)

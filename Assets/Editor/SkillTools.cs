@@ -21,12 +21,8 @@ public static class SkillTools
     public static void ResetSlot1LevelsToZero()
     {
         var ids = SkillTreeManager.GetSkillIdsFromCsv();
-        foreach (var id in ids)
-        {
-            PlayerPrefs.SetInt($"slot_1_skill_{id}", 0);
-        }
-        PlayerPrefs.Save();
-        UnityEngine.Debug.Log($"Reset {ids.Count} skills to level 0 for slot 1.");
+        SkillTreeManager.ResetSkillsForSlot(1);
+        UnityEngine.Debug.Log($"Reset {ids.Count} skills to level 0 for slot 1 (saved data, runtime cache, and UI).");
     }
 
     [MenuItem("Tools/Space Survivor/Reset Current Slot Weapon Unlocks")]
@@ -41,6 +37,18 @@ public static class SkillTools
             manager.Refresh();
 
         UnityEngine.Debug.Log($"Reset weapon unlocks for slot {slot}. Default weapon remains available.");
+    }
+
+    [MenuItem("Tools/Space Survivor/Unlock All Weapons")]
+    public static void UnlockAllWeapons()
+    {
+        int slot = GameFlowManager.CurrentSlot >= 1 ? GameFlowManager.CurrentSlot : 1;
+        WeaponPanelManager.UnlockAllWeaponsForSlot(slot);
+
+        foreach (var manager in Object.FindObjectsOfType<WeaponPanelManager>(true))
+            manager.Refresh();
+
+        UnityEngine.Debug.Log($"Unlocked all weapons for slot {slot}.");
     }
 
     [MenuItem("Tools/Space Survivor/Reset Current Slot Weapon Levels")]

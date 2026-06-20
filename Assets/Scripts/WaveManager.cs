@@ -14,7 +14,7 @@ public class WaveManager : MonoBehaviour
     private float baseFireInterval = 1f;
     private float baseProjectileSpeed = 10f;
     private float baseProjectileLifeTime = 2f;
-    private int baseProjectileDamage = 1;
+    private float baseProjectileDamage = 1f;
     private int baseProjectilePierceCount = 0;
     private int baseProjectileCount = 1;
     public float multiProjectileSpreadAngle = 12f;
@@ -67,9 +67,16 @@ public class WaveManager : MonoBehaviour
         if (CurrentState != GameState.Run)
             return;
         WeaponTraitRuntime.UpdateCombat(Time.deltaTime);
-        float effectiveFireInterval = baseFireInterval *
-                                      SkillEffects.FireIntervalMultiplier *
-                                      WeaponTraitRuntime.GetDynamicFireIntervalMultiplier(weaponId, oxygenSystem);
+        if (BossBattleSession.IsCombatPaused)
+        {
+            fireTimer = 0f;
+            return;
+        }
+        float effectiveFireInterval = Mathf.Max(
+            0.05f,
+            baseFireInterval *
+            SkillEffects.FireIntervalMultiplier *
+            WeaponTraitRuntime.GetDynamicFireIntervalMultiplier(weaponId, oxygenSystem));
         fireTimer += Time.deltaTime;
         if (fireTimer >= effectiveFireInterval)
         {
@@ -77,14 +84,17 @@ public class WaveManager : MonoBehaviour
             AutoFire();
         }
 
-        // Wave timer
-        waveTimer += Time.deltaTime;
-        if (waveTimer >= waveDuration)
+        // 보스전은 일반 웨이브 타이머와 적 증원 규칙을 사용하지 않는다.
+        if (!BossBattleSession.IsBossBattle)
         {
-            waveTimer = 0f;
-            AdvanceWave();
+            waveTimer += Time.deltaTime;
+            if (waveTimer >= waveDuration)
+            {
+                waveTimer = 0f;
+                AdvanceWave();
+            }
+            RefreshWaveUI();
         }
-        RefreshWaveUI();
     }
 
     public void StartGame()
@@ -103,7 +113,14 @@ public class WaveManager : MonoBehaviour
         oreDropRemainders.Clear();
         waveStartOreCounts.Clear();
         waveBonusRemainders.Clear();
-        if (spawner != null) spawner.waveManager = this;
+        if (BossBattleSession.IsBossBattle)
+        {
+            if (spawner == null)
+                spawner = FindObjectOfType<EnemySpawner>();
+            if (spawner != null)
+                spawner.enabled = false;
+        }
+        else if (spawner != null) spawner.waveManager = this;
         else
         {
             // try to auto-find spawner
@@ -169,7 +186,8 @@ public class WaveManager : MonoBehaviour
             projectilePrefab = CreateDebugProjectilePrefab();
         EnsureProjectilePrefabUsable();
         ApplyProjectileStats();
-        if (spawner != null) spawner.SpawnInitialEnemies();
+        if (!BossBattleSession.IsBossBattle && spawner != null)
+            spawner.SpawnInitialEnemies();
     }
 
 
@@ -431,7 +449,9 @@ public class WaveManager : MonoBehaviour
         {
             float totalOxygen = oxygen + SkillEffects.OxygenOnKillBonus;
             float missingOxygen = Mathf.Max(0f, oxygenSystem.MaxOxygen - oxygenSystem.currentOxygen);
-            totalOxygen += missingOxygen * WeaponTraitRuntime.GetOxygenOnKillMissingRatio(sourceWeaponId);
+            float missingRecoveryRatio = SkillEffects.OxygenOnKillMissingRatio +
+                                         WeaponTraitRuntime.GetOxygenOnKillMissingRatio(sourceWeaponId);
+            totalOxygen += missingOxygen * missingRecoveryRatio;
             if (oxygenSystem != null && oxygenSystem.killReward > 0f && SkillEffects.OxygenOnKillBonus > 0f)
                 totalOxygen += oxygenSystem.killReward;
             if (totalOxygen > 0f)
@@ -617,9 +637,11 @@ public class WaveManager : MonoBehaviour
             var proj = pgo.GetComponent<Projectile>();
             if (proj != null)
             {
-                proj.damage = Mathf.Max(1, baseProjectileDamage + SkillEffects.DamageBonus);
-                proj.damage = Mathf.Max(1, Mathf.RoundToInt(
-                    proj.damage * proj.damageMultiplier * shotModifiers.damageMultiplier));
+                proj.damage = Mathf.Max(0.01f,
+                    baseProjectileDamage *
+                    SkillEffects.DamageMultiplier *
+                    proj.damageMultiplier *
+                    shotModifiers.damageMultiplier);
                 proj.pierceCount = Mathf.Max(0, baseProjectilePierceCount);
                 proj.speed = baseProjectileSpeed * GetWorldScale();
                 proj.lifeTime = Mathf.Max(baseProjectileLifeTime, fireRange / Mathf.Max(1f, proj.speed) + 0.25f);
@@ -712,6 +734,13 @@ public class WaveManager : MonoBehaviour
         Enemy[] enemies = FindObjectsOfType<Enemy>();
         Transform best = null;
         float bestDist = Mathf.Max(range, fireRange);
+
+        if (BossBattleSession.IsBossBattle)
+        {
+            var boss = FindFirstObjectByType<BossController>();
+            if (boss != null && boss.gameObject.activeInHierarchy && boss.CurrentHP > 0)
+                return boss.transform;
+        }
 
         Camera cam = Camera.main;
         // First pass: prefer enemies inside camera viewport if requested

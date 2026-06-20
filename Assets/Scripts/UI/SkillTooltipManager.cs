@@ -10,11 +10,13 @@ public class SkillTooltipManager : MonoBehaviour
     public TMP_Text titleText;
     public TMP_Text descText;
     public TMP_Text levelText;
+    public TMP_Text currentText;
     public TMP_Text priceText;
     public Button priceButton;
     public Text titleTextLegacy;
     public Text descTextLegacy;
     public Text levelTextLegacy;
+    public Text currentTextLegacy;
     public Text priceTextLegacy;
 
     [Header("Placement")]
@@ -48,12 +50,14 @@ public class SkillTooltipManager : MonoBehaviour
             if (titleText == null) titleText = FindTmp(detailPanel, "title");
             if (descText == null) descText = FindTmp(detailPanel, "desc");
             if (levelText == null) levelText = FindTmp(detailPanel, "level");
+            if (currentText == null) currentText = FindTmpDeep(detailPanel, "current");
             if (priceText == null) priceText = FindTmpDeep(detailPanel, "moneyText");
             if (priceButton == null) priceButton = FindButton(detailPanel, "btnMoney");
 
             if (titleTextLegacy == null) titleTextLegacy = FindLegacy(detailPanel, "title");
             if (descTextLegacy == null) descTextLegacy = FindLegacy(detailPanel, "desc");
             if (levelTextLegacy == null) levelTextLegacy = FindLegacy(detailPanel, "level");
+            if (currentTextLegacy == null) currentTextLegacy = FindLegacyDeep(detailPanel, "current");
             if (priceTextLegacy == null) priceTextLegacy = FindLegacyDeep(detailPanel, "moneyText");
 
             // Prevent tooltip from stealing hover raycasts (causes flicker on edges).
@@ -77,6 +81,7 @@ public class SkillTooltipManager : MonoBehaviour
         SetText(titleText, titleTextLegacy, info.title);
         SetText(descText, descTextLegacy, info.desc);
         SetText(levelText, levelTextLegacy, $"레벨 : {level} / {max}");
+        SetText(currentText, currentTextLegacy, BuildCurrentEffectText(skillId, level));
         SetText(priceText, priceTextLegacy, level >= max ? "MAX" : $"$ {nextCost}");
         if (priceButton != null) priceButton.interactable = false;
 
@@ -166,7 +171,12 @@ public class SkillTooltipManager : MonoBehaviour
         {
             var line = lines[i].Trim();
             if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
-            if (i == 0 && line.ToLower().StartsWith("id,")) continue;
+            if (i == 0)
+            {
+                string lower = line.ToLowerInvariant();
+                if (lower.StartsWith("id,") || lower.StartsWith("skillid,"))
+                    continue;
+            }
 
             var cols = ParseCsvLine(line);
             if (cols.Count < 5) continue;
@@ -232,6 +242,101 @@ public class SkillTooltipManager : MonoBehaviour
     {
         if (int.TryParse(s.Trim(), out var v)) return v;
         return def;
+    }
+
+    string BuildCurrentEffectText(string skillId, int level)
+    {
+        var effects = GameData.GetSkillEffects(skillId);
+        if (effects == null || effects.Count == 0)
+            return "현재 효과 : -";
+
+        if (effects.Count == 1 && effects[0].calcType == "bool")
+            return level > 0 ? "현재 효과 : 해금" : "현재 효과 : 미해금";
+
+        var values = new List<string>();
+        for (int i = 0; i < effects.Count; i++)
+        {
+            string value = FormatCurrentEffect(effects[i], level);
+            if (!string.IsNullOrEmpty(value))
+                values.Add(value);
+        }
+        return values.Count > 0
+            ? $"현재 효과 : {string.Join(" / ", values)}"
+            : "현재 효과 : -";
+    }
+
+    string FormatCurrentEffect(GameData.SkillEffectDef effect, int level)
+    {
+        if (effect == null) return "";
+        if (effect.calcType == "bool")
+            return level > 0 ? "해금" : "미해금";
+
+        float value = EvaluateEffect(effect, level);
+        switch (effect.targetStat)
+        {
+            case "damageMult":
+            case "damageBonus":
+                float damagePercent = effect.calcType == "mul"
+                    ? (value - 1f) * 100f
+                    : value * 100f;
+                return $"{FormatSigned(damagePercent)}%";
+            case "oxygenOnKillMissing":
+                return $"+{FormatNumber(value * 100f)}%";
+            case "fireIntervalMult":
+                return $"{FormatSigned((value - 1f) * 100f)}%";
+            case "oxygenDecayMult":
+                return $"{FormatSigned((value - 1f) * 100f)}%";
+            case "valueMult":
+                return $"+{FormatNumber((value - 1f) * 100f)}%";
+            case "forgeCooldownReduce":
+                return $"-{FormatNumber(value)}초";
+            case "forgeStabilityLevel":
+                return $"+{FormatNumber(value * 5f)}%";
+            case "maxOxygen":
+                return $"+{FormatNumber(value)}";
+            case "forgeBonusChance":
+                return $"{FormatNumber(value * 100f)}% 확률";
+            case "forgeBonusMultiplier":
+                return $"{FormatNumber(value)}배";
+            case "reviveOxygenPercent":
+                return $"산소 {FormatNumber(value * 100f)}%로 부활";
+            case "shieldCount":
+                return $"{FormatNumber(value)}회 방어";
+            default:
+                return FormatNumber(value);
+        }
+    }
+
+    float EvaluateEffect(GameData.SkillEffectDef effect, int level)
+    {
+        float value = effect.baseVal;
+        switch (effect.calcType)
+        {
+            case "add":
+                value = effect.baseVal + effect.perLevel * level;
+                break;
+            case "pow":
+                value = effect.baseVal * Mathf.Pow(effect.perLevel, level);
+                break;
+            case "mul":
+                float multiplier = Mathf.Pow(effect.perLevel, level);
+                value = Mathf.Approximately(effect.baseVal, 0f)
+                    ? multiplier
+                    : effect.baseVal * multiplier;
+                break;
+        }
+        return Mathf.Clamp(value, effect.minVal, effect.maxVal);
+    }
+
+    string FormatNumber(float value)
+    {
+        return value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    string FormatSigned(float value)
+    {
+        if (Mathf.Abs(value) < 0.0001f) return "0";
+        return value.ToString("+0.##;-0.##", System.Globalization.CultureInfo.InvariantCulture);
     }
 
     RectTransform FindRect(string name)

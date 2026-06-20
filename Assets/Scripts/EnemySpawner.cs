@@ -8,10 +8,10 @@ public class EnemySpawner : MonoBehaviour
     public float spawnCheckInterval = 1f;
     public float spawnMinOffset = 15f;
     public float spawnMaxOffset = 25f;
-    [Range(0f, 1f)] public float spawnThreeChance = 0.5f;
-    [Range(0f, 1f)] public float spawnFiveChance = 0.4f;
-    [Range(0f, 1f)] public float spawnTenChance = 0.3f;
-    [Range(0f, 1f)] public float respawnOnDeathChance = 0.5f;
+    [Range(0f, 1f)] public float spawnThreeChance = 0.3f;
+    [Range(0f, 1f)] public float spawnFiveChance = 0.1f;
+    [Range(0f, 1f)] public float spawnTenChance = 0.05f;
+    [Range(0f, 1f)] public float respawnOnDeathChance = 0.05f;
     private float planetSurfaceRadius = 0f;
     public WaveManager waveManager;
     public float minDistanceFromPlayer = 1.5f;
@@ -214,13 +214,13 @@ public class EnemySpawner : MonoBehaviour
             }
             int wave = waveManager != null ? waveManager.currentWave : 1;
             var def = PickEnemyDef(wave);
-            int scaledHp = Mathf.Max(1, baseHP + (wave - 1) * hpPerWave);
+            int scaledHp = CalculateWaveHp(baseHP, wave);
             float scaledSpeed = Mathf.Max(0.1f, baseMoveSpeed + (wave - 1) * speedPerWave);
             Color enemyColor = new Color(0.15f, 0.15f, 0.15f);
             string oreId = "stone";
             if (def != null)
             {
-                scaledHp = Mathf.Max(1, def.baseHP + (wave - 1) * def.hpPerWave);
+                scaledHp = CalculateWaveHp(def.baseHP, wave);
                 scaledSpeed = Mathf.Max(0.1f, def.baseSpeed + (wave - 1) * def.speedPerWave);
                 enemyColor = def.color;
                 if (!string.IsNullOrEmpty(def.dropOreId)) oreId = def.dropOreId;
@@ -233,7 +233,16 @@ public class EnemySpawner : MonoBehaviour
             if (sr != null)
             {
                 sr.enabled = true;
-                e.SetBaseColor(enemyColor);
+                Sprite oreSprite = LoadEnemySprite(oreId);
+                if (oreSprite != null)
+                {
+                    sr.sprite = oreSprite;
+                    e.SetBaseColor(Color.white);
+                }
+                else
+                {
+                    e.SetBaseColor(enemyColor);
+                }
                 // Force visible: put on high order in layer and ignore sprite masks
                 try
                 {
@@ -254,6 +263,54 @@ public class EnemySpawner : MonoBehaviour
                 go.transform.localScale = baseScale * Mathf.Max(0.01f, enemyScaleMultiplier);
             }
         }
+    }
+
+    static int CalculateWaveHp(int baseHp, int wave)
+    {
+        float scaledHp = baseHp * (1f + (Mathf.Max(1, wave) - 1) * 0.07f);
+        return Mathf.Max(1, Mathf.RoundToInt(scaledHp));
+    }
+
+    Sprite LoadEnemySprite(string oreId)
+    {
+        if (string.IsNullOrWhiteSpace(oreId))
+            oreId = "stone";
+
+        oreId = oreId.Trim().ToLowerInvariant();
+        if (oreId == "stone")
+        {
+            // stone_0 is the intended asset. stone_1 remains a temporary fallback until it is added.
+            return LoadSpriteFromIcon("stone_0", "stone_0") ??
+                   LoadSpriteFromIcon("stone", "stone_0") ??
+                   LoadSpriteFromIcon("stone_1", "stone_0");
+        }
+
+        if (oreId == "diamond" || oreId == "diamon")
+        {
+            return LoadSpriteFromIcon("mystrile_node", "mystrile_node") ??
+                   LoadSpriteFromIcon("diamond", "diamond");
+        }
+
+        string nodeIcon = $"{oreId}_node";
+        return LoadSpriteFromIcon(nodeIcon, nodeIcon) ??
+               LoadSpriteFromIcon(oreId, oreId);
+    }
+
+    Sprite LoadSpriteFromIcon(string resourceName, string preferredSpriteName)
+    {
+        Sprite direct = Resources.Load<Sprite>($"icon/{resourceName}");
+        if (direct != null)
+            return direct;
+
+        Sprite[] sprites = Resources.LoadAll<Sprite>($"icon/{resourceName}");
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            if (sprites[i] != null &&
+                string.Equals(sprites[i].name, preferredSpriteName, System.StringComparison.OrdinalIgnoreCase))
+                return sprites[i];
+        }
+
+        return sprites.Length > 0 ? sprites[0] : null;
     }
 
     void SpawnBatch(int count, float minDist, float maxDist, string pattern)

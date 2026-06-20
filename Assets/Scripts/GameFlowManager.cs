@@ -1133,7 +1133,16 @@ public class GameFlowManager : MonoBehaviour
         EnsureUI();
         CurrentPhase = GamePhase.Run;
         Time.timeScale = 1f;
-        SetActiveSafe(runHud, true);
+        bool bossMode = BossBattleSession.IsBossBattle;
+        GameObject bossHud = SceneManager.GetActiveScene().name == "RunScene"
+            ? FindInScene(SceneManager.GetActiveScene(), "bossPanel", "BossPanel")
+            : null;
+        GameObject bossObject = SceneManager.GetActiveScene().name == "RunScene"
+            ? FindInScene(SceneManager.GetActiveScene(), "Boss")
+            : null;
+        SetActiveSafe(runHud, !bossMode);
+        SetActiveSafe(bossHud, bossMode);
+        SetActiveSafe(bossObject, bossMode);
         SetActiveSafe(endPanel, false);
         SetActiveSafe(forgePanel, false);
         SetActiveSafe(skillPanel, false);
@@ -1153,6 +1162,7 @@ public class GameFlowManager : MonoBehaviour
         ForceBindRunSceneByName();
         BindRunSceneButtons();
         SetActiveSafe(runHud, true);
+        SetActiveSafe(FindInScene(SceneManager.GetActiveScene(), "bossPanel", "BossPanel"), false);
         SetActiveSafe(endPanel, true);
         SetActiveSafe(forgePanel, false);
         SetActiveSafe(skillPanel, false);
@@ -1613,6 +1623,9 @@ public class GameFlowManager : MonoBehaviour
 
         sceneCanvas = FindCanvasInScene(scene);
         sceneRunHud = FindInScene(scene, "runPanel", "runHud", "RunPanel", "RunHUD");
+        var activeRunPanel = BossBattleSession.IsBossBattle
+            ? FindInScene(scene, "bossPanel", "BossPanel")
+            : sceneRunHud;
         sceneEndPanel = FindInScene(scene, "endPanel", "EndPanel");
         sceneBtnAgain = FindButton(scene, "againButton", "AgainButton");
         sceneBtnEndUpgrade = FindButton(scene, "upgradeButton", "UpgradeButton");
@@ -1627,6 +1640,13 @@ public class GameFlowManager : MonoBehaviour
         canvas = sceneCanvas != null ? sceneCanvas : canvas;
         runHud = sceneRunHud;
         endPanel = sceneEndPanel;
+        if (activeRunPanel != null)
+        {
+            sceneRunOxygenText = FindTmpInDescendants(
+                activeRunPanel,
+                "oxygenText", "oxygenLabel", "OxygenText", "OxygenLabel");
+            oxygenLabelTMP = sceneRunOxygenText;
+        }
         var runWeaponPanel = FindInScene(scene, "weaponPanel", "WeaponPanel");
         if (runWeaponPanel != null)
             runWeaponPanel.SetActive(true);
@@ -1930,6 +1950,7 @@ public class GameFlowManager : MonoBehaviour
             return;
         Time.timeScale = 1f;
         if (CurrentSlot >= 1) SaveSlot(CurrentSlot);
+        BossBattleSession.EnterNormalRun();
         SceneManager.LoadScene("RunScene");
     }
 
@@ -1985,6 +2006,11 @@ public class GameFlowManager : MonoBehaviour
         string oreId = selectedOre == OreSelect.Stone ? "stone" : "copper";
         float baseValue = GetMineralValue(oreId, selectedOre == OreSelect.Stone ? 1f : 10f) * SkillEffects.ValueMultiplier;
         float gain = baseValue * multiplier;
+        if (SkillEffects.ForgeBonusChance > 0f &&
+            Random.value < Mathf.Clamp01(SkillEffects.ForgeBonusChance))
+        {
+            gain *= Mathf.Max(1f, SkillEffects.ForgeBonusMultiplier);
+        }
         money += gain;
 
         if (forgeGainLabel != null || forgeGainLabelTMP != null)

@@ -103,6 +103,7 @@ public class BaseDoorInteraction : MonoBehaviour
     {
         player?.SaveReturnPoint();
         GameFlowManager.Instance?.SaveCurrentSlot();
+        BossBattleSession.EnterNormalRun();
         Time.timeScale = 1f;
         SceneManager.LoadScene(runSceneName);
     }
@@ -115,7 +116,11 @@ public class BaseDoorInteraction : MonoBehaviour
             return;
         }
 
-        Debug.Log("보스전 상호작용 확인: 보스전 기능은 아직 구현되지 않았습니다.");
+        player?.SaveReturnPoint();
+        GameFlowManager.Instance?.SaveCurrentSlot();
+        BossBattleSession.EnterBossBattle();
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(runSceneName);
     }
 
     void RefreshBossPrompt()

@@ -3,7 +3,7 @@ using UnityEngine;
 public class Enemy : MonoBehaviour
 {
     public int maxHP = 1;
-    int hp;
+    float hp;
     public int oreDrop = 1;
     public float oxygenGain = 0f; // base oxygen gain; skills add extra
     public string oreId = "stone";
@@ -13,7 +13,7 @@ public class Enemy : MonoBehaviour
     public WaveManager waveManager;
     bool hasDamaged = false;
     private Color baseColor = Color.white;
-    public int CurrentHP => hp;
+    public float CurrentHP => hp;
     public float HealthRatio => maxHP > 0 ? Mathf.Clamp01((float)hp / maxHP) : 0f;
     public bool IsBoss
     {
@@ -90,7 +90,7 @@ public class Enemy : MonoBehaviour
         }
     }
 
-    public void TakeDamage(int dmg, Projectile sourceProjectile = null)
+    public void TakeDamage(float dmg, Projectile sourceProjectile = null)
     {
         hp -= dmg;
         // Visual feedback: flash red briefly

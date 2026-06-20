@@ -41,6 +41,8 @@ public class PlayerController : MonoBehaviour
     private int currentIdleFrame = -1;
     private float walkFrameTimer = 0f;
     private int currentWalkFrame = -1;
+    private int remainingShields;
+    private bool shieldInitialized;
     public bool IsFacingRight => facingRight;
 
     void Start()
@@ -415,6 +417,17 @@ public class PlayerController : MonoBehaviour
 
     public void TakeDamage(int dmg)
     {
+        if (!shieldInitialized)
+        {
+            remainingShields = Mathf.Max(0, SkillEffects.ShieldCount);
+            shieldInitialized = true;
+        }
+        if (remainingShields > 0)
+        {
+            remainingShields--;
+            return;
+        }
+
         hp -= dmg;
         if (hp <= 0)
         {

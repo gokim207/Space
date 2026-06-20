@@ -197,17 +197,25 @@ public class WeaponPanelManager : MonoBehaviour
         var upgrade = GameData.GetWeaponUpgrade(weapon.weaponId, currentLevel);
         bool hasNextUpgrade = CanUseUpgrade(upgrade, currentLevel);
         currentWeaponCanUpgrade = owned && hasNextUpgrade && GameFlowManager.Instance != null && GameFlowManager.Instance.GetMoney() + 0.0001f >= upgrade.upgradeCost;
-        GetEffectiveStats(weapon, currentLevel, out int effectiveDamage, out float effectiveFireInterval);
-        int nextDamage = effectiveDamage;
+        GetEffectiveStats(weapon, currentLevel, out float weaponDamage, out float weaponFireInterval);
+        float effectiveDamage = Mathf.Max(0.01f, weaponDamage * SkillEffects.DamageMultiplier);
+        float effectiveFireInterval = Mathf.Max(0.05f, weaponFireInterval * SkillEffects.FireIntervalMultiplier);
+        float nextDamage = effectiveDamage;
         float nextFireInterval = effectiveFireInterval;
         if (owned && hasNextUpgrade)
-            GetEffectiveStats(weapon, upgrade.nextLevel, out nextDamage, out nextFireInterval);
-        string damageDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(nextDamage - effectiveDamage, "0") : "";
-        string fireSpeedDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(nextFireInterval - effectiveFireInterval, "0.##") : "";
+        {
+            GetEffectiveStats(weapon, upgrade.nextLevel, out float nextWeaponDamage, out float nextWeaponFireInterval);
+            nextDamage = Mathf.Max(0.01f, nextWeaponDamage * SkillEffects.DamageMultiplier);
+            nextFireInterval = Mathf.Max(0.05f, nextWeaponFireInterval * SkillEffects.FireIntervalMultiplier);
+        }
+        string damageDelta = owned && hasNextUpgrade ? FormatUpgradeDelta(nextDamage - effectiveDamage, "0.##") : "";
+        string fireSpeedDelta = owned && hasNextUpgrade
+            ? FormatUpgradeDelta(nextFireInterval - effectiveFireInterval, "0.###")
+            : "";
 
         SetText(weaponNameText, string.IsNullOrEmpty(weapon.weaponName) ? weapon.weaponId : weapon.weaponName);
         SetText(descText, weapon.desc);
-        SetText(damageText, $"공격력 : {effectiveDamage}{damageDelta}");
+        SetText(damageText, $"공격력 : {effectiveDamage:0.##}{damageDelta}");
         SetText(fireSpeedText, $"공격속도 : {effectiveFireInterval:0.##}s{fireSpeedDelta}");
         SetText(rangeText, $"사거리 : {weapon.detectRange:0.##}");
         SetText(pierceText, $"관통 : {GetEffectivePierceCount(weapon)}");
@@ -345,7 +353,7 @@ public class WeaponPanelManager : MonoBehaviour
         RefreshTraitLockButton(traitLock2Button, traitLock2Image, secondUnlocked, secondLocked);
 
         int lockedCount = (firstLocked ? 1 : 0) + (secondLocked ? 1 : 0);
-        int rerollCost = 100 + lockedCount * 50;
+        int rerollCost = 50 + lockedCount * 50;
         bool hasRerollTarget = (firstUnlocked && !firstLocked) || (secondUnlocked && !secondLocked);
         bool canAfford = GameFlowManager.Instance != null &&
                          GameFlowManager.Instance.GetMoney() + 0.0001f >= rerollCost;
@@ -402,7 +410,7 @@ public class WeaponPanelManager : MonoBehaviour
         if (!rerollFirst && !rerollSecond)
             return;
 
-        int rerollCost = 100 + ((firstLocked ? 1 : 0) + (secondLocked ? 1 : 0)) * 50;
+        int rerollCost = 50 + ((firstLocked ? 1 : 0) + (secondLocked ? 1 : 0)) * 50;
         var flow = GameFlowManager.Instance;
         if (flow == null || !flow.SpendMoney(rerollCost))
         {
@@ -589,9 +597,13 @@ public class WeaponPanelManager : MonoBehaviour
             if (hasData)
             {
                 var sprite = LoadIconSprite(MaterialToIconId(cost.materialId));
-                if (sprite != null)
-                    iconImage.sprite = sprite;
+                iconImage.sprite = sprite;
+                iconImage.gameObject.SetActive(sprite != null);
                 iconImage.preserveAspect = true;
+            }
+            else
+            {
+                iconImage.sprite = null;
             }
         }
 
@@ -690,6 +702,21 @@ public class WeaponPanelManager : MonoBehaviour
         return Mathf.Max(DefaultWeaponLevel, currentLevel - 1);
     }
 
+    static int GetWeaponLevelCheckpoint(int currentLevel)
+    {
+        int[] checkpoints = { 5, 10, 15, 20, 25 };
+        int checkpoint = DefaultWeaponLevel;
+
+        for (int i = 0; i < checkpoints.Length; i++)
+        {
+            if (currentLevel < checkpoints[i])
+                break;
+            checkpoint = checkpoints[i];
+        }
+
+        return checkpoint;
+    }
+
     Sprite LoadIconSprite(string iconId)
     {
         if (string.IsNullOrWhiteSpace(iconId)) return null;
@@ -759,11 +786,12 @@ public class WeaponPanelManager : MonoBehaviour
         }
         else if (roll >= upgrade.successRate + upgrade.failRate && upgrade.breakRate > 0f)
         {
-            SetWeaponLevel(weapon.weaponId, DefaultWeaponLevel);
+            SetWeaponLevel(weapon.weaponId, GetWeaponLevelCheckpoint(currentLevel));
         }
         else
         {
-            SetWeaponLevel(weapon.weaponId, GetPreviousWeaponLevel(weapon.weaponId, currentLevel));
+            int previousLevel = GetPreviousWeaponLevel(weapon.weaponId, currentLevel);
+            SetWeaponLevel(weapon.weaponId, Mathf.Max(previousLevel, GetWeaponLevelCheckpoint(currentLevel)));
         }
 
         SavePrefs();
@@ -837,23 +865,23 @@ public class WeaponPanelManager : MonoBehaviour
         return weapons[currentIndex];
     }
 
-    static void GetEffectiveStats(GameData.WeaponDef weapon, int level, out int damage, out float fireInterval)
+    static void GetEffectiveStats(GameData.WeaponDef weapon, int level, out float damage, out float fireInterval)
     {
         damage = weapon != null ? weapon.damage : 1;
         fireInterval = weapon != null ? weapon.fireInterval : 1f;
         if (weapon == null) return;
 
-        GameData.GetWeaponUpgradeTotals(weapon.weaponId, level, out int damageAdd, out float fireIntervalAdd);
-        damage = Mathf.Max(1, Mathf.RoundToInt(
-            WeaponTraitRuntime.ApplyStatEffects(weapon.weaponId, "damage", damage + damageAdd)));
+        GameData.GetWeaponUpgradeTotals(weapon.weaponId, level, out float damageAdd, out float fireIntervalAdd);
+        damage = Mathf.Max(0.01f,
+            WeaponTraitRuntime.ApplyStatEffects(weapon.weaponId, "damage", damage + damageAdd));
         fireInterval = Mathf.Max(0.05f,
             WeaponTraitRuntime.ApplyStatEffects(weapon.weaponId, "fireInterval", fireInterval - fireIntervalAdd));
     }
 
-    public static int GetEffectiveDamage(GameData.WeaponDef weapon)
+    public static float GetEffectiveDamage(GameData.WeaponDef weapon)
     {
-        if (weapon == null) return 1;
-        GetEffectiveStats(weapon, GetWeaponLevel(weapon.weaponId), out int damage, out _);
+        if (weapon == null) return 1f;
+        GetEffectiveStats(weapon, GetWeaponLevel(weapon.weaponId), out float damage, out _);
         return damage;
     }
 
@@ -1039,7 +1067,11 @@ public class WeaponPanelManager : MonoBehaviour
         {
             case "stone": return "stone_1";
             case "copper": return "copper_node";
+            case "iron": return "silver_node";
             case "gold": return "gold_node";
+            case "diamond":
+            case "mystrile":
+                return "mystrile_node";
             default: return materialId.Trim();
         }
     }
@@ -1195,6 +1227,27 @@ public class WeaponPanelManager : MonoBehaviour
             PlayerPrefs.DeleteKey(TraitLockKey(slot, list[i].weaponId, 5));
             PlayerPrefs.DeleteKey(TraitLockKey(slot, list[i].weaponId, 10));
         }
+        PlayerPrefs.Save();
+    }
+
+    public static void UnlockAllWeaponsForSlot(int slot)
+    {
+        if (slot < 1) return;
+
+        var list = GameData.GetWeapons();
+        for (int i = 0; i < list.Count; i++)
+        {
+            var weapon = list[i];
+            if (weapon == null || string.IsNullOrEmpty(weapon.weaponId))
+                continue;
+
+            PlayerPrefs.SetInt(OwnedKey(slot, weapon.weaponId), 1);
+            if (!PlayerPrefs.HasKey(LevelKey(slot, weapon.weaponId)))
+                PlayerPrefs.SetInt(LevelKey(slot, weapon.weaponId), DefaultWeaponLevel);
+        }
+
+        if (string.IsNullOrEmpty(PlayerPrefs.GetString(EquippedKey(slot), "")))
+            PlayerPrefs.SetString(EquippedKey(slot), DefaultWeaponId);
         PlayerPrefs.Save();
     }
 

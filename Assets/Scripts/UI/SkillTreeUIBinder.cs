@@ -11,6 +11,7 @@ public class SkillTreeUIBinder : MonoBehaviour
 
     [Header("Visuals")]
     public bool hideLocked = true;
+    public float linkWidth = 6f;
     public Color unlockedColor = Color.white;
     public Color lockedColor = new Color(0.35f, 0.35f, 0.35f, 1f);
     public Color maxColor = new Color(1f, 0.9f, 0.2f, 1f);
@@ -30,6 +31,10 @@ public class SkillTreeUIBinder : MonoBehaviour
         public RectTransform rect;
         public Graphic graphic;
         public Button button;
+        public Outline outline;
+        public Color authoredColor;
+        public Color authoredOutlineColor;
+        public bool authoredOutlineEnabled;
     }
 
     class Link
@@ -98,7 +103,12 @@ public class SkillTreeUIBinder : MonoBehaviour
         {
             var line = lines[i].Trim();
             if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
-            if (i == 0 && line.ToLower().StartsWith("id,")) continue;
+            if (i == 0)
+            {
+                string lower = line.ToLowerInvariant();
+                if (lower.StartsWith("id,") || lower.StartsWith("skillid,"))
+                    continue;
+            }
             var cols = ParseCsvLine(line);
             if (cols.Count < 7) continue;
 
@@ -126,7 +136,11 @@ public class SkillTreeUIBinder : MonoBehaviour
         var nodes = skillContent.GetComponentsInChildren<SkillNodeButton>(true);
         foreach (var n in nodes)
         {
-            var id = string.IsNullOrEmpty(n.skillId) ? n.gameObject.name : n.skillId;
+            // 씬에서 수정한 오브젝트 이름이 CSV ID와 일치하면 이를 우선한다.
+            // 복제 후 컴포넌트의 skillId를 미처 수정하지 않아도 잘못된 노드에 덮어쓰지 않는다.
+            var id = defs.ContainsKey(n.gameObject.name)
+                ? n.gameObject.name
+                : (string.IsNullOrEmpty(n.skillId) ? n.gameObject.name : n.skillId);
             var mappedId = ResolveId(id);
             if (!string.IsNullOrEmpty(mappedId))
                 id = mappedId;
@@ -135,13 +149,18 @@ public class SkillTreeUIBinder : MonoBehaviour
             if (graphic == null) graphic = n.GetComponentInChildren<Graphic>(true);
             var btn = n.GetComponent<Button>();
             if (btn == null) btn = n.gameObject.AddComponent<Button>();
+            var outline = n.GetComponent<Outline>();
 
             ui[id] = new UiNode
             {
                 id = id,
                 rect = rect,
                 graphic = graphic,
-                button = btn
+                button = btn,
+                outline = outline,
+                authoredColor = graphic != null ? graphic.color : Color.white,
+                authoredOutlineColor = outline != null ? outline.effectColor : Color.clear,
+                authoredOutlineEnabled = outline != null && outline.enabled
             };
         }
     }
@@ -163,46 +182,71 @@ public class SkillTreeUIBinder : MonoBehaviour
     {
         links.Clear();
         if (linkContainer == null) return;
-        foreach (Transform child in linkContainer) Destroy(child.gameObject);
 
-        var canvas = linkContainer.GetComponentInParent<Canvas>();
-        Camera cam = null;
-        if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
-            cam = canvas.worldCamera;
+        // 이전에 자동 생성한 선만 정리한다. 노드와 다른 UI 오브젝트는 건드리지 않는다.
+        var oldLinks = new List<GameObject>();
+        foreach (Transform child in linkContainer)
+        {
+            if (child.name.StartsWith("link_", System.StringComparison.Ordinal))
+                oldLinks.Add(child.gameObject);
+        }
+        for (int i = 0; i < oldLinks.Count; i++)
+        {
+            oldLinks[i].SetActive(false);
+            Destroy(oldLinks[i]);
+        }
 
         foreach (var def in defs.Values)
         {
-            foreach (var req in def.reqs)
+            for (int i = 0; i < def.reqs.Count; i++)
             {
-                if (!ui.ContainsKey(def.id) || !ui.ContainsKey(req)) continue;
-                var a = ui[req].rect;
-                var b = ui[def.id].rect;
-                var go = new GameObject($"link_{req}_to_{def.id}");
-                go.transform.SetParent(linkContainer, false);
-                var img = go.AddComponent<Image>();
-                img.color = linkLockedColor;
-                var rt = go.GetComponent<RectTransform>();
-                rt.pivot = new Vector2(0.5f, 0.5f);
+                string prerequisiteId = def.reqs[i];
+                if (!ui.TryGetValue(prerequisiteId, out var fromNode)) continue;
+                if (!ui.TryGetValue(def.id, out var toNode)) continue;
+                if (fromNode.rect == null || toNode.rect == null) continue;
 
-                Vector2 pA = WorldToLocal(linkContainer, a, cam);
-                Vector2 pB = WorldToLocal(linkContainer, b, cam);
-                Vector2 dir = pB - pA;
-                float len = dir.magnitude;
-                rt.sizeDelta = new Vector2(len, 6f);
-                rt.anchoredPosition = (pA + pB) * 0.5f;
-                float ang = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-                rt.rotation = Quaternion.Euler(0f, 0f, ang);
-                links.Add(new Link { a = req, b = def.id, img = img });
+                // 노드와 skillLinks는 모두 skillContent의 직접 자식이므로 같은 로컬 좌표계를 쓴다.
+                // 월드/스크린 좌표 변환을 거치면 Stretch 앵커 때문에 선이 밀릴 수 있다.
+                Vector3 fromLocal3 = fromNode.rect.localPosition;
+                Vector3 toLocal3 = toNode.rect.localPosition;
+                Vector2 fromLocal = new Vector2(fromLocal3.x, fromLocal3.y);
+                Vector2 toLocal = new Vector2(toLocal3.x, toLocal3.y);
+                Vector2 direction = toLocal - fromLocal;
+
+                var lineObject = new GameObject(
+                    $"link_{prerequisiteId}_to_{def.id}",
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image));
+                lineObject.transform.SetParent(linkContainer, false);
+
+                var lineImage = lineObject.GetComponent<Image>();
+                lineImage.color = linkUnlockedColor;
+                lineImage.raycastTarget = false;
+
+                var lineRect = lineObject.GetComponent<RectTransform>();
+                lineRect.anchorMin = new Vector2(0.5f, 0.5f);
+                lineRect.anchorMax = new Vector2(0.5f, 0.5f);
+                lineRect.pivot = new Vector2(0.5f, 0.5f);
+                lineRect.localPosition = new Vector3(
+                    (fromLocal.x + toLocal.x) * 0.5f,
+                    (fromLocal.y + toLocal.y) * 0.5f,
+                    0f);
+                lineRect.sizeDelta = new Vector2(direction.magnitude, Mathf.Max(1f, linkWidth));
+                lineRect.localRotation = Quaternion.Euler(
+                    0f,
+                    0f,
+                    Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
+
+                lineObject.transform.SetAsFirstSibling();
+                links.Add(new Link
+                {
+                    a = prerequisiteId,
+                    b = def.id,
+                    img = lineImage
+                });
             }
         }
-    }
-
-    Vector2 WorldToLocal(RectTransform container, RectTransform target, Camera cam)
-    {
-        Vector2 localPoint;
-        Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, target.position);
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(container, screen, cam, out localPoint);
-        return localPoint;
     }
 
     public void RefreshAll()
@@ -222,20 +266,38 @@ public class SkillTreeUIBinder : MonoBehaviour
                 node.button.interactable = false;
                 if (hideLocked)
                     node.rect.gameObject.SetActive(false);
-                else
-                    node.graphic.color = lockedColor;
+                else if (node.rect != null)
+                    node.rect.gameObject.SetActive(true);
             }
             else if (level >= max)
             {
-                node.button.interactable = false;
+                // 비활성화 색상으로 투명해지지 않도록 버튼 상태는 유지한다.
+                // 구매 처리는 SkillTreeManager에서 MAX 여부를 다시 검사한다.
+                node.button.interactable = true;
                 node.rect.gameObject.SetActive(true);
-                node.graphic.color = maxColor;
             }
             else
             {
                 node.button.interactable = true;
                 node.rect.gameObject.SetActive(true);
-                node.graphic.color = unlockedColor;
+            }
+
+            // 사용자가 Inspector에서 설정한 원래 색상을 유지한다.
+            if (node.graphic != null)
+                node.graphic.color = node.authoredColor;
+
+            if (node.outline != null)
+            {
+                if (unlocked && level >= max)
+                {
+                    node.outline.enabled = true;
+                    node.outline.effectColor = maxColor;
+                }
+                else
+                {
+                    node.outline.enabled = node.authoredOutlineEnabled;
+                    node.outline.effectColor = node.authoredOutlineColor;
+                }
             }
         }
 
@@ -245,10 +307,7 @@ public class SkillTreeUIBinder : MonoBehaviour
             if (hideLocked)
                 l.img.gameObject.SetActive(show);
             else
-            {
                 l.img.gameObject.SetActive(true);
-                l.img.color = show ? linkUnlockedColor : linkLockedColor;
-            }
         }
     }
 

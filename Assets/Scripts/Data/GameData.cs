@@ -4,6 +4,8 @@ using UnityEngine;
 
 public static class GameData
 {
+    public static bool temporaryUnlockUnknownMineralSkills = false;
+
     public class MineralDef
     {
         public string id;
@@ -67,7 +69,7 @@ public static class GameData
     {
         public string weaponId;
         public string weaponName;
-        public int damage;
+        public float damage;
         public float fireInterval;
         public float bulletSpeed;
         public float detectRange;
@@ -98,7 +100,7 @@ public static class GameData
         public float successRate;
         public float failRate;
         public float breakRate;
-        public int damageAdd;
+        public float damageAdd;
         public float fireIntervalAdd;
     }
 
@@ -202,6 +204,14 @@ public static class GameData
         if (string.IsNullOrEmpty(reqSkillId)) return true;
         if (reqSkillId == "none") return true;
         if (reqSkillId == "copper1" || reqSkillId == "copper") return SkillEffects.CopperUnlocked;
+
+        if (SkillTreeManager.GetSkillLevel(reqSkillId) > 0 ||
+            SkillTreeManager.GetSkillLevel($"{reqSkillId}1") > 0)
+            return true;
+
+        if (temporaryUnlockUnknownMineralSkills)
+            return true;
+
         if (!warnedSkills.Contains(reqSkillId))
         {
             warnedSkills.Add(reqSkillId);
@@ -338,7 +348,7 @@ public static class GameData
         return special;
     }
 
-    public static void GetWeaponUpgradeTotals(string weaponId, int currentLevel, out int damageAdd, out float fireIntervalAdd)
+    public static void GetWeaponUpgradeTotals(string weaponId, int currentLevel, out float damageAdd, out float fireIntervalAdd)
     {
         EnsureLoaded();
         damageAdd = 0;
@@ -384,6 +394,31 @@ public static class GameData
         return skillEffects;
     }
 
+    public static SkillEffectDef GetSkillEffect(string skillId)
+    {
+        EnsureLoaded();
+        if (string.IsNullOrEmpty(skillId)) return null;
+        for (int i = 0; i < skillEffects.Count; i++)
+        {
+            if (skillEffects[i] != null && skillEffects[i].skillId == skillId)
+                return skillEffects[i];
+        }
+        return null;
+    }
+
+    public static List<SkillEffectDef> GetSkillEffects(string skillId)
+    {
+        EnsureLoaded();
+        var result = new List<SkillEffectDef>();
+        if (string.IsNullOrEmpty(skillId)) return result;
+        for (int i = 0; i < skillEffects.Count; i++)
+        {
+            if (skillEffects[i] != null && skillEffects[i].skillId == skillId)
+                result.Add(skillEffects[i]);
+        }
+        return result;
+    }
+
     static void EnsureLoaded()
     {
         if (loaded) return;
@@ -410,7 +445,7 @@ public static class GameData
         foreach (var row in table.Rows)
         {
             var m = new MineralDef();
-            m.id = table.Get(row, "id");
+            m.id = GetFirst(row, table, "stoneId", "id");
             m.name = table.Get(row, "name");
             m.value = table.GetFloat(row, "value");
             m.dropWeight = table.GetInt(row, "dropWeight");
@@ -511,7 +546,7 @@ public static class GameData
             var w = new WeaponDef();
             w.weaponId = table.Get(row, "weaponId");
             w.weaponName = table.Get(row, "weaponName");
-            w.damage = table.GetInt(row, "damage");
+            w.damage = table.GetFloat(row, "damage");
             w.fireInterval = table.GetFloat(row, "fireInterval");
             w.bulletSpeed = table.GetFloat(row, "bulletSpeed");
             w.detectRange = table.GetFloat(row, "detectRange");
@@ -576,7 +611,7 @@ public static class GameData
             upgrade.successRate = table.GetFloat(row, "successRate");
             upgrade.failRate = table.GetFloat(row, "failRate");
             upgrade.breakRate = table.GetFloat(row, "breakRate");
-            upgrade.damageAdd = table.GetInt(row, "damageAdd");
+            upgrade.damageAdd = table.GetFloat(row, "damageAdd");
             upgrade.fireIntervalAdd = table.GetFloat(row, "fireIntervalAdd");
 
             if (string.IsNullOrEmpty(upgrade.weaponId) || upgrade.level < 1)
@@ -729,8 +764,14 @@ public static class GameData
             s.calcType = table.Get(row, "calcType");
             s.baseVal = table.GetFloat(row, "baseVal");
             s.perLevel = table.GetFloat(row, "perLevel");
-            s.minVal = table.GetFloat(row, "minVal");
-            s.maxVal = table.GetFloat(row, "maxVal");
+            s.minVal = -9999f;
+            s.maxVal = 9999f;
+            string minText = table.Get(row, "minVal");
+            string maxText = table.Get(row, "maxVal");
+            if (float.TryParse(minText, NumberStyles.Float, CultureInfo.InvariantCulture, out float minValue))
+                s.minVal = minValue;
+            if (float.TryParse(maxText, NumberStyles.Float, CultureInfo.InvariantCulture, out float maxValue))
+                s.maxVal = maxValue;
             s.desc = table.Get(row, "desc");
             if (!string.IsNullOrEmpty(s.skillId) && !string.IsNullOrEmpty(s.targetStat))
                 skillEffects.Add(s);

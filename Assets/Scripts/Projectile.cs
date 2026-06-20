@@ -5,7 +5,7 @@ public class Projectile : MonoBehaviour
     public float speed = 10f;
     public float lifeTime = 2f;
     private float timer;
-    public int damage = 1;
+    public float damage = 1f;
     public float damageMultiplier = 1f;
     // Additional enemies this projectile can pass through after the first hit.
     public int pierceCount = 0;
@@ -53,6 +53,20 @@ public class Projectile : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
+        var boss = other.GetComponentInParent<BossController>();
+        if (boss != null)
+        {
+            boss.TakeDamage(Mathf.Max(0.01f, damage));
+            if (remainingPierce <= 0)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            remainingPierce--;
+            return;
+        }
+
         var enemy = other.GetComponent<Enemy>();
         if (enemy != null)
         {
@@ -60,7 +74,7 @@ public class Projectile : MonoBehaviour
             if (hitEnemyIds.Contains(id)) return;
             hitEnemyIds.Add(id);
 
-            int appliedDamage = WeaponTraitRuntime.ShouldExecute(weaponId, enemy)
+            float appliedDamage = WeaponTraitRuntime.ShouldExecute(weaponId, enemy)
                 ? enemy.CurrentHP
                 : WeaponTraitRuntime.ModifyHitDamage(
                     weaponId,
@@ -79,11 +93,6 @@ public class Projectile : MonoBehaviour
 
             remainingPierce--;
             return;
-        }
-        if (other.CompareTag("Boss"))
-        {
-            // Boss handling later
-            Destroy(gameObject);
         }
     }
 }

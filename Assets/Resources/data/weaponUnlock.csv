@@ -1,4 +1,7 @@
 weaponId,materialId,amount
 multi_shot,stone,10
-machine_gun,stone,10
-sniper_rail,stone,10
+multi_shot,copper,1
+machine_gun,copper,10
+machine_gun,iron,5
+sniper_rail,copper,20
+sniper_rail,iron,10

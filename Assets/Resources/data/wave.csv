@@ -1,6 +1,0 @@
-wave,duration,spawnCountMin,spawnCountMax,difficultyMult,isBossWave,desc
-1,40,5,10,1,FALSE,시작 웨이브
-2,40,5,10,1,FALSE,일반
-3,40,5,10,1,FALSE,일반
-4,40,5,10,1,FALSE,일반
-5,40,5,10,1.2,TRUE,첫 보스 등장
