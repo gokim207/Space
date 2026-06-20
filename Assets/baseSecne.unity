@@ -151,7 +151,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 1008, y: -34.318}
+  m_AnchoredPosition: {x: 1008, y: -66}
   m_SizeDelta: {x: -220.5887, y: 301.7499}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &413139124
@@ -707,7 +707,7 @@ GameObject:
   - component: {fileID: 1124223772}
   - component: {fileID: 1124223771}
   m_Layer: 5
-  m_Name: Image
+  m_Name: lock
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1348,7 +1348,7 @@ GameObject:
   - component: {fileID: 1658189550}
   - component: {fileID: 1658189549}
   m_Layer: 5
-  m_Name: travelSrartText
+  m_Name: text
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

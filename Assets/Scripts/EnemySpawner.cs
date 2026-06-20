@@ -4,10 +4,14 @@ public class EnemySpawner : MonoBehaviour
 {
     public GameObject enemyPrefab;
     public Transform planetCenter;
-    public float spawnInterval = 2f;
     private float timer;
-    // spawnOffset is distance beyond the planet surface where enemies will appear
-    public float spawnOffset = 3f;
+    public float spawnCheckInterval = 1f;
+    public float spawnMinOffset = 15f;
+    public float spawnMaxOffset = 25f;
+    [Range(0f, 1f)] public float spawnThreeChance = 0.5f;
+    [Range(0f, 1f)] public float spawnFiveChance = 0.4f;
+    [Range(0f, 1f)] public float spawnTenChance = 0.3f;
+    [Range(0f, 1f)] public float respawnOnDeathChance = 0.5f;
     private float planetSurfaceRadius = 0f;
     public WaveManager waveManager;
     public float minDistanceFromPlayer = 1.5f;
@@ -20,10 +24,8 @@ public class EnemySpawner : MonoBehaviour
     public float speedPerWave = 0.05f;
     public float enemyScaleMultiplier = 1.5f;
     public bool preservePrefabScale = true;
-    public string spawnId = "default";
     public float referencePlanetRadius = 5f;
     bool warnedWaveManagerMissing = false;
-    private float nextSpawnInterval = 2f;
 
     void Start()
     {
@@ -137,50 +139,41 @@ public class EnemySpawner : MonoBehaviour
             return;
         }
         timer += Time.deltaTime;
-        // spawn tick
-        if (timer >= nextSpawnInterval)
+        if (timer >= spawnCheckInterval)
         {
-            timer = 0f;
-            var spawnDef = ResolveSpawnDef();
-            int count = 1;
-            float minDist = spawnOffset;
-            float maxDist = spawnOffset;
-            string pattern = "random";
-            if (spawnDef != null)
-            {
-                count = Mathf.Max(1, Random.Range(spawnDef.minAmount, spawnDef.maxAmount + 1));
-                minDist = spawnDef.minDist;
-                maxDist = spawnDef.maxDist;
-                pattern = spawnDef.spawnPattern;
-                nextSpawnInterval = Random.Range(spawnDef.minInterval, spawnDef.maxInterval);
-            }
-            else
-            {
-                nextSpawnInterval = spawnInterval;
-            }
-            SpawnBatch(count, minDist, maxDist, pattern);
+            timer -= spawnCheckInterval;
+
+            // Each chance is checked independently. Multiple groups can spawn on the same second.
+            if (Random.value < spawnThreeChance)
+                SpawnRandomBatch(3);
+            if (Random.value < spawnFiveChance)
+                SpawnRandomBatch(5);
+            if (Random.value < spawnTenChance)
+                SpawnRandomBatch(10);
         }
     }
 
-    public void OnWaveStarted(int wave)
+    public void SpawnInitialEnemies()
     {
-        int count = Random.Range(5, 11);
-        var waveDef = GameData.GetWave(wave);
-        if (waveDef != null && waveDef.spawnCountMin > 0 && waveDef.spawnCountMax >= waveDef.spawnCountMin)
-        {
-            count = Random.Range(waveDef.spawnCountMin, waveDef.spawnCountMax + 1);
-        }
-        var spawnDef = ResolveSpawnDef();
-        float minDist = spawnOffset;
-        float maxDist = spawnOffset;
-        string pattern = "random";
-        if (spawnDef != null)
-        {
-            minDist = spawnDef.minDist;
-            maxDist = spawnDef.maxDist;
-            pattern = spawnDef.spawnPattern;
-        }
-        SpawnBatch(count, minDist, maxDist, pattern);
+        SpawnRandomBatch(Random.Range(5, 11));
+    }
+
+    public void OnWaveEnded()
+    {
+        SpawnRandomBatch(5);
+        if (Random.value < 0.5f)
+            SpawnRandomBatch(10);
+    }
+
+    public void OnEnemyKilled()
+    {
+        if (Random.value < respawnOnDeathChance)
+            SpawnRandomBatch(Random.Range(1, 3));
+    }
+
+    void SpawnRandomBatch(int count)
+    {
+        SpawnBatch(count, spawnMinOffset, spawnMaxOffset, "random");
     }
 
     Transform GetPlayerTransform()
@@ -335,7 +328,7 @@ public class EnemySpawner : MonoBehaviour
 
     float ResolveSafeSpawnAngle(float preferredAngle)
     {
-        float spawnRadius = planetSurfaceRadius + Mathf.Max(0.1f, spawnOffset);
+        float spawnRadius = planetSurfaceRadius + Mathf.Max(0.1f, spawnMinOffset);
         return ResolveSafeSpawnAngle(preferredAngle, spawnRadius);
     }
 
@@ -367,20 +360,6 @@ public class EnemySpawner : MonoBehaviour
 
         float side = Random.value < 0.5f ? -1f : 1f;
         return playerAngle + side * requiredAngle;
-    }
-
-    GameData.EnemySpawnDef ResolveSpawnDef()
-    {
-        var wave = waveManager != null ? waveManager.currentWave : 1;
-        var waveDef = GameData.GetWave(wave);
-        if (waveDef != null && waveDef.isBossWave)
-        {
-            var bossWarn = GameData.GetEnemySpawn("boss_warning");
-            if (bossWarn != null) return bossWarn;
-        }
-        var def = GameData.GetEnemySpawn(spawnId);
-        if (def != null) return def;
-        return GameData.GetEnemySpawn("default");
     }
 
     float GetWorldScale()

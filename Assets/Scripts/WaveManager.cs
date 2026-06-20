@@ -96,7 +96,6 @@ public class WaveManager : MonoBehaviour
         ApplyWeaponConfig();
         currentWave = 1;
         waveTimer = 0f;
-        ApplyWaveConfig(currentWave);
         oresCollectedThisRun = 0;
         oresCollectedStone = 0;
         oresCollectedCopper = 0;
@@ -170,8 +169,7 @@ public class WaveManager : MonoBehaviour
             projectilePrefab = CreateDebugProjectilePrefab();
         EnsureProjectilePrefabUsable();
         ApplyProjectileStats();
-        // TODO: 웨이브, 산소 등 초기화
-        if (spawner != null) spawner.OnWaveStarted(currentWave);
+        if (spawner != null) spawner.SpawnInitialEnemies();
     }
 
 
@@ -412,25 +410,14 @@ public class WaveManager : MonoBehaviour
     {
         ApplyWaveEndOreBonus();
         currentWave++;
-        ApplyWaveConfig(currentWave);
-        if (spawner != null) spawner.OnWaveStarted(currentWave);
-        var waveDef = GameData.GetWave(currentWave);
-        if (waveDef != null && waveDef.isBossWave)
-        {
-            // spawn boss
-            SpawnBoss();
-        }
-    }
-
-    void SpawnBoss()
-    {
-        // For now, pause spawner
-        if (spawner != null) spawner.enabled = false;
-        // Actual boss prefab logic can be added later
+        if (spawner != null) spawner.OnWaveEnded();
     }
 
     public void OnEnemyKilled(int ore, float oxygen, string oreId, Projectile sourceProjectile = null)
     {
+        if (spawner != null)
+            spawner.OnEnemyKilled();
+
         string sourceWeaponId = sourceProjectile != null && !string.IsNullOrEmpty(sourceProjectile.weaponId)
             ? sourceProjectile.weaponId
             : weaponId;
@@ -563,13 +550,6 @@ public class WaveManager : MonoBehaviour
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;
         return $"{minutes} : {seconds}";
-    }
-
-    void ApplyWaveConfig(int wave)
-    {
-        var cfg = GameData.GetWave(wave);
-        if (cfg != null && cfg.duration > 0f)
-            waveDuration = cfg.duration;
     }
 
     void RefreshOreUI()

@@ -390,9 +390,7 @@ public static class GameData
         loaded = true;
         LoadMinerals();
         LoadEnemies();
-        LoadWaves();
         LoadForgeTable();
-        LoadEnemySpawns();
         LoadWeapons();
         LoadWeaponUnlocks();
         LoadWeaponUpgrades();

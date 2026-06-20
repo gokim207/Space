@@ -200,7 +200,6 @@ public class GameFlowManager : MonoBehaviour
         // Forge UI (wireframe style)
         CreateButton(forgePanel, "대장간", new Vector2(0.12f, 0.95f), new Vector2(0.12f, 0.95f), new Vector2(0f, 0f), () => ShowForge());
         CreateButton(forgePanel, "스킬 트리", new Vector2(0.36f, 0.95f), new Vector2(0.36f, 0.95f), new Vector2(0f, 0f), () => ShowSkillTree());
-        CreateButton(forgePanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
         moneyLabel = CreateMoneyBox(forgePanel, new Vector2(0.8f, 0.92f), "0 $");
         CreatePanelBox(forgePanel, new Vector2(0.78f, 0.54f), new Vector2(180f, 180f)); // right ore list panel
         CreateOreList(forgePanel, new Vector2(0.92f, 0.49f), out forgeStoneLabel, out forgeCopperLabel, out forgeStoneButton, out forgeCopperButton);
@@ -215,7 +214,6 @@ public class GameFlowManager : MonoBehaviour
         // Skill panel
         CreateButton(skillPanel, "대장간", new Vector2(0.12f, 0.95f), new Vector2(0.12f, 0.95f), new Vector2(0f, 0f), () => ShowForge());
         CreateButton(skillPanel, "스킬 트리", new Vector2(0.36f, 0.95f), new Vector2(0.36f, 0.95f), new Vector2(0f, 0f), () => ShowSkillTree());
-        CreateButton(skillPanel, "탐험 시작", new Vector2(0.86f, 0.08f), new Vector2(0.86f, 0.08f), new Vector2(0f, 0f), () => GoToRunScene());
         skillMoneyLabel = CreateMoneyBox(skillPanel, new Vector2(0.8f, 0.92f), "0 $");
         var tree = new GameObject("SkillTreeManager");
         tree.transform.SetParent(skillPanel.transform, false);
@@ -301,7 +299,9 @@ public class GameFlowManager : MonoBehaviour
             sceneBtnForgeTab = sceneBtnForgeTab != null ? sceneBtnForgeTab : FindButton(activeScene, "btnForge", "BtnForge");
             sceneBtnSkillTab = sceneBtnSkillTab != null ? sceneBtnSkillTab : FindButton(activeScene, "btnSkill", "BtnSkill");
             sceneBtnWeaponTab = sceneBtnWeaponTab != null ? sceneBtnWeaponTab : FindButton(activeScene, "btnWeapon", "BtnWeapon", "weaponBtn", "WeaponBtn");
-            sceneBtnStartRun = sceneBtnStartRun != null ? sceneBtnStartRun : FindButton(activeScene, "btnStart", "BtnStart");
+            sceneBtnStartRun = isUpgradeScene && sceneBtnStartRun == null
+                ? FindButton(activeScene, "btnStart", "BtnStart")
+                : sceneBtnStartRun;
             sceneBtnForgeAction = sceneBtnForgeAction != null ? sceneBtnForgeAction : FindButton(activeScene, "btnForgeStart", "BtnForgeStart");
             sceneBtnAgain = sceneBtnAgain != null ? sceneBtnAgain : FindButton(activeScene, "againButton", "AgainButton");
             sceneBtnEndUpgrade = sceneBtnEndUpgrade != null ? sceneBtnEndUpgrade : FindButton(activeScene, "upgradeButton", "UpgradeButton");
@@ -1488,8 +1488,6 @@ public class GameFlowManager : MonoBehaviour
         BindAllButtonsByName(scene, () => ShowSkillTree(), "btnSkill", "BtnSkill");
         BindAllButtonsByName(scene, () => ShowWeapon(), "btnWeapon", "BtnWeapon", "weaponBtn", "WeaponBtn");
         BindAllButtonsByName(scene, () => TryForge(), "btnForgeStart", "BtnForgeStart");
-        BindAllButtonsByName(scene, () => GoToRunScene(), "btnStart", "BtnStart");
-
         upgradeSceneBound = true;
     }
 
@@ -1981,6 +1979,7 @@ public class GameFlowManager : MonoBehaviour
 
         forgeReady = false;
         forgeCooldown = Mathf.Max(0.5f, 5.0f - SkillEffects.ForgeCooldownReduction);
+        ForgeHammerAnimation.Play();
 
         float multiplier = RollForgeMultiplier();
         string oreId = selectedOre == OreSelect.Stone ? "stone" : "copper";

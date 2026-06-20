@@ -1,0 +1,403 @@
+fileFormatVersion: 2
+guid: 8ba2dd1f3c50542e2a2edad03d451606
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3099773697439293434
+    second: hammerAttack_0
+  - first:
+      213: -9052810324457459835
+    second: hammerAttack_1
+  - first:
+      213: -5673598182436225648
+    second: hammerAttack_2
+  - first:
+      213: -8600036278193908325
+    second: hammerAttack_3
+  - first:
+      213: -6614684188575445065
+    second: hammerAttack_4
+  - first:
+      213: 1939706983180445613
+    second: hammerAttack_5
+  - first:
+      213: 8861093506903242386
+    second: hammerAttack_6
+  - first:
+      213: 7499843881673584028
+    second: hammerAttack_7
+  - first:
+      213: 7473604579052564163
+    second: hammerAttack_8
+  - first:
+      213: 6852820094833110900
+    second: hammerAttack_9
+  - first:
+      213: -8279758414067787306
+    second: hammerAttack_10
+  - first:
+      213: 6699375445648729007
+    second: hammerAttack_11
+  - first:
+      213: -3186080178244885311
+    second: hammerAttack_12
+  - first:
+      213: 364670008915847669
+    second: hammerAttack_13
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: hammerAttack_1
+      rect:
+        serializedVersion: 2
+        x: 306
+        y: 461
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58f69b749f4fd5280800000000000000
+      internalID: -9052810324457459835
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_2
+      rect:
+        serializedVersion: 2
+        x: 654
+        y: 465
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09d369953845341b0800000000000000
+      internalID: -5673598182436225648
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_3
+      rect:
+        serializedVersion: 2
+        x: 956
+        y: 465
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9597c6e19886a880800000000000000
+      internalID: -8600036278193908325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_0
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 464
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7bf419ec6cbe334a0800000000000000
+      internalID: -6614684188575445065
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_4
+      rect:
+        serializedVersion: 2
+        x: 1215
+        y: 465
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 12, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da7a0d469393bea10800000000000000
+      internalID: 1939706983180445613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_5
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 158
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 21, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 296fc70b89de8fa70800000000000000
+      internalID: 8861093506903242386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_6
+      rect:
+        serializedVersion: 2
+        x: 280
+        y: 157
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9d6a06464cc41860800000000000000
+      internalID: 7499843881673584028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_7
+      rect:
+        serializedVersion: 2
+        x: 629
+        y: 157
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d910772793681d80800000000000000
+      internalID: -8279758414067787306
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_8
+      rect:
+        serializedVersion: 2
+        x: 916
+        y: 157
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa3edd61976f8fc50800000000000000
+      internalID: 6699375445648729007
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hammerAttack_9
+      rect:
+        serializedVersion: 2
+        x: 1202
+        y: 157
+        width: 269
+        height: 321
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f9eaa5e0719f0500800000000000000
+      internalID: 364670008915847669
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 3a57d02c798dd4b33abc3331972c2933
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      hammerAttack_0: -6614684188575445065
+      hammerAttack_1: -9052810324457459835
+      hammerAttack_12: -3186080178244885311
+      hammerAttack_2: -5673598182436225648
+      hammerAttack_3: -8600036278193908325
+      hammerAttack_4: 1939706983180445613
+      hammerAttack_5: 8861093506903242386
+      hammerAttack_6: 7499843881673584028
+      hammerAttack_7: -8279758414067787306
+      hammerAttack_8: 6699375445648729007
+      hammerAttack_9: 364670008915847669
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
