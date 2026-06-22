@@ -27,7 +27,8 @@ public class GameFlowManager : MonoBehaviour
     private RectTransform creditContent;
     private float creditStartY;
     private float creditEndY;
-    private const float CreditScrollSpeed = 90f;
+    private const float CreditScrollSpeed = 225f;
+    private static bool showCreditsAfterTitleLoad;
     private Text oxygenLabel;
     private Text waveLabel;
     private Text timeLabel;
@@ -36,6 +37,9 @@ public class GameFlowManager : MonoBehaviour
     private TMP_Text endReasonLabelTMP;
     private TMP_Text endStoneResultTMP;
     private TMP_Text endCopperResultTMP;
+    private TMP_Text endIronResultTMP;
+    private TMP_Text endGoldResultTMP;
+    private TMP_Text endDiamondResultTMP;
     private GameObject endCopperRow;
     private OxygenSystem oxygenSystem;
     private WaveManager waveManager;
@@ -60,16 +64,25 @@ public class GameFlowManager : MonoBehaviour
     private TMP_Text timeLabelTMP;
     private TMP_Text forgeStoneLabelTMP;
     private TMP_Text forgeCopperLabelTMP;
+    private TMP_Text forgeIronLabelTMP;
+    private TMP_Text forgeGoldLabelTMP;
+    private TMP_Text forgeDiamondLabelTMP;
     private TMP_Text forgeCountdownLabelTMP;
     private TMP_Text forgeGainLabelTMP;
     private TMP_Text oddsLabelTMP;
     private float money = 0f;
     private int stone = 0; // total owned
     private int copper = 0;
+    private int iron = 0;
+    private int gold = 0;
+    private int diamond = 0;
     private int runStoneGained = 0;
     private int runCopperGained = 0;
+    private int runIronGained = 0;
+    private int runGoldGained = 0;
+    private int runDiamondGained = 0;
     private bool endProcessed = false;
-    private enum OreSelect { Stone, Copper }
+    private enum OreSelect { Stone, Copper, Iron, Gold, Diamond }
     private OreSelect selectedOre = OreSelect.Stone;
     private enum SlotMode { Save, Load }
     private SlotMode slotMode = SlotMode.Save;
@@ -109,6 +122,9 @@ public class GameFlowManager : MonoBehaviour
     public TMP_Text sceneOddsText;
     public TMP_Text sceneStoneText;
     public TMP_Text sceneCopperText;
+    public TMP_Text sceneIronText;
+    public TMP_Text sceneGoldText;
+    public TMP_Text sceneDiamondText;
     public TMP_Text sceneForgeCountdownText;
     public TMP_Text sceneForgeGainText;
     public TMP_Text sceneMoneyText;
@@ -118,6 +134,9 @@ public class GameFlowManager : MonoBehaviour
     public TMP_Text sceneEndResultText;
     public TMP_Text sceneEndStoneText;
     public TMP_Text sceneEndCopperText;
+    public TMP_Text sceneEndIronText;
+    public TMP_Text sceneEndGoldText;
+    public TMP_Text sceneEndDiamondText;
     public Button sceneBtnForgeTab;
     public Button sceneBtnSkillTab;
     public Button sceneBtnWeaponTab;
@@ -132,6 +151,9 @@ public class GameFlowManager : MonoBehaviour
     public Button sceneBtnTitleCredit;
     public Image sceneStoneIcon;
     public Image sceneCopperIcon;
+    public Image sceneIronIcon;
+    public Image sceneGoldIcon;
+    public Image sceneDiamondIcon;
     private bool upgradeSceneBound = false;
     private readonly List<Button> titleMenuButtons = new List<Button>();
     private int titleMenuIndex = 0;
@@ -288,6 +310,9 @@ public class GameFlowManager : MonoBehaviour
             sceneOddsText = sceneOddsText != null ? sceneOddsText : FindTmpText(activeScene, "oddsText", "OddsText");
             sceneStoneText = sceneStoneText != null ? sceneStoneText : FindTmpText(activeScene, "stoneText", "StoneText");
             sceneCopperText = sceneCopperText != null ? sceneCopperText : FindTmpText(activeScene, "copperText", "CopperText");
+            sceneIronText = sceneIronText != null ? sceneIronText : FindTmpText(activeScene, "ironText", "IronText");
+            sceneGoldText = sceneGoldText != null ? sceneGoldText : FindTmpText(activeScene, "goldText", "GoldText");
+            sceneDiamondText = sceneDiamondText != null ? sceneDiamondText : FindTmpText(activeScene, "diamondText", "DiamondText");
             sceneForgeCountdownText = sceneForgeCountdownText != null ? sceneForgeCountdownText : FindTmpText(activeScene, "time", "forgeTime", "ForgeTime");
             sceneForgeGainText = sceneForgeGainText != null ? sceneForgeGainText : FindTmpText(activeScene, "forgeGain", "oreResultText", "OreResultText");
             sceneMoneyText = sceneMoneyText != null ? sceneMoneyText : FindTmpText(activeScene, "moneyText", "MoneyText", "moneyLabel", "MoneyLabel");
@@ -299,6 +324,9 @@ public class GameFlowManager : MonoBehaviour
                 sceneEndResultText = sceneEndResultText != null ? sceneEndResultText : FindTmpInDescendants(sceneEndPanel, "resultText", "ResultText", "resultLabel");
                 sceneEndStoneText = sceneEndStoneText != null ? sceneEndStoneText : FindTmpInDescendants(sceneEndPanel, "stoneText", "StoneText");
                 sceneEndCopperText = sceneEndCopperText != null ? sceneEndCopperText : FindTmpInDescendants(sceneEndPanel, "copperText", "CopperText");
+                sceneEndIronText = sceneEndIronText != null ? sceneEndIronText : FindTmpInDescendants(sceneEndPanel, "ironText", "IronText");
+                sceneEndGoldText = sceneEndGoldText != null ? sceneEndGoldText : FindTmpInDescendants(sceneEndPanel, "goldText", "GoldText");
+                sceneEndDiamondText = sceneEndDiamondText != null ? sceneEndDiamondText : FindTmpInDescendants(sceneEndPanel, "diamondText", "DiamondText");
             }
             sceneEndResultText = sceneEndResultText != null ? sceneEndResultText : FindTmpText(activeScene, "resultText", "endReasonText", "EndReasonText", "resultLabel", "ResultText");
             sceneEndStoneText = sceneEndStoneText != null ? sceneEndStoneText : FindTmpText(activeScene, "stoneText", "StoneText");
@@ -321,6 +349,9 @@ public class GameFlowManager : MonoBehaviour
 
             sceneStoneIcon = sceneStoneIcon != null ? sceneStoneIcon : FindImage(activeScene, "stoneIcon", "StoneIcon");
             sceneCopperIcon = sceneCopperIcon != null ? sceneCopperIcon : FindImage(activeScene, "copperIcon", "CopperIcon");
+            sceneIronIcon = sceneIronIcon != null ? sceneIronIcon : FindImage(activeScene, "ironIcon", "IronIcon");
+            sceneGoldIcon = sceneGoldIcon != null ? sceneGoldIcon : FindImage(activeScene, "goldIcon", "GoldIcon");
+            sceneDiamondIcon = sceneDiamondIcon != null ? sceneDiamondIcon : FindImage(activeScene, "diamondIcon", "DiamondIcon");
 
             hasSceneUI =
                 sceneForgePanel != null || sceneSkillPanel != null || sceneWeaponPanel != null || sceneOddsText != null || sceneBtnForgeAction != null ||
@@ -343,6 +374,9 @@ public class GameFlowManager : MonoBehaviour
         oddsLabelTMP = sceneOddsText;
         forgeStoneLabelTMP = sceneStoneText;
         forgeCopperLabelTMP = sceneCopperText;
+        forgeIronLabelTMP = sceneIronText;
+        forgeGoldLabelTMP = sceneGoldText;
+        forgeDiamondLabelTMP = sceneDiamondText;
         forgeCountdownLabelTMP = sceneForgeCountdownText;
         forgeGainLabelTMP = sceneForgeGainText;
         moneyLabelTMP = sceneMoneyText;
@@ -352,9 +386,17 @@ public class GameFlowManager : MonoBehaviour
         if (sceneEndResultText != null) endReasonLabelTMP = sceneEndResultText;
         if (sceneEndStoneText != null) endStoneResultTMP = sceneEndStoneText;
         if (sceneEndCopperText != null) endCopperResultTMP = sceneEndCopperText;
+        if (sceneEndIronText != null) endIronResultTMP = sceneEndIronText;
+        if (sceneEndGoldText != null) endGoldResultTMP = sceneEndGoldText;
+        if (sceneEndDiamondText != null) endDiamondResultTMP = sceneEndDiamondText;
 
         forgeStoneIconImage = sceneStoneIcon;
         forgeCopperIconImage = sceneCopperIcon;
+        BindForgeOreSelection(sceneStoneIcon, OreSelect.Stone);
+        BindForgeOreSelection(sceneCopperIcon, OreSelect.Copper);
+        BindForgeOreSelection(sceneIronIcon, OreSelect.Iron);
+        BindForgeOreSelection(sceneGoldIcon, OreSelect.Gold);
+        BindForgeOreSelection(sceneDiamondIcon, OreSelect.Diamond);
 
         if (sceneBtnForgeTab != null)
         {
@@ -675,67 +717,123 @@ public class GameFlowManager : MonoBehaviour
             creditContent.anchoredPosition = new Vector2(creditContent.anchoredPosition.x, creditStartY);
     }
 
+    public static void ShowCreditsAfterLoadingTitle()
+    {
+        showCreditsAfterTitleLoad = true;
+    }
+
+    void BindForgeOreSelection(Image icon, OreSelect ore)
+    {
+        if (icon == null)
+            return;
+
+        Button button = GetOrAdd<Button>(icon.gameObject);
+        button.transition = Selectable.Transition.None;
+        button.targetGraphic = icon;
+        icon.raycastTarget = true;
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(() => SetSelectedOre(ore));
+    }
+
     void EnsureCreditContent()
     {
         if (creditPanel == null)
             return;
-        if (creditContent != null && !creditContent.Equals(null))
-            return;
 
-        Transform existing = FindChildByName(creditPanel.transform, "creditContent", "CreditContent", "content", "Content");
-        if (existing != null)
+        if (creditContent == null || creditContent.Equals(null))
         {
-            creditContent = existing as RectTransform;
-        }
-        else
-        {
-            var contentObject = new GameObject("CreditContent", typeof(RectTransform));
-            creditContent = contentObject.GetComponent<RectTransform>();
-            creditContent.SetParent(creditPanel.transform, false);
-            creditContent.anchorMin = new Vector2(0.5f, 0.5f);
-            creditContent.anchorMax = new Vector2(0.5f, 0.5f);
-            creditContent.pivot = new Vector2(0.5f, 0.5f);
-            creditContent.sizeDelta = new Vector2(1200f, 900f);
-
-            var logoSource = FindInScene(SceneManager.GetActiveScene(), "logo", "Logo");
-            if (logoSource != null)
+            Transform existing = FindCreditChild(creditPanel.transform, "creditContent", "CreditContent");
+            if (existing != null)
             {
-                var logoClone = Instantiate(logoSource, creditContent);
-                logoClone.name = "CreditLogo";
-                logoClone.SetActive(true);
-                var logoRect = logoClone.GetComponent<RectTransform>();
-                if (logoRect != null)
-                {
-                    logoRect.anchorMin = logoRect.anchorMax = new Vector2(0.5f, 0.5f);
-                    logoRect.anchoredPosition = new Vector2(0f, 180f);
-                }
+                creditContent = existing as RectTransform;
             }
-
-            var textObject = new GameObject("CreditText", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-            var textRect = textObject.GetComponent<RectTransform>();
-            textRect.SetParent(creditContent, false);
-            textRect.anchorMin = textRect.anchorMax = new Vector2(0.5f, 0.5f);
-            textRect.anchoredPosition = new Vector2(0f, -190f);
-            textRect.sizeDelta = new Vector2(1000f, 360f);
-
-            var creditText = textObject.GetComponent<TextMeshProUGUI>();
-            var sourceText = titlePanel != null ? titlePanel.GetComponentInChildren<TMP_Text>(true) : null;
-            if (sourceText != null)
+            else
             {
-                creditText.font = sourceText.font;
-                creditText.fontSharedMaterial = sourceText.fontSharedMaterial;
+                var contentObject = new GameObject("CreditContent", typeof(RectTransform));
+                creditContent = contentObject.GetComponent<RectTransform>();
+                creditContent.SetParent(creditPanel.transform, false);
+                creditContent.anchorMin = new Vector2(0.5f, 0.5f);
+                creditContent.anchorMax = new Vector2(0.5f, 0.5f);
+                creditContent.pivot = new Vector2(0.5f, 0.5f);
+                creditContent.anchoredPosition = Vector2.zero;
+                creditContent.sizeDelta = Vector2.zero;
+
+                // Keep the scene-authored logo/text layout and move them as one group.
+                MoveCreditChildIntoContent("logo", "Logo");
+                MoveCreditChildIntoContent("creditText", "CreditText");
+                MoveCreditChildIntoContent("thank", "Thank");
             }
-            creditText.text = "SPACE SURVIVOR\n\nTHANK YOU FOR PLAYING";
-            creditText.fontSize = 52f;
-            creditText.alignment = TextAlignmentOptions.Center;
-            creditText.color = Color.white;
         }
 
         RectTransform panelRect = creditPanel.GetComponent<RectTransform>();
         float panelHeight = panelRect != null && panelRect.rect.height > 0f ? panelRect.rect.height : Screen.height;
-        float contentHeight = creditContent != null && creditContent.rect.height > 0f ? creditContent.rect.height : 900f;
-        creditStartY = -(panelHeight + contentHeight) * 0.5f;
-        creditEndY = (panelHeight + contentHeight) * 0.5f;
+        GetCreditVerticalBounds(out float minY, out float maxY);
+        const float margin = 100f;
+        creditStartY = -panelHeight * 0.5f - maxY - margin;
+        creditEndY = panelHeight * 0.5f - minY + margin;
+    }
+
+    void MoveCreditChildIntoContent(params string[] names)
+    {
+        if (creditPanel == null || creditContent == null)
+            return;
+
+        Transform child = FindCreditChild(creditPanel.transform, names);
+        if (child == null || child == creditContent || child.parent == creditContent)
+            return;
+
+        child.SetParent(creditContent, false);
+    }
+
+    void GetCreditVerticalBounds(out float minY, out float maxY)
+    {
+        minY = 0f;
+        maxY = 0f;
+        if (creditContent == null)
+            return;
+
+        bool found = false;
+        for (int i = 0; i < creditContent.childCount; i++)
+        {
+            RectTransform rect = creditContent.GetChild(i) as RectTransform;
+            if (rect == null)
+                continue;
+
+            float halfHeight = rect.rect.height * Mathf.Abs(rect.localScale.y) * 0.5f;
+            float childMin = rect.anchoredPosition.y - halfHeight;
+            float childMax = rect.anchoredPosition.y + halfHeight;
+            if (!found)
+            {
+                minY = childMin;
+                maxY = childMax;
+                found = true;
+            }
+            else
+            {
+                minY = Mathf.Min(minY, childMin);
+                maxY = Mathf.Max(maxY, childMax);
+            }
+        }
+    }
+
+    static Transform FindCreditChild(Transform root, params string[] names)
+    {
+        if (root == null)
+            return null;
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            if (string.Equals(root.name, names[i], System.StringComparison.OrdinalIgnoreCase))
+                return root;
+        }
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindCreditChild(root.GetChild(i), names);
+            if (found != null)
+                return found;
+        }
+        return null;
     }
 
     void UpdateCredits()
@@ -1432,6 +1530,7 @@ public class GameFlowManager : MonoBehaviour
         SetActiveSafe(titlePanel, true);
         SetActiveSafe(slotPanel, false);
         SetActiveSafe(sceneSettingPanel, false);
+        SetActiveSafe(creditPanel, false);
         if (confirmPanel != null) confirmPanel.SetActive(false);
         RebuildTitleMenuButtons();
         RefreshTitleMenuSelection();
@@ -1453,6 +1552,8 @@ public class GameFlowManager : MonoBehaviour
 
     void Update()
     {
+        UpdateCredits();
+
         if (CurrentPhase == GamePhase.Title && sceneSettingPanel != null && sceneSettingPanel.activeInHierarchy && IsCancelPressed())
         {
             ShowTitle();
@@ -1463,6 +1564,17 @@ public class GameFlowManager : MonoBehaviour
         if (SceneManager.GetActiveScene().name == "UpgradeScene" && CurrentPhase != GamePhase.SlotSelect && IsCancelPressed())
         {
             BaseSceneNavigation.ReturnToBaseScene();
+            return;
+        }
+
+        if (SceneManager.GetActiveScene().name == "RunScene" &&
+            CurrentPhase == GamePhase.Run &&
+            !BossBattleSession.IsBossBattle &&
+            IsCancelPressed())
+        {
+            if (waveManager == null)
+                waveManager = FindObjectOfType<WaveManager>();
+            waveManager?.EndRun();
             return;
         }
 
@@ -1545,6 +1657,11 @@ public class GameFlowManager : MonoBehaviour
         else if (scene.name == "TitleScene")
         {
             ShowTitle();
+            if (showCreditsAfterTitleLoad)
+            {
+                showCreditsAfterTitleLoad = false;
+                ShowCredits();
+            }
         }
         else if (BaseSceneNavigation.IsBaseSceneName(scene.name))
         {
@@ -1797,6 +1914,9 @@ public class GameFlowManager : MonoBehaviour
         if (NeedsRebindComponent(sceneOddsText)) sceneOddsText = FindTmpByName(scene, "oddsText", "odds");
         if (NeedsRebindComponent(sceneStoneText)) sceneStoneText = FindTmpByName(scene, "stoneText", "stoneCount");
         if (NeedsRebindComponent(sceneCopperText)) sceneCopperText = FindTmpByName(scene, "copperText", "copperCount");
+        if (NeedsRebindComponent(sceneIronText)) sceneIronText = FindTmpByName(scene, "ironText", "ironCount");
+        if (NeedsRebindComponent(sceneGoldText)) sceneGoldText = FindTmpByName(scene, "goldText", "goldCount");
+        if (NeedsRebindComponent(sceneDiamondText)) sceneDiamondText = FindTmpByName(scene, "diamondText", "diamondCount");
         if (NeedsRebindComponent(sceneForgeCountdownText)) sceneForgeCountdownText = FindTmpByName(scene, "time", "forgeTime", "countdown");
         if (NeedsRebindComponent(sceneForgeGainText)) sceneForgeGainText = FindTmpByName(scene, "addMoneyText", "oreResultText", "forgeGainText", "gainText", "forgeGain", "gain");
         if (NeedsRebindComponent(sceneMoneyText)) sceneMoneyText = FindTmpByName(scene, "moneyText", "money", "moneyLabel");
@@ -1823,6 +1943,12 @@ public class GameFlowManager : MonoBehaviour
             sceneStoneIcon = FindImageByName(scene, "stoneIcon", "stoneImg", "stoneImage");
         if (sceneCopperIcon == null || sceneCopperIcon.Equals(null) || sceneCopperIcon.gameObject.scene != scene)
             sceneCopperIcon = FindImageByName(scene, "copperIcon", "copperImg", "copperImage");
+        if (sceneIronIcon == null || sceneIronIcon.Equals(null) || sceneIronIcon.gameObject.scene != scene)
+            sceneIronIcon = FindImageByName(scene, "ironIcon", "ironImg", "ironImage");
+        if (sceneGoldIcon == null || sceneGoldIcon.Equals(null) || sceneGoldIcon.gameObject.scene != scene)
+            sceneGoldIcon = FindImageByName(scene, "goldIcon", "goldImg", "goldImage");
+        if (sceneDiamondIcon == null || sceneDiamondIcon.Equals(null) || sceneDiamondIcon.gameObject.scene != scene)
+            sceneDiamondIcon = FindImageByName(scene, "diamondIcon", "diamondImg", "diamondImage");
 
         // Apply to runtime fields
         if (sceneForgePanel != null) forgePanel = sceneForgePanel;
@@ -1836,6 +1962,14 @@ public class GameFlowManager : MonoBehaviour
         if (sceneOddsText != null) oddsLabelTMP = sceneOddsText;
         if (sceneStoneText != null) forgeStoneLabelTMP = sceneStoneText;
         if (sceneCopperText != null) forgeCopperLabelTMP = sceneCopperText;
+        if (sceneIronText != null) forgeIronLabelTMP = sceneIronText;
+        if (sceneGoldText != null) forgeGoldLabelTMP = sceneGoldText;
+        if (sceneDiamondText != null) forgeDiamondLabelTMP = sceneDiamondText;
+        BindForgeOreSelection(sceneStoneIcon, OreSelect.Stone);
+        BindForgeOreSelection(sceneCopperIcon, OreSelect.Copper);
+        BindForgeOreSelection(sceneIronIcon, OreSelect.Iron);
+        BindForgeOreSelection(sceneGoldIcon, OreSelect.Gold);
+        BindForgeOreSelection(sceneDiamondIcon, OreSelect.Diamond);
         if (sceneForgeCountdownText != null) forgeCountdownLabelTMP = sceneForgeCountdownText;
         if (sceneForgeGainText != null) forgeGainLabelTMP = sceneForgeGainText;
         if (sceneMoneyText != null) moneyLabelTMP = sceneMoneyText;

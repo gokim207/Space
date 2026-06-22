@@ -9,6 +9,9 @@ using UnityEngine.UI;
 public class BossPatternController : MonoBehaviour
 {
     const float SwingWarningSeconds = 0.7f;
+    const float SwingTrackingSeconds = 0.2f;
+    const float SwingScaleMultiplier = 1.75f;
+    const float OxygenDamageMultiplier = 1.5f;
     const float HazardWarningBlinkSeconds = 0.15f;
     const int HazardWarningBlinkCount = 2;
 
@@ -33,19 +36,12 @@ public class BossPatternController : MonoBehaviour
     TMP_Text debuffTime;
     Coroutine patternLoop;
     bool hazardActive;
+    bool debuffActive;
     Vector2 swingRootOffsetFromBoss;
     bool hasSwingOffset;
-    bool swingActive;
-
+    bool swingScaleApplied;
     readonly List<Sprite> attackFrames = new List<Sprite>();
-
-    void LateUpdate()
-    {
-        // Swing UI is screen-space, so it must be projected from the boss every frame.
-        // This keeps it attached to the boss instead of following the player/camera.
-        if (swingActive)
-            RefreshSwingPosition();
-    }
+    readonly List<GameObject> activeBossBullets = new List<GameObject>();
 
     public void Begin(BossController owner)
     {
@@ -61,6 +57,7 @@ public class BossPatternController : MonoBehaviour
         StopAllCoroutines();
         patternLoop = null;
         hazardActive = false;
+        debuffActive = false;
         BossBattleSession.ClearDebuff();
         SetActive(warningArea, false);
         SetActive(attackEffect, false);
@@ -68,7 +65,7 @@ public class BossPatternController : MonoBehaviour
         SetActive(rightCircle, false);
         SetActive(leftWarning, false);
         SetActive(rightWarning, false);
-        swingActive = false;
+        ClearBossBullets();
         SetDebuffUI(false);
         if (boss != null)
         {
@@ -85,6 +82,8 @@ public class BossPatternController : MonoBehaviour
             int maxPattern = boss.Phase >= 2 ? 6 : 5;
             int pattern = Random.Range(0, maxPattern);
             if (pattern == 3 && hazardActive)
+                continue;
+            if (pattern == 5 && debuffActive)
                 continue;
 
             switch (pattern)
@@ -138,8 +137,17 @@ public class BossPatternController : MonoBehaviour
                 yield return new WaitForSeconds(0.15f);
             }
 
+            float healTimer = 0f;
             while (HasLivingEnemies(summoned))
+            {
+                healTimer += Time.deltaTime;
+                if (healTimer >= 3f)
+                {
+                    healTimer -= 3f;
+                    boss.HealByMaxRatio(0.05f);
+                }
                 yield return null;
+            }
         }
         else
         {
@@ -180,7 +188,7 @@ public class BossPatternController : MonoBehaviour
 
         // The player is sampled once. Every volley keeps this initial direction.
         float fixedAimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
-        for (int volley = 0; volley < 10; volley++)
+        for (int volley = 0; volley < 20; volley++)
         {
             float volleyOffset;
             if (boss.Phase >= 2)
@@ -231,6 +239,15 @@ public class BossPatternController : MonoBehaviour
 
         float duration = boss != null && boss.Phase >= 2 ? 5f : 10f;
         float oxygenRatio = boss != null && boss.Phase >= 2 ? 0.03f : 0.01f;
+        StartCoroutine(RunHazardLifetime(selected, selectedWarning, duration, oxygenRatio));
+    }
+
+    IEnumerator RunHazardLifetime(
+        GameObject selected,
+        GameObject selectedWarning,
+        float duration,
+        float oxygenRatio)
+    {
         float elapsed = 0f;
         float damageTimer = 0f;
         ApplyHazardDamage(selected, oxygenRatio);
@@ -238,9 +255,9 @@ public class BossPatternController : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             damageTimer += Time.deltaTime;
-            if (damageTimer >= 1f)
+            if (damageTimer >= 0.5f)
             {
-                damageTimer -= 1f;
+                damageTimer -= 0.5f;
                 ApplyHazardDamage(selected, oxygenRatio);
             }
             yield return null;
@@ -254,73 +271,79 @@ public class BossPatternController : MonoBehaviour
     void ApplyHazardDamage(GameObject area, float oxygenRatio)
     {
         if (oxygen != null && IsPlayerInside(area))
-            oxygen.ChangeOxygen(-oxygen.MaxOxygen * oxygenRatio);
+            oxygen.ChangeOxygen(
+                -oxygen.MaxOxygen * oxygenRatio * OxygenDamageMultiplier);
     }
 
     IEnumerator SwingPattern()
     {
-        if (boss == null || warningArea == null)
+        if (boss == null || player == null || attackEffect == null)
             yield break;
 
-        swingActive = true;
-        RefreshSwingPosition();
         boss.SetPatternAnimationLocked(true);
-        SetActive(warningArea, true);
-        SetActive(attackEffect, false);
-
-        yield return PlayBossFrames(new[] { 42, 43, 44 }, SwingWarningSeconds);
-
         SetActive(warningArea, false);
-        SetActive(attackEffect, true);
-
-        RectTransform effectRect = attackEffect != null ? attackEffect.GetComponent<RectTransform>() : null;
-        Vector2 originalPosition = effectRect != null ? effectRect.anchoredPosition : Vector2.zero;
-        bool damaged = false;
-        float frameDuration = 0.12f;
-
-        for (int i = 0; i < 5; i++)
-        {
-            Sprite bossFrame = boss.FindBossFrame(Mathf.Min(45 + i, 48));
-            if (boss.Visual != null && bossFrame != null)
-                boss.Visual.sprite = bossFrame;
-
-            SetAttackEffectFrame(i);
-            if (effectRect != null)
-                effectRect.anchoredPosition = originalPosition + Vector2.left * (10f * i);
-
-            if (!damaged && IsPlayerInside(hitArea != null ? hitArea : warningArea))
-            {
-                float ratio = boss.Phase >= 2 ? 0.30f : 0.20f;
-                oxygen?.ChangeOxygen(-oxygen.MaxOxygen * ratio);
-                damaged = true;
-            }
-            yield return new WaitForSeconds(frameDuration);
-        }
-
-        if (effectRect != null)
-            effectRect.anchoredPosition = originalPosition;
         SetActive(attackEffect, false);
-        swingActive = false;
-        boss.SetPatternAnimationLocked(false);
 
-        if (boss.Phase >= 2)
+        Vector3 lockedTargetPosition = player.transform.position;
+        yield return PlaySwingWindupAndLockTarget(
+            new[] { 42, 43, 44 },
+            SwingWarningSeconds,
+            position => lockedTargetPosition = position);
+
+        for (int strike = 0; strike < 2; strike++)
         {
-            yield return new WaitForSeconds(0.12f);
-            yield return SwingPatternOnceWithoutWarning();
+            PositionSwingEffectAtWorldPoint(lockedTargetPosition);
+            yield return PlaySwingStrike();
+            if (strike == 0)
+                yield return new WaitForSeconds(0.12f);
         }
+
+        SetActive(attackEffect, false);
+        boss.SetPatternAnimationLocked(false);
     }
 
-    IEnumerator SwingPatternOnceWithoutWarning()
+    IEnumerator PlaySwingWindupAndLockTarget(
+        int[] frameIndices,
+        float duration,
+        System.Action<Vector3> setLockedPosition)
+    {
+        if (boss == null || player == null || frameIndices == null || frameIndices.Length == 0)
+            yield break;
+
+        float elapsed = 0f;
+        int previousFrame = -1;
+        Vector3 lockedPosition = player.transform.position;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            if (elapsed <= SwingTrackingSeconds)
+            {
+                lockedPosition = player.transform.position;
+                PositionSwingEffectAtWorldPoint(lockedPosition);
+            }
+
+            int frameIndex = Mathf.Min(
+                frameIndices.Length - 1,
+                Mathf.FloorToInt(elapsed / duration * frameIndices.Length));
+            if (frameIndex != previousFrame)
+            {
+                Sprite frame = boss.FindBossFrame(frameIndices[frameIndex]);
+                if (boss.Visual != null && frame != null)
+                    boss.Visual.sprite = frame;
+                previousFrame = frameIndex;
+            }
+            yield return null;
+        }
+
+        setLockedPosition?.Invoke(lockedPosition);
+    }
+
+    IEnumerator PlaySwingStrike()
     {
         if (attackEffect == null || boss == null)
             yield break;
 
-        swingActive = true;
-        RefreshSwingPosition();
-        boss.SetPatternAnimationLocked(true);
         SetActive(attackEffect, true);
-        RectTransform effectRect = attackEffect.GetComponent<RectTransform>();
-        Vector2 originalPosition = effectRect != null ? effectRect.anchoredPosition : Vector2.zero;
         bool damaged = false;
 
         for (int i = 0; i < 5; i++)
@@ -329,21 +352,17 @@ public class BossPatternController : MonoBehaviour
             if (boss.Visual != null && bossFrame != null)
                 boss.Visual.sprite = bossFrame;
             SetAttackEffectFrame(i);
-            if (effectRect != null)
-                effectRect.anchoredPosition = originalPosition + Vector2.left * (10f * i);
-            if (!damaged && IsPlayerInside(hitArea != null ? hitArea : warningArea))
+            if (!damaged && IsPlayerInside(hitArea != null ? hitArea : attackEffect))
             {
-                oxygen?.ChangeOxygen(-oxygen.MaxOxygen * 0.30f);
+                float ratio = boss.Phase >= 2 ? 0.30f : 0.20f;
+                oxygen?.ChangeOxygen(
+                    -oxygen.MaxOxygen * ratio * OxygenDamageMultiplier);
                 damaged = true;
             }
             yield return new WaitForSeconds(0.12f);
         }
 
-        if (effectRect != null)
-            effectRect.anchoredPosition = originalPosition;
         SetActive(attackEffect, false);
-        swingActive = false;
-        boss.SetPatternAnimationLocked(false);
     }
 
     IEnumerator DebuffPattern()
@@ -351,6 +370,7 @@ public class BossPatternController : MonoBehaviour
         if (boss == null || boss.Phase < 2)
             yield break;
 
+        debuffActive = true;
         bool damageDebuff = Random.value < 0.5f;
         float ratio = Random.Range(0.20f, 0.4001f);
         float duration = 10f;
@@ -364,6 +384,12 @@ public class BossPatternController : MonoBehaviour
         if (debuffType != null)
             debuffType.text = $"{(damageDebuff ? "공격력" : "공격 속도")} {ratio * 100f:0}% 감소";
 
+        StartCoroutine(RunDebuffLifetime(duration));
+        yield break;
+    }
+
+    IEnumerator RunDebuffLifetime(float duration)
+    {
         float elapsed = 0f;
         while (elapsed < duration)
         {
@@ -375,6 +401,7 @@ public class BossPatternController : MonoBehaviour
 
         BossBattleSession.ClearDebuff();
         SetDebuffUI(false);
+        debuffActive = false;
     }
 
     IEnumerator PlayBossFrames(int[] indices, float totalDuration)
@@ -417,9 +444,11 @@ public class BossPatternController : MonoBehaviour
         GameObject bullet = Instantiate(bossBulletTemplate, bossBulletTemplate.transform.parent);
         bullet.name = "BossBullet";
         bullet.SetActive(true);
+        activeBossBullets.Add(bullet);
         RectTransform rect = bullet.GetComponent<RectTransform>();
         if (rect == null)
         {
+            activeBossBullets.Remove(bullet);
             Destroy(bullet);
             return;
         }
@@ -454,15 +483,30 @@ public class BossPatternController : MonoBehaviour
             {
                 float ratio = boss != null && boss.Phase >= 2 ? 0.10f : 0.05f;
                 if (oxygen != null)
-                    oxygen.ChangeOxygen(-oxygen.currentOxygen * ratio);
+                {
+                    oxygen.ChangeOxygen(
+                        -oxygen.currentOxygen * ratio * OxygenDamageMultiplier);
+                }
                 hit = true;
+                activeBossBullets.Remove(bullet);
                 Destroy(bullet);
                 yield break;
             }
             yield return null;
         }
+        activeBossBullets.Remove(bullet);
         if (bullet != null)
             Destroy(bullet);
+    }
+
+    void ClearBossBullets()
+    {
+        for (int i = activeBossBullets.Count - 1; i >= 0; i--)
+        {
+            if (activeBossBullets[i] != null)
+                Destroy(activeBossBullets[i]);
+        }
+        activeBossBullets.Clear();
     }
 
     float GetBulletWorldSpeed()
@@ -552,6 +596,21 @@ public class BossPatternController : MonoBehaviour
         swingRoot.anchoredPosition = bossPoint + (hasSwingOffset ? swingRootOffsetFromBoss : Vector2.zero);
     }
 
+    void PositionSwingEffectAtWorldPoint(Vector3 worldPosition)
+    {
+        if (swingRoot == null || swingCanvas == null)
+            return;
+
+        Vector2 targetPoint = WorldToCanvasPoint(worldPosition, swingCanvas);
+        RectTransform effectRect = attackEffect != null
+            ? attackEffect.GetComponent<RectTransform>()
+            : null;
+        Vector2 effectLocalOffset = effectRect != null
+            ? effectRect.anchoredPosition
+            : Vector2.zero;
+        swingRoot.anchoredPosition = targetPoint - effectLocalOffset;
+    }
+
     void SetAttackEffectFrame(int index)
     {
         if (attackEffect == null || attackFrames.Count == 0)
@@ -582,7 +641,9 @@ public class BossPatternController : MonoBehaviour
     void BindSceneObjects()
     {
         oxygen = FindFirstObjectByType<OxygenSystem>();
-        spawner = FindFirstObjectByType<EnemySpawner>();
+        spawner = FindFirstObjectByType<EnemySpawner>(FindObjectsInactive.Include);
+        if (spawner != null)
+            spawner.PrepareForBossSpawns();
         player = FindFirstObjectByType<PlayerController>();
         GameObject planetObject = FindInScene("Planet");
         planet = planetObject != null ? planetObject.transform : null;
@@ -596,6 +657,7 @@ public class BossPatternController : MonoBehaviour
         attackEffect = FindChildObject(swing, "AttackEffect");
         hitArea = FindChildObjectLoose(swing, "HitArea");
         swingCanvas = swingRoot != null ? swingRoot.GetComponentInParent<Canvas>() : null;
+        ApplySwingScale();
 
         Transform bullet = FindChild(patternsRoot, "BossBulletTemplate");
         bossBulletTemplate = bullet != null ? bullet.gameObject : null;
@@ -633,6 +695,27 @@ public class BossPatternController : MonoBehaviour
         SetActive(leftWarning, false);
         SetActive(rightWarning, false);
         SetDebuffUI(false);
+    }
+
+    void ApplySwingScale()
+    {
+        if (swingScaleApplied)
+            return;
+
+        RectTransform effectRect = attackEffect != null
+            ? attackEffect.GetComponent<RectTransform>()
+            : null;
+        if (effectRect != null)
+            effectRect.sizeDelta *= SwingScaleMultiplier;
+
+        RectTransform hitRect = hitArea != null
+            ? hitArea.GetComponent<RectTransform>()
+            : null;
+        if (hitRect != null)
+        {
+            hitRect.sizeDelta *= SwingScaleMultiplier;
+        }
+        swingScaleApplied = true;
     }
 
     void SetDebuffUI(bool active)

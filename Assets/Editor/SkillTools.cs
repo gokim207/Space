@@ -13,7 +13,7 @@ public static class SkillTools
             return;
         }
 
-        flow.AddMoney(1000f);
+        flow.AddMoney(1000000000000f);
         UnityEngine.Debug.Log("Added $1000 to the current runtime money.");
     }
 

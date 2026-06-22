@@ -101,6 +101,7 @@ public class WaveManager : MonoBehaviour
     public void StartGame()
     {
         CurrentState = GameState.Run;
+        endSequenceStarted = false;
         WeaponTraitRuntime.ResetRun();
         baseMultiProjectileSpreadAngle = multiProjectileSpreadAngle;
         fireTimer = 0f;
@@ -417,12 +418,19 @@ public class WaveManager : MonoBehaviour
 
     public void EndRun()
     {
+        if (endSequenceStarted || CurrentState != GameState.Run)
+            return;
+
+        endSequenceStarted = true;
         CurrentState = GameState.Upgrade;
-        // TODO: 업그레이드 씬 전환 등 처리
         if (spawner != null) spawner.enabled = false;
+
         var flow = FindObjectOfType<GameFlowManager>();
         if (flow != null)
+        {
+            flow.SetEndReason("탐험 종료");
             flow.ShowEnd();
+        }
     }
 
     void AdvanceWave()
@@ -741,7 +749,14 @@ public class WaveManager : MonoBehaviour
         {
             var boss = FindFirstObjectByType<BossController>();
             if (boss != null && boss.gameObject.activeInHierarchy && boss.IsTargetable && boss.CurrentHP > 0)
-                return boss.transform;
+            {
+                float bossDistance = Vector3.Distance(from, boss.transform.position);
+                if (bossDistance <= bestDist)
+                {
+                    bestDist = bossDistance;
+                    best = boss.transform;
+                }
+            }
         }
 
         Camera cam = Camera.main;

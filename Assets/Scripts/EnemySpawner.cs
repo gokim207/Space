@@ -26,10 +26,19 @@ public class EnemySpawner : MonoBehaviour
     public bool preservePrefabScale = true;
     public float referencePlanetRadius = 5f;
     bool warnedWaveManagerMissing = false;
+    bool initialized;
 
     void Start()
     {
         timer = 0f;
+        PrepareForBossSpawns();
+    }
+
+    public void PrepareForBossSpawns()
+    {
+        if (initialized)
+            return;
+
         if (planetCenter == null)
         {
             var p = GameObject.Find("Planet");
@@ -82,6 +91,8 @@ public class EnemySpawner : MonoBehaviour
             else
                 Debug.LogWarning("EnemySpawner: WaveManager is null. Spawning will be paused until WaveManager exists.");
         }
+
+        initialized = enemyPrefab != null && planetCenter != null;
     }
 
     void EnsureEnemyPrefabUsable()
@@ -299,15 +310,27 @@ public class EnemySpawner : MonoBehaviour
         oreId = oreId.Trim().ToLowerInvariant();
         if (oreId == "stone")
         {
-            // stone_0 is the intended asset. stone_1 remains a temporary fallback until it is added.
-            return LoadSpriteFromIcon("stone_0", "stone_0") ??
-                   LoadSpriteFromIcon("stone", "stone_0") ??
-                   LoadSpriteFromIcon("stone_1", "stone_0");
+            return LoadSpriteFromIcon("stone_1", "stone_1_0");
+        }
+
+        if (oreId == "copper")
+        {
+            return LoadSpriteFromIcon("copper_node", "copper_node_0");
+        }
+
+        if (oreId == "iron")
+        {
+            return LoadSpriteFromIcon("silver_node", "silver_node_0");
+        }
+
+        if (oreId == "gold")
+        {
+            return LoadSpriteFromIcon("gold_node", "gold_node_0");
         }
 
         if (oreId == "diamond" || oreId == "diamon")
         {
-            return LoadSpriteFromIcon("mystrile_node", "mystrile_node") ??
+            return LoadSpriteFromIcon("mystrile_node", "mystrile_node_0") ??
                    LoadSpriteFromIcon("diamond", "diamond");
         }
 

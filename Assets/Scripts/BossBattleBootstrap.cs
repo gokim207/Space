@@ -15,12 +15,15 @@ public class BossBattleBootstrap : MonoBehaviour
         bool bossMode = BossBattleSession.IsBossBattle;
         GameObject boss = FindInScene("Boss");
         GameObject bossPanel = FindInScene("bossPanel");
+        GameObject bossPatterns = FindInScene("BossPatterns");
         GameObject runPanel = FindInScene("runPanel");
 
         if (boss != null)
             boss.SetActive(bossMode);
         if (bossPanel != null)
             bossPanel.SetActive(bossMode);
+        if (bossPatterns != null)
+            bossPatterns.SetActive(bossMode);
         if (runPanel != null)
             runPanel.SetActive(!bossMode);
 

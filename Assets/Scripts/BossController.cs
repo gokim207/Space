@@ -201,14 +201,41 @@ public class BossController : MonoBehaviour
     {
         BossBattleSession.SetCombatPaused(true);
         SetHitCollidersEnabled(false);
-        if (nameText != null)
-            nameText.text = $"{bossName}  2페이즈 전환";
-
-        yield return new WaitForSeconds(3f);
-
+        patternAnimationLocked = true;
         phase = 2;
-        currentHP = maxHP;
+        currentHP = 0f;
+        RefreshUI();
+
+        SpriteRenderer planetRenderer = null;
+        GameObject planetObject = GameObject.Find("Planet");
+        if (planetObject != null)
+            planetRenderer = planetObject.GetComponent<SpriteRenderer>();
+
+        for (int repeat = 0; repeat < 5; repeat++)
+        {
+            for (int frameIndex = 45; frameIndex <= 48; frameIndex++)
+            {
+                Sprite frame = FindBossFrame(frameIndex);
+                if (visual != null && frame != null)
+                    visual.sprite = frame;
+                yield return new WaitForSeconds(0.08f);
+            }
+
+            if (planetRenderer != null)
+            {
+                const float darkenAmount = 50f / 255f;
+                Color color = planetRenderer.color;
+                color.r = Mathf.Max(0f, color.r - darkenAmount);
+                color.g = Mathf.Max(0f, color.g - darkenAmount);
+                color.b = Mathf.Max(0f, color.b - darkenAmount);
+                planetRenderer.color = color;
+            }
+
+            HealByMaxRatio(0.20f);
+        }
+
         defeated = false;
+        patternAnimationLocked = false;
         BossBattleSession.EnterSecondPhase();
         BossBattleSession.SetCombatPaused(false);
         SetHitCollidersEnabled(true);
@@ -221,9 +248,6 @@ public class BossController : MonoBehaviour
     {
         BossBattleSession.SetCombatPaused(true);
         SetHitCollidersEnabled(false);
-        if (nameText != null)
-            nameText.text = $"{bossName} 처치";
-
         yield return new WaitForSeconds(3f);
 
         Time.timeScale = 1f;
@@ -264,6 +288,15 @@ public class BossController : MonoBehaviour
         }
     }
 
+    public void HealByMaxRatio(float ratio)
+    {
+        if (ratio <= 0f || maxHP <= 0)
+            return;
+
+        currentHP = Mathf.Min(maxHP, currentHP + maxHP * ratio);
+        RefreshUI();
+    }
+
     public Sprite FindBossFrame(int index)
     {
         Sprite[] sprites = Resources.LoadAll<Sprite>("character/boss");
@@ -300,7 +333,10 @@ public class BossController : MonoBehaviour
         }
 
         if (nameText != null)
-            nameText.text = $"{bossName} P{phase}  {Mathf.CeilToInt(currentHP):N0} / {maxHP:N0}";
+        {
+            nameText.text =
+                $"{bossName} {phase}P  {Mathf.CeilToInt(currentHP):N0} / {maxHP:N0}";
+        }
     }
 
     static Transform FindChild(Transform root, string targetName)
